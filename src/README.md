@@ -46,6 +46,16 @@ A simple program to find files deeply and return a List<File>.
 **Outputs**: List<File> that meets the criteria
 
 
+##FileToStringAdapter.java
+This class is a wrapper around File. It extends File and has a method for many of the String methods. The String based methods
+perform the action over the file contents (even files larger than Integer.MAX_VALUE). These methods include getting a substring
+of the file contents and modifying the file contents.
+
+**Inputs**: Has the same constructors as File and many methods of String.
+
+**Outputs**: The file content mutators return nothing. For all others see File and String docs.
+
+
 ##generate password.html
 Generates a random text that makes a good password. It uses javascript only (is purely off-line, no AJAX) so nothing nefarious is going on here.
 
