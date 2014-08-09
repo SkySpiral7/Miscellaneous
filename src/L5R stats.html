@@ -1,0 +1,305 @@
+<html>
+<title>L5R Stats</title>
+<!--1.2 is so I stop going insane about things like Array.concat-->
+<script type="text/javaScript1.2">
+function deepCopy(obj) {  //TODO: use pointer to traverse the tree (Mana Khemina) without using recursion
+   if (obj instanceof Array)
+   {
+       var r = [];
+      for (var i = 0; i < obj.length; i++) {
+          r[i] = deepCopy(obj[i]);
+      }
+      return r;
+   }
+    return obj;
+}
+var diceCount, dropCount, reroll;  //shared globals
+function main(){
+    document.getElementById("graphResults").innerHTML="";
+    if(diceCountInput.value < 1){alert("Error: you have no dice which is invalid"); return;}
+    if(isNaN(Number(diceCountInput.value)) || isNaN(Number(keepCountInput.value))){alert("Error: input must be numeric"); return;}
+    diceCount=Number(diceCountInput.value);
+    dropCount=(diceCount-Number(keepCountInput.value));
+    reroll=emphasisInput.checked;
+    if(dropCount < 0) dropCount=0;
+    else if(dropCount > diceCount) dropCount=diceCount;
+    var output;
+    if(dropCount===0) output=parseStr();
+    else output=bruteForce();  //can't be done in any other way
+    document.getElementById('graphResults').innerHTML = generateDiceSumTable(output);
+};
+function parseStr(){
+    var finishedPolys=[];
+   for (var i=0; i < diceCount; i++)
+   {
+       finishedPolys.push([0]);  //can't roll 0 and create the array
+       finishedPolys[i]=addDiePolynomialFirstTime(finishedPolys[i]);  //create all sides without explosions
+   }
+    var rollData=multiplyPolynomials(deepCopy(finishedPolys));  //send a copy only
+    //might as well call multiplyPolynomials to see if 0 explosions is fine since this is the faster one
+   for (var explodeCount=1; Number(rollData[rollData.length-1].toFixed(4))!=0; explodeCount++)  //explode loop
+   {
+      for (var i=0; i < diceCount; i++)
+          finishedPolys[i]=addDiePolynomial(finishedPolys[i]);  //create the additional sides that are explosions
+       rollData=multiplyPolynomials(deepCopy(finishedPolys));
+   }
+    return rollData;
+}
+function bruteForce(){  //TODO: make a C++ program for this. draw text using '#' or '=' or '*' etc. use global for returned array length
+    var results=[];
+    var explodeCount=1;
+    var explodeMax=explodeCount+3;
+    var eachValue=[0];  //init. can't roll 0
+    eachValue=addDiePolynomialFirstTime(eachValue);  //create all sides without explosions
+    for(var i=0; i < eachValue.length; i++) results[i]=[i, eachValue[i]];  //convert to [value, chance]
+    eachValue=results;
+    eachValue.shift();  //remove [0,0] since it isn't needed and slows brute down
+    results=[[0, 1]];  //for first pass then this is overwritten
+    eachValue=addBrutePolynomial(eachValue);  //explode
+    eachValue=addBrutePolynomial(eachValue);  //explode at least 3 times (3rd in loop)
+   for (; Number(results[results.length-1][1].toFixed(4))!=0 && explodeCount < explodeMax; explodeCount++)  //explode loop
+   {
+       eachValue=addBrutePolynomial(eachValue);  //explode again per loop
+       var rollData=deepCopy(eachValue);  //needs deep so that eachValue remains same for next loop
+      if (diceCount == 1)  //pad with [] so that they are sums
+      {
+          results=[];
+          for(var i=0; i < rollData.length; i++)
+             results.push([rollData[i]]);
+          rollData=results;
+      }
+       else rollData=cartesianProduct(rollData, deepCopy(eachValue));  //TODO: does anything need deep copy?
+       for(var i=2; i < diceCount; i++) rollData=nextCartesianProduct(rollData, deepCopy(eachValue));
+
+       var droppedRollData=[];  //needs to be a deep copy so I can remove values without changing the original
+       for(var i=0; i < rollData.length; i++) droppedRollData.push(deepCopy(rollData[i].sort(function(a,b){return a[0]-b[0];})));  //sort by die value ascending
+      for(var dropIndex=dropCount; dropIndex > 0; dropIndex--)
+         for(var i=0; i < droppedRollData.length; i++)
+             droppedRollData[i].shift();  //remove first element until you drop the right number of them
+
+       //got these: drop/keep, reroll (handled by Polynomial.createDiePolynomial), min/max, compound, regular, and pen explosions
+
+       results=[];
+      for (var i=0; i < droppedRollData.length; i++)
+      {
+          var sum=0, chance=1;
+         for (var j=0; j < droppedRollData[i].length; j++)
+             {sum+=droppedRollData[i][j][0]; chance*=droppedRollData[i][j][1];}
+          addPolynomials(results, sum, chance);
+      }
+       results=results.sort(function(a,b){return a[0]-b[0];});  //sort by die value ascending
+      //var tempScope=Number(results[results.length-1][1].toFixed(4));
+   }
+    rollData=[];
+   for (var i=0; i < results.length; i++)  //compress to 1D which also sums up all the different chances for the same sum
+   {
+       if(rollData[results[i][0]]==undefined) rollData[results[i][0]]=results[i][1];
+       else rollData[results[i][0]]+=results[i][1];
+   }
+    for(var i=0; i < rollData.length; i++) if(rollData[i]==undefined) rollData[i]=0;  //fix all missing values
+    return rollData;
+}
+function addPolynomials(poly, value, freq){
+   for(var i = 0; i < poly.length; i++){
+       if(poly[i][0] == value){poly[i][1]+=freq; return;}  //sum exists so increase freq
+   }
+    poly.push([value, freq]);  //sum is new. the sums are done in order ascending so that when pushed they are still in order
+}
+function generateDiceSumTable(rollData){
+    var min, max=rollData.length-1, count=0, sum=0;
+   for (var i=0; i < rollData.length; i++)
+   {
+       if(rollData[i]==0) continue;  //freq is 0 means it can't be done (shouldn't exist)
+       if(min==undefined || i < min) min = i;
+       //if(max==undefined || max < i) max = i;
+       count += rollData[i];
+       sum += (i * rollData[i]);  //must be wieghted since the ones that occur more often are more likely
+   }
+    var deviationSquareSum = 0;
+    var avg = sum / count;
+   for (var i=0; i < rollData.length; i++)
+   {
+       var dev = i - avg;
+       dev *= dev;  //squared
+       deviationSquareSum += (dev * rollData[i]);  //weighted
+   }
+    var standardDeviation = Math.sqrt(deviationSquareSum / count);
+
+    var out = '<b>Statistics</b>';
+    out += '<br>Min: ' + min;
+    out += '<br>Max: ' + max;
+    out += '<br>Avg: ' + avg.toFixed(2);
+    out += '<br>Std Dev: ' + standardDeviation.toFixed(3);
+
+    return out+genTable(rollData);
+}
+function genTable(rollData){
+    var max = 0;
+    var totalFreq = 0;
+    var out = '';
+    var secondValues=[];
+    var runningChance=0;
+    for(var i=0; i < rollData.length; i++) runningChance+=rollData[i];  //get total chance (will not be 1 if any were dropped)
+
+   for (var i=0; i < rollData.length; i++) {
+       if(rollData[i]==0 || runningChance <= 0){secondValues.push(0); continue;}  //need place holder so that the lengths are the same
+       secondValues.push(runningChance);
+       runningChance-=rollData[i];
+       if(max < rollData[i]) max = rollData[i];
+       totalFreq += rollData[i];
+   }
+
+    out = '<table border="1" cellpadding="0" cellspacing="2" width="100%">';
+    out += "\n";
+    out += '<tr><th>Roll</th>';
+    out += '<th>Chance</th><th>&gt;=</th><th align="center">Bar</th></tr>';
+    out += "\n";
+
+   for (var i=0; i < rollData.length; i++) {
+       if(rollData[i]==0) continue;  //roll isn't possible
+       out += '<tr><td align="center" width="1%">' + i;  //roll
+       out += '</td><td align="right" width="1%">';
+       out += (100 * rollData[i] / totalFreq).toFixed(3);  //non-freq is weighted but might not be the probability
+       out += '%</td><td align="right" width="1%">';
+       out += (100 * secondValues[i] / totalFreq).toFixed(3);
+       out += '%</td><td valign="center">';
+       out += '<div style="background-color: ';
+       if(rollData[i] == max) out += 'green';  //not rounded
+       else out += 'blue';
+       out += '; width:' + (100 * rollData[i] / max).toFixed(3)+'%; height: 0.8em">&nbsp;</div>';
+       out += '</td></tr>';
+       out += "\n";
+   }
+    out += '</table>';
+    return out;
+}
+function addDiePolynomial(results){
+    var previousPossible=results[results.length-1]/10;
+    results[results.length-1]=0;  //the exploded value isn't possible. don't remove: need placeholder
+   for(var i=1; i <= 9; i++)  //because 10 can't be rolled
+       results.push(previousPossible);
+    results.push(previousPossible);  //final value (represents everything that follows) and is divisable by 10
+    return results;
+}
+function addBrutePolynomial(results){
+    var startingValue=results[results.length-1][0];
+    var previousPossible=results.pop()[1]/10;  //the exploded value isn't possible. remove for faster speed
+   for(var i=1; i <= 9; i++)  //because 10 can't be rolled
+       results.push([(startingValue+i), previousPossible]);
+    results.push([(startingValue+10), previousPossible]);  //final value (represents everything that follows) and is divisable by 10
+    return results;
+}
+function addDiePolynomialFirstTime(results){
+    //results.push(0);  //I could but that would be weird for parseStr since I'd have to create and use empty arrays
+    if(reroll) var previousPossible=(1/9);
+    else var previousPossible=0.1;  ///==1/10
+   for(var i=1; i <= 9; i++)  //because 10 can't be rolled
+       results.push(previousPossible);
+    if(previousPossible==(1/9)) results[1]=0;  //impossible due to reroll. override is easier than avoiding
+    results.push(previousPossible);  //final value (represents everything that follows) and is divisable by 10
+    return results;
+}
+function multiplyPolynomials(polyNom){
+    var results=polyNom.shift();
+   while (polyNom.length!=0)
+   {
+       var newPoly=[];
+       var nextPoly=polyNom.shift();
+
+      for (var i=1; i < results.length; i++)
+      for (var j=1; j < nextPoly.length; j++)
+      {
+          if(newPoly[i+j]==undefined) newPoly[i+j]=(results[i]*nextPoly[j]);
+          else newPoly[i+j]+=(results[i]*nextPoly[j]);
+      }
+       results=newPoly;
+       for(var i=0; i < results.length && results[i]==undefined; i++) results[i]=0;
+   }
+    //I do not need to sort since they are still in ascending order from creation to here
+    return results;  //number array
+}
+function cartesianProduct(array1Given, array2Given){  //they aren't changed
+    var results=[];
+   for (var i=0; i < array1Given.length; i++)
+   for (var j=0; j < array2Given.length; j++)
+       results.push([array1Given[i], array2Given[j]]);
+    return results;
+}
+function nextCartesianProduct(array1Given, array2Given){  //they aren't changed
+    var results=[];
+   for(var i=0; i < array1Given.length; i++)
+   for(var j=0; j < array2Given.length; j++)
+   {
+       var thisRow=array1Given[i].slice();  //copy array
+       thisRow.push(array2Given[j]);  //add the item from array2 to the array of array1
+       results.push(thisRow);
+   }
+    return results;
+}
+
+//remove these later:
+/* *
+function adminPowers(){eval(inputCode.value);}
+function write(message){document.getElementById("results").value+=message;};  //avoids race condition
+function writeln(message){if(arguments.length==0) message=''; write(message+"\n");};
+Array.prototype.toSource = function(){
+    var results='[';
+   for(var i=0; i < this.length; i++)
+   {
+       if(this[i] instanceof Array) results+=this[i].toSource();
+       else results+=''+this[i];  //can't call toString() due to undefined etc
+       if(i+1 < this.length) results+=', ';
+   }
+    return (results+']');
+}
+function compareThem(){
+    diceCountInput.value=4;
+    keepCountInput.value=3;  //modify the input feilds
+    emphasisInput.checked=true;
+    main();  //read in these variables (with validity) then stop
+    writeln('diceCount='+diceCount+', dropCount='+dropCount+', reroll='+reroll);
+
+    var bellCurve1=bruteForce();
+    var bellCurve2=lessBrutalForce();
+
+    //round them off. not by much though. 13 is very accurate
+    for(var i=0; i < bellCurve1.length; i++) bellCurve1[i]=Number(bellCurve1[i].toFixed(13));
+    for(var i=0; i < bellCurve2.length; i++) bellCurve2[i]=Number(bellCurve2[i].toFixed(13));
+
+    if(bellCurve1.length==bellCurve2.length) writeln('same length');
+    else writeln('old.length='+bellCurve1.length+', new='+bellCurve2.length);
+
+    //they will not match if they have different lengths
+    if(bellCurve1.toSource()==bellCurve2.toSource()) writeln('they match');
+    else writeln('old='+bellCurve1.toSource()+'\nnew='+bellCurve2.toSource());
+}
+/*
+now I just need to modify it for d10!!
+then copy that over to general file
+*/
+</script>
+<a>This was made for the Legend of the 5 Rings so the dice are 10 sided and compound explode. It does not tell you void recovered.</a><br />
+<a>This is slow if dice are dropped with the maximum being around 3k1 (keeping less is slower).</a><br />
+<a>If all dice are kept, on the other hand, a MUCH faster algorithm is used with a maximum being around 3,300 dice (do not put in the comma).</a><br />
+<!----
+<textarea id="inputCode" rows="7" cols="50">main();
+document.getElementById("results").value=('diceCount='+diceCount+', dropCount='+dropCount+', reroll='+reroll+'\n');
+var startTime=new Date();
+bruteForce();
+var endTime=new Date();
+writeln('time it took: '+((endTime-startTime)/1000).toFixed(1)+' seconds');
+</textarea><br />
+<input type="button" onclick="adminPowers();" value="Admin Powers" /><br />
+<textarea id="results" rows="7" cols="50"></textarea><br />
+<!---->
+<br /><a>Roll: </a><input type='text' size='1' value='4' id='diceCountInput' /><br />
+<a>Keep: </a><input type='text' size='1' value='3' id='keepCountInput' /><br />
+<a>Emphasis: </a><input type='checkbox' id='emphasisInput' /><br />
+<input type="button" onclick="main();" value="Calculate" /><br />
+<br /><div id="graphResults"></div>
+<br /><br /><br /><br />
+<script>
+document.getElementById("diceCountInput").focus();
+//document.getElementById("mainExec").focus();
+</script>
+</html>

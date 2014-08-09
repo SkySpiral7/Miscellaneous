@@ -1,0 +1,3144 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+<title>Tabletop Dice</title>
+<meta charset="UTF-8" />
+<!--
+html4 version: <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+and <meta http-equiv="Content-Type" content="text/html; charset=windows-1252" /> but http://validator.w3.org/ doesn't like that
+-->
+<!--1.2 is so I stop going insane about things like Array.concat-->
+<script type="text/javaScript1.2">
+if(Array.prototype.indexOf == undefined){  //just like native version
+   Array.prototype.indexOf = function (obj, fromIndex) {  //overrides not overloads
+       if(fromIndex==null) fromIndex = 0;  //if none provided. same as: arguments.length < 2 || fromIndex==undefined || fromIndex==null
+       else if(fromIndex < 0) fromIndex = Math.max(0, this.length + fromIndex);  //can index from end
+      for(var i = fromIndex; i < this.length; i++){
+          if(this[i] === obj) return i;
+      }
+       return -1;
+   };
+}
+/*if(Array.prototype.replaceAllLiteral == undefined){Array.prototype.replaceAllLiteral = function(oldValue, newValue){
+   for(var i=0; i < this.length; i++)
+       if(this[i]==oldValue) this[i]=newValue;
+   return this;
+}}*/
+if(Array.prototype.toSource == undefined){Array.prototype.toSource = function(){  //not standard but is out there
+    var results='[';
+   for(var i=0; i < this.length; i++)
+   {
+       if(this[i] instanceof Array) results+=this[i].toSource();
+       else results+=''+this[i];  //can't call toString() due to undefined etc
+       if(i+1 < this.length) results+=', ';
+   }
+    return (results+']');
+}};
+/*if(Array.prototype.applyToAll == undefined){Array.prototype.applyToAll = function(functionGiven, parametersBefore, parametersAfter){
+    if(typeof(functionGiven)!="function" && typeof(functionGiven)!="object") return;  //do nothing and return undefined
+   for(var i=0; i < this.length; i++)
+       this[i]=functionGiven(each parametersBefore, this[i], each parametersAfter);  //not deep and not the same as a new object
+   return this;
+}}*/
+if(Array.prototype.removeIndex == undefined){Array.prototype.removeIndex = function(index){return this.splice(index, 1);}}  //remove from array and return removed element
+if(Array.prototype.removeElement == undefined){Array.prototype.removeElement = function(obj){
+    var foundIndex=this.indexOf(obj);
+    this.removeIndex(foundIndex);
+    return foundIndex;
+}}
+if(Array.prototype.summation == undefined){
+   Array.prototype.summation = function () {
+       var total=0;
+      for (var i=0; i < this.length; i++)
+      {
+          if(this[i] instanceof Array) total+=this[i].summation();  //is deep
+         else
+         {
+             var thisValue=Number(this[i]);  //catches empty string, null, undefined and NaN. although a few of those return 0 but that's fine too (does the same thing)
+             if(!isNaN(thisValue)) total+=thisValue;
+         }
+      }
+       return total;
+   };
+}
+if(String.prototype.contains == undefined){String.prototype.contains=function(substring){return (this.indexOf(substring) !== -1);};}
+if(String.prototype.trim == undefined){String.prototype.trim=function(){return this.replace(/^\s+|\s+$/g, '');};}
+if(String.prototype.endsWith == undefined){String.prototype.endsWith = function(suffix) {
+    return (this.indexOf(suffix, this.length - suffix.length) !== -1);
+};}
+if(String.prototype.startsWith == undefined){String.prototype.startsWith = function(prefix) {
+    return (this.indexOf(prefix) === 0);
+};}
+Array.prototype.contains=function(obj){
+   for(var i = 0; i < this.length; i++){
+       if(this[i] == obj) return true;
+   }
+    return false;
+};
+Array.prototype.containsExact=function(obj){  //same as indexOf() !== -1
+   for(var i = 0; i < this.length; i++){
+       if(this[i] === obj) return true;
+   }
+    return false;
+};
+if(Math.factorial == undefined){Math.factorial = function(numberGiven){  //do not use recursion. this is important!
+    //Math doesn't have a .prototype which is funny because I can add to it anyway
+    //prototype adds it to instances of it but Math is static so it can't have it
+    if(typeof(numberGiven)!='number') return NaN;  //it does not attempt to type convert
+    if(numberGiven < 0 || Math.floor(numberGiven)!=numberGiven) return undefined;
+    //factorial is actually defined for both of these cases but I do not know how to calculate them
+    if(numberGiven == Infinity) return Infinity;  //to prevent getting stuck in the loop
+    var result=1;  //starts as 1 so that any number can be multiplied into it
+    for(var i=2; i <= numberGiven; i++) result*=i;  //start at 2 because it is pointless to mutliple by 1
+   return result;  //if numberGiven is 1 or 0 then return 1
+}}
+
+//var maxNumber=1000;  //fool you crazy using a number this large
+//var maxNumber=Math.pow(2,16)-1;  //Math.pow(2,32)-1 is max possible (sometimes) for total (0 to Math.pow(2,32)-1)
+//meaning Math.pow(2,16)-1 for each other one (multi and numb) since highest case: multiply them. although that leaves total's max much lower than Math.pow(2,32)-1
+//dropCount's limit and maxStat's limit are also affected but whatever
+
+var Silent=true;
+function ErrorWrapper(messageGiven){this.message = messageGiven;};
+
+function main(){
+    var holder=document.getElementById("inputCode").value;
+    document.getElementById("results").value="";
+    document.getElementById("graphResults").innerHTML="";
+    try{eval(holder);}
+   catch (error)
+   {
+       //no way to display line number due to eval
+       if(document.getElementById("results").value!='') document.getElementById("results").value+="\n";
+       document.getElementById("results").value+="Error: "+error.message+"\n";  //ErrorWrapper contains .message for this reason
+   }
+    //document.getElementById("results").value+="\nEnd of program\n";
+};
+function write(message){document.getElementById("results").value+=message;};  //avoids race condition
+function writeln(message){if(arguments.length==0) message=''; write(message+"\n");};
+function combineRegex(regex1, regex2){
+    var string1=(regex1+'').trim();  //convert them to strings
+    var string2=(regex2+'').trim();
+    if(string1.endsWith('\\\\/')) string1=string1.substring(0, string1.length-1);  //if ends with "\\/" then chop off trailing slash
+    else if(string1.endsWith('/') && !string1.endsWith('\\/')) string1=string1.substring(0, string1.length-1);  //chop off trailing slash
+    if(string2.charAt(0)=='/') string2=string2.substring(1);  //chop off leading slash
+    return eval(string1+string2);  //returned as a regex object
+};
+function Die(diceStringGiven, nameArray){
+   //private:
+    var isNegativeDice=false;
+    var doesUseZero=false;
+    var isFudgeDie=false;
+    var sideCount=0;
+    var doesExplode=false;  //die options
+    var doesPenetrate=false;
+    var doesCompoundExplode=false;
+    //var minMaxSwitch="None";
+    //var minMaxValue=0;
+    var rerollCriteria;  //==undefined;
+    var explodeValue;  //used for stats not anywhere else
+    var constantModifier=0;
+    var dieName;  //==undefined;
+   this.setName = function(nameGiven){dieName=nameGiven;};
+   this.getName = function(){
+       if(dieName==undefined) return this.generateString();
+       return dieName;
+   }
+   this.generateString = function()
+   {
+       var dieString='';
+       if(isNegativeDice) dieString+='-';
+       if(doesUseZero) dieString+='z';
+       else dieString+='d';
+       if(isFudgeDie) dieString+='F';
+       else dieString+=sideCount;
+       if(doesExplode || doesCompoundExplode) dieString+='!';
+       if(doesPenetrate) dieString+='p';
+       else if(doesCompoundExplode) dieString+='!';
+       if(rerollCriteria!=undefined) dieString+='r'+rerollCriteria;
+       if(constantModifier > 0) dieString+='+'+constantModifier;
+       else if(!isFudgeDie && constantModifier < 0) dieString+=constantModifier;  //fudge has a -1 but don't show that since it would be wrong
+       return dieString;
+   };
+   this.getStats = function(){
+       var returnObject={};
+       returnObject.nameArray=nameArray.slice();  //copies array so that it is read only
+       returnObject.isNegativeDice=isNegativeDice;
+       returnObject.doesUseZero=doesUseZero;
+       returnObject.isFudgeDie=isFudgeDie;
+       returnObject.sideCount=sideCount;
+       returnObject.doesExplode=doesExplode;
+       returnObject.doesPenetrate=doesPenetrate;
+       returnObject.doesCompoundExplode=doesCompoundExplode;
+       returnObject.rerollCriteria=rerollCriteria;
+       returnObject.explodeValue=explodeValue;
+       returnObject.constantModifier=constantModifier;
+       returnObject.dieName=dieName;
+       return returnObject;
+   };
+   this.equals = function(otherDie){
+       if(!(otherDie instanceof Die)) return false;
+       if(isNegativeDice!=otherDie.isNegativeDice) return false;
+       if(doesUseZero!=otherDie.doesUseZero) return false;
+       if(isFudgeDie!=otherDie.isFudgeDie) return false;
+       if(sideCount!=otherDie.sideCount) return false;
+       if(doesExplode!=otherDie.doesExplode) return false;
+       if(doesPenetrate!=otherDie.doesPenetrate) return false;
+       if(doesCompoundExplode!=otherDie.doesCompoundExplode) return false;
+       if(rerollCriteria!=otherDie.rerollCriteria) return false;
+       if(explodeValue!=otherDie.explodeValue) return false;
+       if(constantModifier!=otherDie.constantModifier) return false;
+       //if(dieName!=otherDie.dieName) return false;  //do not compare these
+       if(nameArray.length!=otherDie.nameArray.length) return false;
+       for(var i=0; i < nameArray.length; i++) if(nameArray[i]!=otherDie.nameArray[i]) return false;  //note that it ignores object type
+       return true;
+   };
+   this.hasNames = function(){return (nameArray.length!=0);};
+   this.isFudge = function(){return isFudgeDie;};
+   this.getMaxValue = function(){  //TODO redoc and note that it assumes the sum
+       if(rerollCriteria!=undefined && rerollCriteria.startsWith('>') && doesCompoundExplode) return (Number((/\d+$/).exec(rerollCriteria)[0])+constantModifier);  //reroll caps the Infinity
+       if(doesExplode || doesCompoundExplode) return Infinity;  //doesExplode includes doesPenetrate; Infinity is a number
+      if (rerollCriteria!=undefined)
+      {
+          //loop through every possible value (at least 1 is possible to be at this point) and return the highest possible
+         for (var rerollCountLoopIndex=sideCount; rerollCountLoopIndex >= this.getMinValue(); rerollCountLoopIndex--)  //backwards so to hit the highest first
+         {
+             var valueConsidered=rerollCountLoopIndex;
+             if(nameArray.length!=0) valueConsidered=nameArray[rerollCountLoopIndex];
+             if(!isNaN(valueConsidered)) valueConsidered+=constantModifier;
+             if(!eval(''+valueConsidered+rerollCriteria)) return valueConsidered;  //it is not rerolled
+         }
+          alert("Program error. Unforseen location inside Die.getMaxValue");
+      }
+       if(nameArray.length > 0 && !isNaN(nameArray[sideCount-1])) return (Number(nameArray[sideCount-1])+constantModifier);
+       //TODO if all numbers this might not be the max. sort them on creation to solve this
+       if(nameArray.length > 0) return nameArray[sideCount-1];
+       if(isFudgeDie) return 1;  //has no constant modifier and doesn't explode
+       if(doesUseZero) return (sideCount-1+constantModifier);
+       return (sideCount+constantModifier);
+   };
+   this.getMinValue = function(){  //TODO redoc
+       var possibleMinValue;
+       if(nameArray.length > 0) possibleMinValue=nameArray[0];
+       //else if(isFudgeDie) return -1;  //see doesUseZero constantModifier instead due to reroll
+       else if(doesUseZero) possibleMinValue=0;
+       else possibleMinValue=1;
+       possibleMinValue+=constantModifier;
+       if(rerollCriteria==undefined) return possibleMinValue;
+       //loop through every possible value (at least 1 is possible to be at this point) and return the lowest possible
+       if(nameArray.length > 0) possibleMinValue=0;  //must start at 0 for the loop to work
+      while (true)  //a valid value will be found. I know this because it does not infinitely reroll due to validity checked in constructor
+      {
+          var valueConsidered=possibleMinValue;
+          if(nameArray.length!=0) valueConsidered=nameArray[possibleMinValue];
+          if(nameArray.length!=0 && !isNaN(valueConsidered)) valueConsidered+=constantModifier;
+          if(!eval(''+valueConsidered+rerollCriteria)) return valueConsidered;  //it is not rerolled
+          possibleMinValue++;
+      }
+       //Unreachable
+   };
+   this.getSides = function(){return sideCount;};
+   //currently unreachable anyway:
+   /*function minMaxCounting(holder){  //doesn't need to know this
+       minMaxSwitch="None";
+      if (combineRegex(DicePool.minMaxRegexStart, /\d+/).test(holder))
+      {
+          if((/max/).test(holder)) minMaxSwitch="Max";  //contains the word max
+          else minMaxSwitch="Min";
+          holder=holder.replace(DicePool.minMaxRegexStart, "");  //chop off
+          minMaxValue=parseInt((/^\d+/).exec(holder)+'');  //to capture the number. it looks pointless to +'' but I don't know another way to change regex object to int
+          holder=holder.replace(/^\d+/, "");
+      }
+       return holder;
+   };
+   function minMaxDoing(total){  //doesn't need to know this
+       if(minMaxSwitch=="None") return total;
+       if(minMaxSwitch=="Min" && total < minMaxValue) return minMaxValue;  //did not reach min
+       else if(minMaxSwitch=="Max" && total > minMaxValue) return minMaxValue;  //exceeded max
+       return total;
+   };*/
+   this.roll = function(){
+       var valueArray=[];
+       var isPenetrated=false;
+      while (true)  //so I can loop around (for rerolling and exploding) without recursion
+      {
+          var anotherDie=false;
+          var valueRolled=0;
+          //var total=0;
+          //var replacedTotal=0;
+          valueRolled=Math.ceil(Math.random()*sideCount);  //ceil to start at 1
+          while(valueRolled%sideCount==0 && doesCompoundExplode){valueRolled+=Math.ceil(Math.random()*sideCount);}
+          if(valueRolled==sideCount && doesExplode) anotherDie=true;
+          if(isPenetrated) valueRolled--;  //value of 1 less
+          if(doesUseZero) valueRolled--;  //but coins start at 0
+          //if(isFudgeDie) uses constantModifier below
+          if(nameArray.length!=0) valueRolled=nameArray[valueRolled];  //named dice are always coins and never negative
+          if(!isNaN(valueRolled)) valueRolled+=constantModifier;
+          //replacedTotal=total;
+          //total=this.minMaxDoing(total);
+          if(rerollCriteria!=undefined && eval(''+valueRolled+rerollCriteria)) continue;  //TODO what does it mean to have "2d6r6!"? impossible but get another die and reroll
+          if(isNegativeDice) valueRolled*=-1;
+          valueArray.push(valueRolled);
+          if(doesPenetrate) isPenetrated=true;  //anotherDie will have already been set to true or false
+          if(anotherDie) continue;  //exploded. roll again after recording the value
+          break;  //no more values
+      }
+       return valueArray;
+   };
+   this.flip = this.roll;  //coin alias
+   this.spin = this.roll;  //spinner alias
+   function constructorCalled(objectGiven){
+       if(nameArray.length!=0){if(!namedConstructor()); return '';}  //TODO if a named die is entirely numbers it is allowed everything
+       var holder=diceStringGiven.trim().toLowerCase().replace(/\s/g, ' ');  //make copy. trim, lower case and replace all whitespace with space
+
+       if((/^-/).test(holder)){isNegativeDice=true; holder=holder.substring(1);}  //chop off '-'
+       if((/^1/).test(holder)) holder=holder.substring(1);  //chop off 1
+       if((/^0/).test(holder)) throw new ErrorWrapper(diceStringGiven+"\nyou can't make a dice object with 0 dice. That's invalid");
+       if((/^\d+/).test(holder)) throw new ErrorWrapper(diceStringGiven+"\nyou can't make a dice object with more than one die, instead use a dice pool object");
+       if((/^z/).test(holder)) doesUseZero=true;  //event of 3z2 for 3 coins 0 or 1
+       if(!(/^[zd]/).test(holder)) throw new ErrorWrapper(diceStringGiven+"\ndice must use 'd' or 'z' to specify the dice type");
+       holder=holder.substring(1);  //chop off 'd' or 'z'
+       if((/^%/).test(holder)) holder=holder.replace(/%/, "100");  //replace all % with 100
+       holder=holder.replace(/%/g, "00");  //replace all other % with 2 more zeroes
+      if (holder.startsWith("f"))  //already converted to lower case
+      {
+          doesUseZero=true;  //so that .roll works right. plus this does in fact use the number 0
+          isFudgeDie=true;  //set flag for later
+          sideCount=3;  //they have 3 sides
+          holder=holder.substring(1);  //chop of 'f'
+      }
+      else
+      {
+          sideCount=parseInt(holder);  //to capture the next number
+          if(sideCount == 0) throw new ErrorWrapper(diceStringGiven+"\nhas a bad number of sides.");  //avoid bad numbers
+          holder=holder.substring(sideCount.toString().length);  //remove sideCount from holder
+      }
+      while (holder.length > 0)
+      {
+         if (holder.startsWith('!'))
+         {
+             if(sideCount==1) throw new ErrorWrapper(diceStringGiven+"\nInfinite exploding. A single sided die is not allowed to explode because it would be infinite.");
+             if(doesCompoundExplode || doesExplode) throw new ErrorWrapper(diceStringGiven+"\nExplosion defined more than once. This is invalid.");
+             holder=holder.substring(1);  //chop off '!'
+            if (holder.startsWith('!'))  //if it had "!!"
+            {
+                holder=holder.substring(1);
+                doesCompoundExplode=true;
+            }
+            else if (holder.startsWith("p"))
+            {
+                holder=holder.substring(1);  //chop off 'p'
+                doesExplode=true;  //penetrating needs both set
+                doesPenetrate=true;
+            }
+             else doesExplode=true;  //doesCompoundExplode and doesExplode can't both be true
+         }
+         else if ((/^r(?:[<>=]=?|!=)?-?\d+/).test(holder))  //can't do [<>=!]=? since that would allow '!' alone
+         {
+             if(rerollCriteria!=undefined) throw new ErrorWrapper(diceStringGiven+"\nMore than one reroll criteria specified. This is not possible.");
+                //could theoretically be an array of criteria but throw for now
+             holder=holder.substring(1);  //chop off 'r'
+             if((/^-?\d+/).test(holder)) holder='=='+holder;  //default
+             rerollCriteria=(/^..?-?\d+/).exec(holder)[0];
+             holder=holder.substring(rerollCriteria.length);  //remove rerollCriteria from holder
+             if(rerollCriteria.startsWith("=") && !rerollCriteria.startsWith("==")) rerollCriteria='='+rerollCriteria;  //must be double equal signs for eval
+         }
+          else break;
+      }
+      while (holder.length > 0)  //longhand loop
+      {
+         if ((/^(?:\spenetrat(?:ing|e)|\scompound(?:ing)?)?\sexplo(?:sions?|ding|de)(?:\sdic?e)?/).test(holder))
+         {
+             if(sideCount==1) throw new ErrorWrapper(diceStringGiven+"\nInfinite exploding. A single sided die is not allowed to explode because it would be infinite.");
+             if(doesCompoundExplode || doesExplode) throw new ErrorWrapper(diceStringGiven+"\nExplosion defined more than once. This is invalid.");
+             holder=holder.replace(/\sexplo(?:sions?|ding|de)(?:\sdic?e)?/, '');  //remove word(s)
+            if (holder.startsWith(' compound'))
+            {
+                holder=holder.replace(/\scompound(?:ing)?/, '');  //remove word
+                doesCompoundExplode=true;
+            }
+            else if (holder.startsWith(" penetrat"))
+            {
+                holder=holder.replace(/\spenetrat(?:ing|e)/, '');  //remove word
+                doesExplode=true;  //penetrating needs both set
+                doesPenetrate=true;
+            }
+             else doesExplode=true;  //doesCompoundExplode and doesExplode can't both be true
+         }
+         else if ((/^\sreroll\s(?:dic?e\s(?:that\sare\s)?)?(?:(?:greater|less)\sthan(?:\sor\sequal(?:\sto)?)?\s|(?:not\s)?equal(?:\sto)?\s)?-?\d+/).test(holder))
+         {
+             if(rerollCriteria!=undefined) throw new ErrorWrapper(diceStringGiven+"\nMore than one reroll criteria specified. This is not possible.");
+                //could theoretically be an array of criteria but throw for now
+             holder=holder.replace(/^\sreroll\s(?:dic?e\s(?:that\sare\s)?)?/, '');  //remove word(s)
+             rerollCriteria='';
+             if((/^greater than (?:or )?/).test(holder)){rerollCriteria+='>'; holder=holder.replace(/^greater than (?:or )?/, '');}
+             else if((/^less than (?:or )?/).test(holder)){rerollCriteria+='<'; holder=holder.replace(/^less than (?:or )?/, '');}
+             else if((/^not /).test(holder)){rerollCriteria+='!'; holder=holder.replace(/^not /, '');}
+             if((/^equal(?: to)? /).test(holder)){rerollCriteria+='='; holder=holder.replace(/^equal(?: to)? /, '');}
+             if(rerollCriteria=='=' || rerollCriteria=='') rerollCriteria='==';  //first is if 'equal' and the other is default
+             rerollCriteria+=parseInt(holder);  //grab number
+             holder=holder.replace(/^-?\d+/, '');  //remove
+         }
+          else break;
+      }
+
+       if((/^\s*[-+]\s*\d+$/).test(holder)){constantModifier=Number(holder); holder='';}
+      if (isFudgeDie)  //was created as a fudge die
+      {
+          constantModifier--;  //1 lower
+          isFudgeDie=(constantModifier==-1);  //z3-1 is fudge otherwise false because it just isn't fudge
+      }
+       if(doesUseZero && constantModifier > 0){doesUseZero=false; constantModifier--;}
+      if (rerollCriteria==undefined)
+      {
+         if (doesExplode || doesCompoundExplode)  //includes pen
+         {
+             explodeValue=sideCount;
+             if(nameArray.length > 0) explodeValue=nameArray[nameArray.length-1];  //last value
+             //else if(isFudgeDie) explodeValue=1;  //covered below
+             else if(doesUseZero) explodeValue--;
+             if(!isNaN(explodeValue)) explodeValue+=constantModifier;  //so that named die may have this too
+         }
+          return holder;
+      }
+       //else:
+       //loop through every possible value and make sure at least 1 is possible to land on
+       var possibleToRoll=false, maxValue, rerollCountLoopIndex, canReroll=false;
+       if(nameArray.length > 0){maxValue=nameArray.length-1; rerollCountLoopIndex=0;}  //based on get min/max value but shorter and I can't call those here
+       //else if(isFudgeDie){maxValue=1; rerollCountLoopIndex=-1;}  //uses doesUseZero with constantModifier
+       else if(doesUseZero){maxValue=(sideCount-1); rerollCountLoopIndex=0;}
+       else{maxValue=sideCount; rerollCountLoopIndex=1;}
+       if(doesPenetrate) rerollCountLoopIndex--;  //the pen die is 1 less so check to see if this is valid
+       if(nameArray.length > 0 && (doesExplode || doesCompoundExplode)){explodeValue=nameArray[maxValue]; maxValue--;}
+       else if(doesExplode || doesCompoundExplode){explodeValue=maxValue; maxValue--;}  //it must be able to land on something else to prevent infinite explosions
+       if((doesExplode || doesCompoundExplode) && constantModifier!=0 && !isNaN(explodeValue)) explodeValue+=constantModifier; //updates explodeValue. includes pen
+      if (doesCompoundExplode)  //reroll criteria for compound must be validated differently
+      {  //TODO: test
+          //minimumPossible and explodeValue ignore isNegativeDice. TODO: consider isNegativeDice
+          var minimumPossible=rerollCountLoopIndex;  //min value
+          if(nameArray.length!=0) minimumPossible=nameArray[rerollCountLoopIndex];
+          if(!isNaN(minimumPossible)) minimumPossible+=constantModifier;  //not else since it could be both
+          var rerollNumber=Number((/\d+$/).exec(rerollCriteria)[0]);  //always valid due to being at this point in the code (get abs value by ignoring -)
+         if (rerollCriteria.startsWith(">"))
+         {
+             if(eval(''+minimumPossible+rerollCriteria)) throw new ErrorWrapper(diceStringGiven+"\nInfinite explosions. This means that the die can't be rolled.");
+             canReroll=true;  //due to the maximum being infinite the possibility of rerolling always exists
+         }
+          else if (rerollCriteria.startsWith("==") && rerollNumber%explodeValue==0){}  //canReroll=false;  //do nothing since already set
+          //die can never land on a side of explodeValue and the number must be within range
+          else if(rerollNumber >= minimumPossible) canReroll=true;  //covers each of these: <, != and ==
+          //check for canReroll. check if # > min for valid
+      }
+      else
+      {
+         for (; rerollCountLoopIndex <= maxValue; rerollCountLoopIndex++)
+         {
+             var valueConsidered=rerollCountLoopIndex;
+             if(nameArray.length!=0) valueConsidered=nameArray[rerollCountLoopIndex];
+             if(!isNaN(valueConsidered)) valueConsidered+=constantModifier;  //not else since it could be both
+             if(eval(''+valueConsidered+rerollCriteria)) canReroll=true;
+             else possibleToRoll=true;
+             //if(nameArray.length!=0 && rerollCountLoopIndex+1==nameArray.length) break;  //named die has 1 less but already covered by maxValue=nameArray.length-1
+             if(possibleToRoll && canReroll) break;  //found all I need
+         }
+          if(doesExplode && eval(''+explodeValue+rerollCriteria)){doesExplode=doesPenetrate=false; explodeValue=undefined;}  //exploding is not possible due to reroll. compound on the other hand is still possible
+          if(!possibleToRoll && doesExplode) throw new ErrorWrapper(diceStringGiven+"\nInfinite explosions. This means that the die can't be rolled.");
+          //it can land on the max side but that causes an explosion and always is that same side
+          else if(!possibleToRoll) throw new ErrorWrapper(diceStringGiven+"\nInfinite rerolling. This means that the die can't be rolled.");
+      }
+
+       //reroll optimising section:
+       if(!canReroll) rerollCriteria=undefined;  //it isn't possible to reroll so just remove the overhead
+      else if (rerollCriteria.startsWith("!="))  //optimised so that it doesn't have to roll until it can keep it
+      {
+          isFudgeDie=false;
+          sideCount=1;
+          doesUseZero=true;  //it is 1z1 so that it always rolls 0
+          constantModifier+=Number((/\d+$/).exec(rerollCriteria)[0]);  //plus this means it always has this value
+          //+= to include already existing modifiers. such as d6r!=4+2 -> z1+6
+          rerollCriteria=undefined;
+          //isNegativeDice=false;  //unchanged
+          doesExplode=false;  //doesn't explode due to having only 1 valid value
+          doesPenetrate=false;
+          doesCompoundExplode=false;
+          explodeValue=undefined;
+      }
+      else if (rerollCriteria.startsWith(">"))
+      {
+          var newSideCount=Number((/\d+$/).exec(rerollCriteria)[0]);  //since can't roll above this it becomes new side maximum
+          if(rerollCriteria.startsWith(">=")) newSideCount--;  //can't roll it either means lower the max by 1
+          //if(sideCount > newSideCount):  //always true due to if(!canReroll) above
+          //isNegativeDice=false;  //unchanged
+          doesExplode=false;  //doesn't explode due to explodeValue being impossible to roll (ditto for compound)
+          doesPenetrate=false;
+          if(sideCount > newSideCount) doesCompoundExplode=false;  //TODO: confirm this
+          explodeValue=undefined;
+          //doesUseZero=false;  //unchanged
+          //isFudgeDie=false;  //checked later
+          newSideCount-=constantModifier;  //thus shows what would need to be rolled before constantModifier for the highest possible
+          sideCount=newSideCount;
+          //constantModifier+=Number((/\d+$/).exec(rerollCriteria)[0]);  //unchanged except by doesUseZero optimised later
+          rerollCriteria=undefined;  //no longer possible to reroll
+      }
+       //doesCompoundExplode is immune since the extra dies rolled need to be unchanged
+      else if (rerollCriteria.startsWith("<") && doesCompoundExplode)  //else if < reduce the sideCount, increase constantModifier and remove the reroll
+      {
+          if(rerollNumber==undefined) var rerollNumber=Number((/\d+$/).exec(rerollCriteria)[0]);  //should already exist
+          //if(!rerollCriteria.startsWith("<=")) rerollNumber--;  //exclude a side
+          rerollNumber-=constantModifier;
+          constantModifier+=Math.floor(rerollNumber/sideCount)*sideCount;
+          //if() might remove reroll TODO
+      }
+      else if (rerollCriteria.startsWith("<"))  // && !doesCompoundExplode  //else if < reduce the sideCount, increase constantModifier and remove the reroll
+      {
+          var rerollCount=Number((/\d+$/).exec(rerollCriteria)[0]);
+          if(!rerollCriteria.startsWith("<=")) rerollCount--;  //exclude a side
+          sideCount-=rerollCount;  //TODO: I think this causes a conflict with explosions (explodeValue)
+          constantModifier+=rerollCount;
+          rerollCriteria=undefined;
+      }
+       else if(doesCompoundExplode){}  //do nothing. compound can't be optimised in any way
+      else if (!doesUseZero)  //rerollCriteria.startsWith("==")
+      {
+          if(rerollCriteria == "==1"){sideCount--; constantModifier++; rerollCriteria=undefined;}  //bump up so that the random range is smaller
+          else if(rerollCriteria == ('=='+sideCount)){sideCount--; rerollCriteria=undefined;}  //can't roll max. explodeValue has already been removed
+      }
+      else  //rerollCriteria.startsWith("==")
+      {
+          if(rerollCriteria == "==0"){sideCount--; doesUseZero=false; rerollCriteria=undefined;}  //doesUseZero that can't roll 0
+          //cleared doesUseZero instead of constantModifier++ then checking if(doesUseZero && constantModifier > 0) since they'd end up the same
+          else if(rerollCriteria == ('=='+(sideCount-1))){sideCount--; rerollCriteria=undefined;}  //can't roll max. explodeValue has already been removed
+      }
+      //else can stay the same since any other == would need to be replaced with named all numbers. and be impossible for explosions
+
+       //final processing:
+       isFudgeDie=(isFudgeDie && sideCount==3 && constantModifier==-1 && doesUseZero);  //checks isFudgeDie so that z3-1 is false
+       //if(holder.length > 0) throw new ErrorWrapper(diceStringGiven+"\nhas incorrect syntax. After processing the string remaining was\n"+holder);
+       if(sideCount==1 && doesExplode) throw new ErrorWrapper(diceStringGiven+"\nProgramming error: Infinite explosions due to rerolling optimising.");
+       //might've become invalid due to optimising
+       return holder;
+   };
+   function namedConstructor(){  //doesn't need to know this
+       //none of these errors should be possible
+       if(isFudgeDie) throw new ErrorWrapper(diceStringGiven+"\nfudge dice can't have named sides");
+       if(isNegativeDice) throw new ErrorWrapper(diceStringGiven+"\nnamed dice can't be negative");
+       doesUseZero=true;  //always a coin
+       sideCount=nameArray.length;  //just ignore the number of sides passed and use the number of names given
+       if(doesExplode || doesCompoundExplode) throw new ErrorWrapper(diceStringGiven+"\nnamed dice can't explode (compound or otherwise).");
+       //if(minMaxValue!=0 || minMaxSwitch!="None") throw new ErrorWrapper(diceStringGiven+"\na named dice can't have a min or max");
+       return false;  //all numbers
+   };
+   //constructor:
+    if(diceStringGiven==undefined) diceStringGiven="1d6";  //default
+    nameArray=argumentsToArray(arguments);
+    //TODO: doc: let me count the ways: Die(), Die("1d6"), Die("heads", "tails"), Die("yes", "no", "maybe"), Die(["yes", "no", "maybe"])
+    if(nameArray==undefined || nameArray.length==1) nameArray=[];  //make empty array (not provided or diceStringGiven only)
+    else if(nameArray.length==2 && nameArray[0]==undefined) nameArray=[];
+    else if(nameArray.length==2 && (nameArray[1] instanceof Array) && nameArray[1].length==0) nameArray=[];  //name passed was an empty array (DicePool does this)
+    if(nameArray.length==0 && typeof(diceStringGiven)!="string") throw new ErrorWrapper("Die("+diceStringGiven+", ~) the first parameter must be a string type");
+    return constructorCalled(this);
+    //if this is a named die then diceStringGiven will be ignored (since it is actually the first name or something else)
+};
+//static:
+DicePool.minMaxRegexStart = /^\s(?:with\s)?(?:a\s)?(?:min|max)(?:imum)?\s(?:of\s)?/;
+DicePool.dropKeepRegexShortHand = /^[dk][hl]?\d*/;
+DicePool.dropKeepRegexStart = /^\s(?:drop(?:ping)?|remov(?:e|ing)|ignor(?:e|ing)|keep(?:ping)?)/;
+function DicePool(diceStringGiven, nameArray){
+   //private:
+    var diceArray=[];
+    /*var dropKeepSwitch="Up";
+    var dropCount=0;
+    var minMaxSwitch="None";
+    var minMaxValue=0;
+    var sortDirection="None";*/
+    var constantModifier=0;  //only used in rolling  //TODO doc
+    var allFudge=false;
+    var outsource=new numberGroup();  //constructorCalled will overwrite it otherwise it must be initialized blank like this
+    var rolledValues={};  //contains everyRoll and droppedRolls from the previous roll. otherwise the object is empty
+    var poolName;
+   this.setName = function(nameGiven){poolName=nameGiven;};
+   this.getName = function(){
+       if(poolName==undefined) return this.generateString();
+       return poolName;
+   }
+   this.generateString = function()
+   {
+       var poolString='';
+       if(constantModifier!=0) poolString+=constantModifier;
+      for (var i=0; i < diceArray.length;)
+      {
+          if(!diceArray[i].getStats().isNegativeDice) poolString+='+';
+          var dieName=diceArray[i].getName();
+          var count=1; i++;
+          if(!(diceArray[i] instanceof ScatterDie)) for(; i < diceArray.length && dieName==diceArray[i].getName(); i++) count++;
+          if(diceArray[i-1] instanceof ScatterDie) poolString+=dieName;
+          else if(dieName.startsWith('-')) poolString+='-'+count+dieName.substring(1);
+          else poolString+=count+dieName;
+      }
+       if(poolString.startsWith('+')) poolString=poolString.substring(1);  //remove leading +
+       var outterStats=outsource.getStats();
+       if(outterStats.sortDirection=='d') poolString+='sd';
+       else if(outterStats.sortDirection!='None') poolString+='sa';
+       if(outterStats.dropKeepValue!=0) poolString+=' '+outterStats.dropKeepSwitch+' the '+outterStats.lowHighSwitch+'est '+outterStats.dropKeepValue;
+       if(outterStats.minMaxSwitch!='None') poolString+=' '+outterStats.minMaxSwitch+' of '+outterStats.minMaxValue;
+       return poolString;
+   };
+   this.getStats = function(){
+       var returnObject={};
+       //returnObject.nameArray=nameArray.slice();  //always blank
+       returnObject.diceArray=diceArray.slice();  //copies array so that it is read only
+       returnObject.constantModifier=constantModifier;
+       returnObject.allFudge=allFudge;
+       returnObject.outsource=outsource;
+       var fakeRolledValues={};
+      if (rolledValues.everyRoll!=undefined)
+      {
+          fakeRolledValues.everyRoll=rolledValues.everyRoll.slice();  //copy each array if exists (either both exist or neither)
+          fakeRolledValues.droppedRolls=rolledValues.droppedRolls.slice();  //into the copy object. droppedRolls may be empty
+      }
+       returnObject.rolledValues=fakeRolledValues;  //could be an empty object
+       returnObject.poolName=poolName;
+       return returnObject;
+   };
+   this.getAllDice = function(){return diceArray.slice();};  //copies array so that it is read only
+    //TODO add a function that adds to the outsource criteria
+   this.add = function(newDiceStringPassed, nameArrayGiven){
+       rolledValues={};  //clear out results since they are no longer valid
+       //copied from constructor:
+       if(newDiceStringPassed==undefined) newDiceStringPassed="1d6";  //default
+       nameArrayGiven=argumentsToArray(arguments, 1);
+       if(nameArrayGiven==undefined) nameArrayGiven=[];  //make empty array (not provided or newDiceStringPassed only)
+       if(nameArrayGiven.length!=0 && typeof(newDiceStringPassed)!="number") throw new ErrorWrapper("DicePool.add("+newDiceStringPassed+", ~) the first parameter of a named die must be a number type which is the number of dice");
+       if(nameArrayGiven.length!=0) newDiceStringPassed+="d6";  //needs to be a string for parsing
+       if(typeof(newDiceStringPassed)!="string") throw new ErrorWrapper("DicePool.add("+newDiceStringPassed+", ~) the first parameter must be a string type");
+       newDiceStringPassed=newDiceStringPassed.trim();  //last line from constructor (not really this one but yeah)
+       var theseDiceAreNegative=false;
+       if((/^-/).test(newDiceStringPassed)){theseDiceAreNegative=true; newDiceStringPassed=newDiceStringPassed.substring(1);}
+       if((/^\D/).test(newDiceStringPassed)) newDiceStringPassed="1"+newDiceStringPassed;  //diceCount needs the leading 1
+       var diceCount=(/^\d+/).exec(newDiceStringPassed)[0];  //is a string
+       newDiceStringPassed=newDiceStringPassed.substring(diceCount.length);  //chop off the match from the total string
+       diceCount=parseInt(diceCount);  //convert string to int
+       if(theseDiceAreNegative) newDiceStringPassed="-"+newDiceStringPassed;  //add negative back
+       if(diceArray.length==0) allFudge=true;  //so that && allFudge will work below
+      for (var i=0; i < diceCount; i++)
+      {
+          if(nameArrayGiven.length!=0) diceArray.push(new Die(nameArrayGiven));  //can't pass newDiceStringPassed because that would become the first name
+          else diceArray.push(new Die(newDiceStringPassed+''));  //convert to string to prevent a crash (will throw a different error)
+          allFudge=(diceArray[diceArray.length-1].isFudge() && allFudge);
+      }
+       //does not have to have a leading 1 but that's optional anyway. Die will determine whether newDiceStringPassed is valid
+   };
+   this.addDie = function(newDieObject){
+       rolledValues={};  //clear out results since they are no longer valid
+       if(!(newDieObject instanceof Die) && !(newDieObject instanceof ScatterDie)) throw new ErrorWrapper("DicePool.addDie("+newDieObject+") the parameter must be a Die object (or ScatterDie).");
+       if(diceArray.length==0) allFudge=true;  //so that && allFudge will work below
+       diceArray.push(newDieObject);
+       allFudge=(newDieObject.isFudge() && allFudge);
+   };
+   this.addAllDice = function(newDice){
+       if(!(newDice instanceof Array) && !(newDice instanceof DicePool)) throw new ErrorWrapper("DicePool.addAllDice("+newDice+") the parameter must be an array or a DicePool object.");
+       var diceArray=newDice;
+       if(newDice instanceof DicePool) diceArray=newDice.getAllDice();
+       for(var i=0; i < diceArray.length; i++) this.addDie(diceArray[i]);  //addDie will check each array element
+   };
+   this.getSize = function(){return diceArray.length;};
+   function getSign(number){  //for me for output
+       if(typeof(number)!="number") throw new ErrorWrapper("getSign("+number+") must be a number type");
+       if(number > 0) return "+";
+       if(number < 0) return "-";
+       return "0";
+   }
+   this.generateSumString = function(everyRoll, droppedRolls){  //bad could be empty
+       if(droppedRolls==undefined) droppedRolls=[];  //make it empty for .length
+       if(!(everyRoll instanceof Array)) throw new ErrorWrapper("DicePool.generateSumString("+everyRoll+", ~) the first parameter must be an array type.");
+       if(!(droppedRolls instanceof Array)) throw new ErrorWrapper("DicePool.generateSumString(~, "+droppedRolls+") the second parameter must be an array type (or undefined).");
+       var ender="";
+       var total=everyRoll.summation();
+      for (var i=0; i < everyRoll.length; i++)
+      {
+          if(allFudge) ender+=getSign(everyRoll[i]);  //if all fudge then only print out +-0 instead of +1 -1 +0
+         else
+         {
+             if(i==0){}  //avoids a leading '+' or ', '
+             else if(isNaN(everyRoll[i])) ender+=", ";  //to separate names
+             else if(Number(everyRoll[i]) >= 0) ender+="+";
+             //else do nothing since the - will display
+             ender+=everyRoll[i];
+         }
+      }
+       var replacedTotal=total;
+       if(everyRoll.length==0) ender+="All removed: "+droppedRolls;
+      else
+      {
+          total=outsource.minMaxDoing(total);
+          ender+=" = "+total;  //your total could be 0 or less
+          if(replacedTotal!=total) ender+=" was: "+replacedTotal;
+          if(droppedRolls.length > 0) ender+=" removed: "+droppedRolls;
+      }
+       return ender;
+   };
+   this.sumRoll = function(isSilent){
+       if(isSilent!=false) isSilent=true;  //default
+       var total=this.roll().summation();
+       if(!isSilent) writeln(this.generateSumString(rolledValues.everyRoll, rolledValues.droppedRolls));
+       return outsource.minMaxDoing(total);  //will return 0 if all dropped (which is good)
+   };
+   this.opposedRollByBestValue = function(otherDicePoolObject, areRollsSilent){
+       if(areRollsSilent!=false) areRollsSilent=true;  //default
+       if(!(otherDicePoolObject instanceof DicePool)) throw new ErrorWrapper("DicePool.opposedRollByBestValue("+otherDicePoolObject+", ~) the first parameter must be a DicePool type.");
+       var myEveryRoll=this.roll();  //so that multiple things can be returned
+       var bothAllFudge=allFudge;  //true or false
+       otherDicePoolObject.roll();
+       var yourResults=otherDicePoolObject.getStats();  //TODO is this needed as a friend?
+       bothAllFudge=(yourResults.allFudge && bothAllFudge);  //true or false
+       var yourEveryRoll=yourResults.rolledValues.everyRoll;
+       var output="";
+       myEveryRoll.sort(alphaNumDescending);  //sort array. descending
+       yourEveryRoll.sort(alphaNumDescending);
+       if(!areRollsSilent) output+="All My Rolls: "+myEveryRoll+"\nAll Your Rolls: "+yourEveryRoll+"\n";
+      for (var i=0; i < myEveryRoll.length; i++)
+      {
+          if(!areRollsSilent && bothAllFudge) output+=getSign(myEveryRoll[i])+" vs "+getSign(yourEveryRoll[i])+": ";
+          else if(!areRollsSilent) output+=myEveryRoll[i]+" vs "+yourEveryRoll[i]+": ";
+          if(i >= yourEveryRoll.length) return (output+"You win by "+myEveryRoll[i]+" value");
+          if(myEveryRoll[i] > yourEveryRoll[i]) return (output+"You win by "+(myEveryRoll[i]-yourEveryRoll[i])+" value");
+          if(myEveryRoll[i] < yourEveryRoll[i]) return (output+"You lose by "+(yourEveryRoll[i]-myEveryRoll[i])+" value");
+          if(!areRollsSilent) output+="Tie\n";
+      }
+       if(yourEveryRoll.length > myEveryRoll.length) return (output+"You lose by "+yourEveryRoll[myEveryRoll.length]+" value");  //missing die is treated as 0
+       return (output+"You tied");
+   };
+   this.opposedRollByDice = function(otherDicePoolObject, failurePenalty, areRollsSilent){
+       if(areRollsSilent!=false) areRollsSilent=true;  //default
+       if(failurePenalty!=false) failurePenalty=true;
+       if(!(otherDicePoolObject instanceof DicePool)) throw new ErrorWrapper("DicePool.opposedRollByDice("+otherDicePoolObject+", ~) the first parameter must be a DicePool type.");
+       var myEveryRoll=this.roll();  //so that multiple things can be returned
+       var bothAllFudge=allFudge;  //true or false
+       otherDicePoolObject.roll();
+       var yourResults=otherDicePoolObject.getStats();
+       bothAllFudge=(yourResults.allFudge && bothAllFudge);  //true or false
+       var yourEveryRoll=yourResults.rolledValues.everyRoll;
+       var ender="";
+       var winCount=0;
+       myEveryRoll.sort(alphaNumDescending);  //sort array. descending
+       yourEveryRoll.sort(alphaNumDescending);
+      for (var i=0; i < myEveryRoll.length; i++)
+      {
+          if(i >= yourEveryRoll.length) break;
+         if (bothAllFudge && !areRollsSilent)  //if all fudge then only print out +-0 instead of +1 -1 +0
+         {
+             ender+=getSign(myEveryRoll[i])+" vs "+getSign(yourEveryRoll[i]);
+             if(i+1 < myEveryRoll.length && i+1 < yourEveryRoll.length) ender+=", ";
+         }
+         else if(!areRollsSilent)
+         {
+             ender+=myEveryRoll[i]+" vs "+yourEveryRoll[i];
+             if(i+1 < myEveryRoll.length && i+1 < yourEveryRoll.length) ender+=", ";
+         }
+          if(myEveryRoll[i] > yourEveryRoll[i]) winCount++;  //my roll was better
+          else if(myEveryRoll[i] < yourEveryRoll[i] && failurePenalty) winCount--;
+          //else do nothing
+      }
+       if(!areRollsSilent) ender+="\n";
+       if(!failurePenalty && myEveryRoll.length > yourEveryRoll.length) winCount+=(myEveryRoll.length-yourEveryRoll.length);  //no penalty for having less dice
+       else if(failurePenalty) winCount+=(myEveryRoll.length-yourEveryRoll.length);  //you win for each extra die you have and lose for each one you don't have
+       if(winCount > 0) return (ender+"You win by "+winCount+" dice");
+       if(winCount < 0) return (ender+"You lose by "+Math.abs(winCount)+" dice");
+       if(!failurePenalty) return (ender+"You failed");  //0 is a failure for these
+       return (ender+"You tied");
+   };
+   this.opposedSumRoll = function(otherDicePoolObject, areRollsSilent){
+       if(areRollsSilent!=false) areRollsSilent=true;  //default
+       if(!(otherDicePoolObject instanceof DicePool)) throw new ErrorWrapper("DicePool.opposedSumRoll("+otherDicePoolObject+", ~) the first parameter must be a DicePool type.");
+       var myRoll=this.roll().summation();
+       var yourRoll=otherDicePoolObject.roll().summation();
+       var output="";
+       if(areRollsSilent) output+=myRoll+" vs "+yourRoll+": ";
+       if(myRoll > yourRoll) output+="You win";
+       else if(myRoll < yourRoll) output+="You Failed";
+       else output+="You Tied";
+       return output;
+   };
+   this.countSuccessesRoll = function(successCriteria, failureCriteria, areRollsSilent){
+       if(typeof(successCriteria)!="string") throw new ErrorWrapper("DicePool.countSuccessesRoll("+successCriteria+", ~) the first parameter must be a string type (or undefined).");
+       if(areRollsSilent!=false) areRollsSilent=true;  //default
+      if (failureCriteria != undefined)
+      {
+          if(typeof(failureCriteria)!="string") throw new ErrorWrapper("DicePool.countSuccessesRoll(~, "+failureCriteria+", ~) the second parameter must be a string type (or undefined).");
+          failureCriteria=failureCriteria.trim();
+          if(!(/^(?:[<>=]=?\s*)?-?\d+$/).test(failureCriteria)) throw new ErrorWrapper("DicePool.countSuccessesRoll(~, "+failureCriteria+", ~) invalid failureCriteria.");
+          if(failureCriteria.startsWith("=") && !failureCriteria.startsWith("==")) failureCriteria='='+failureCriteria;  //must be double equal signs for eval
+          if((/^\d+$/).test(failureCriteria)) failureCriteria="=="+failureCriteria;  //default
+      }
+       successCriteria=successCriteria.trim();
+       if(!(/^(?:[<>=]=?\s*)?-?\d+$/).test(successCriteria)) throw new ErrorWrapper("DicePool.countSuccessesRoll("+successCriteria+", ~) invalid successCriteria.");
+       if(successCriteria.startsWith("=") && !successCriteria.startsWith("==")) successCriteria='='+successCriteria;  //must be double equal signs for eval
+       if((/^\d+$/).test(successCriteria)) successCriteria="=="+successCriteria;  //default
+       var everyRoll=this.roll();
+       var winCount=0;
+       var loseCount=0;
+       var output="";
+       if(!areRollsSilent) output+="Every roll: "+everyRoll+"\n";
+      for (var i=0; i < everyRoll.length; i++){
+          if(!areRollsSilent) output+="Success: "+everyRoll[i]+successCriteria+" is "+eval(''+everyRoll[i]+successCriteria);
+          if(eval(''+everyRoll[i]+successCriteria)) winCount++;
+         if (failureCriteria != undefined)
+         {
+             if(!areRollsSilent) output+=" and Failure: "+everyRoll[i]+failureCriteria+" is "+eval(''+everyRoll[i]+failureCriteria);
+             if(eval(''+everyRoll[i]+failureCriteria)) loseCount++;
+         }
+          if(!areRollsSilent) output+="\n";
+      }
+       if(!areRollsSilent) output+="Successes: "+winCount+" Failures: "+loseCount+". Total: ";
+       winCount-=loseCount;
+       if(winCount > 0) output+=winCount+" Net Successes";
+       else if(winCount < 0) output+=Math.abs(winCount)+" Net Failures";
+       else output+="There was an equal number of Successes and Failures";
+       return output;
+   };
+   this.roll = function(){
+       var temp=0;  //used in for loop
+       var everyRoll = new Array();
+      for (var i=0; i < diceArray.length; i++)
+      {
+          everyRoll=everyRoll.concat(diceArray[i].roll());  //same as push if roll() is a single number but if roll() is an array, each element will be pushed instead
+      }
+       rolledValues.droppedRolls = outsource.dropDoing(everyRoll);  //might be empty
+       if(constantModifier!=0) everyRoll.unshift(constantModifier);  //push this constant to the front to be used in summations
+       rolledValues.everyRoll = everyRoll;
+       return rolledValues.everyRoll;
+   };
+   function constructorCalled(objectGiven){  //made into a function for clarity
+       var holder=diceStringGiven.trim().replace(/\s/g, ' ');  //make copy and replace all whitespace with space
+       var warning=false;
+
+       //while(holder.contains("  "))  //sorry. cargo cult
+       holder=holder.replace(/  +/g, " ");  //chop out all redundant spaces
+       holder=holder.replace(/-/g, "+-");  //change minus to plus a negative so I can split by plus
+       var newDiceArray=holder.split("+");
+       if(newDiceArray[0]=='') newDiceArray.shift();  //in case of a leading +-
+       //TODO: doc (also Scatter): <a>You can sepperate multiple kinds of grand totals with ; or , each of which will be displayed in the same result box.</a><br />
+       holder=newDiceArray;
+       newDiceArray=[];
+      if (!isNaN(holder[0]))
+      {
+         while (!isNaN(holder[0]))
+         {
+            if (!warning && (holder[0].contains('e') || holder[0].contains('E')))
+            {
+                writeln('Warning: scientific notation is being used in constants.\nThis may be a typo if you were trying to refer to '+holder[0].replace(/[eE]/, 'd')+'.\n');
+                warning=true;
+            }
+             constantModifier+=Number(holder.shift());
+         }
+      }
+      for (var i=0; i < holder.length;)
+      {
+          var total=0;
+          var newElement=holder[i]+'';
+          i++;
+         while (!isNaN(holder[i]))
+         {
+            if (!warning && (holder[i].contains('e') || holder[i].contains('E')))
+            {
+                writeln('Warning: scientific notation is being used in constants.\nThis may be a typo if you were trying to refer to '+holder[i].replace(/[eE]/, 'd')+'.\n');
+                warning=true;
+            }
+             total+=Number(holder[i]);
+             i++;
+         }
+          if(total < 0) newElement+=''+total;
+          else if(total > 0) newElement+='+'+total;
+          newDiceArray.push(newElement.trim());
+      }
+
+       holder='';  //prepared for the loop
+      while (newDiceArray.length!=0)
+      {
+          if(holder.length > 0 && holder!=numberGroup(holder)) throw new ErrorWrapper(diceStringGiven+"\nhas incorrect syntax. Dice Pool modifiers must be at the end after every die.");
+          if(holder.length > 0) throw new ErrorWrapper(diceStringGiven+"\nhas incorrect syntax. After processing the string remaining was\n"+holder);
+             //if there was any string remaing after previous pass. put here instead of bottom becuase there are multiple bottoms
+          holder=newDiceArray.shift()+'';
+          if(holder.endsWith('r') && newDiceArray[0]!=undefined && newDiceArray[0].startsWith('-')) holder+=newDiceArray.shift().trim();
+             //this is not just a patch since r must have a number. so if you want to also subtract 1 be like: "2dFr-1 - 1"
+          if((/^\d+[eE]$/).test(holder) && newDiceArray[0]!=undefined && newDiceArray[0].startsWith('-') && !isNaN(newDiceArray[0])) holder+=newDiceArray.shift().trim();
+             //this is not just a patch since the syntax for it is: "2d6 + 5e-2 + 1d2" for numbers, 'e' must be followed by a number
+         if (holder=='' || holder=='-')
+         {
+             var message=diceStringGiven+"\nrogue ";
+             if(holder=='') message+='+';
+             else message+='-';
+             message+=' was found';
+             if(newDiceArray.length!=0) message+=' before '+(newDiceArray+'').replace(/,/g, '+');
+             message+='. Dice or a numeric constant must follow an addition or subtraction.';
+             throw new ErrorWrapper(message);
+         }
+         if (holder.startsWith("ScatterDie"))
+         {
+            if (!holder.startsWith("ScatterDie("))  //doesn't have the ()
+            {
+                objectGiven.addDie(new ScatterDie());
+                holder=holder.substring("ScatterDie".length);  //chop off "ScatterDie"
+                continue;
+            }
+             //else: below
+             var thisLine=(/^.+?\)/).exec(holder)[0];  //capture the call to ScatterDie with parameters
+             objectGiven.addDie(eval("new "+thisLine));
+             holder=holder.substring(thisLine.length);  //remove the scatter die
+             continue;  //note that following the die list can be things like drop
+         }
+          //else: below
+          holder=holder.toLowerCase();
+          var isNegativeDicePool=holder.startsWith('-');
+          if(isNegativeDicePool) holder=holder.substring(1);  //chop off '-'
+          if(!(/^\d+/).test(holder)) holder="1"+holder;  //must have leading number for diceCount
+          var diceCount=(/^\d+/).exec(holder)[0];
+          holder=holder.substring(diceCount.length);  //chop off the match from the total string
+          diceCount=parseInt(diceCount);  //convert string to int
+         if ((/^k/).test(holder))
+         {
+             holder=holder.substring(1);  //chop off 'k'
+             var keepString="kh"+parseInt(holder);  //shorthand for "keep highest" to ensure that shorthand comes before longhand
+             if(diceCount<=parseInt(holder)) keepString='';  //keep all of them
+             holder=(/^\d+(.*)/).exec(holder)[1];  //capture what follows
+             holder="d10!!"+keepString+holder;
+         }
+          var remainingString=holder;
+          if(newDiceArray.length!=0) remainingString+='+'+(newDiceArray+'').replace(/,/g, '+');
+          if(remainingString!='') remainingString='The error was found before '+remainingString+'.\n';
+          if(!(/^[zd]/).test(holder)) throw new ErrorWrapper(diceStringGiven+"\n"+remainingString+"Dice must use 'd' or 'z' to specify the dice type");
+          var remainder=Die(holder);  //has a return type of all unused text
+          holder=holder.substring(0, holder.length-remainder.length);  //everything before remainder
+          if(isNegativeDicePool) holder="-"+holder;  //add negative
+          for(var i=0; i < diceCount; i++) objectGiven.addDie(new Die(holder, nameArray));  //the only spot that needs to know this
+          holder=remainder;
+      }
+
+       outsource=new numberGroup(holder);
+       holder=numberGroup(holder);  //as a function is returns the remaining text
+       if(holder.trim()!='') throw new ErrorWrapper(diceStringGiven+"\nhas incorrect syntax. After processing the string remaining was\n"+holder);
+
+       if(diceArray.length == 0) throw new ErrorWrapper(diceStringGiven+"\nhas no dice objects which is invalid.");  //avoid bad numbers
+       //I removed error checking for max number since js will return Infinity on overflow for me which is your problem
+       objectGiven.getName();  //generates the pool's default name
+       nameArray=undefined;  //clear out since it is no longer valid
+   };
+   //constructor:
+    if(arguments.length==0){nameArray=[]; return;}  //done. it is an empty pool. TODO test more
+    //if(diceStringGiven==undefined) diceStringGiven="1d6";  //default. also test more stuff here like this
+    nameArray=argumentsToArray(arguments, 1);
+    //TODO: doc: let me count the ways: DicePool(), DicePool("2d6"), DicePool(2, "yes", "no", "maybe"), DicePool(4, ["yes", "no", "maybe"]), DicePool(DicePool), DicePool(Die)
+    if(nameArray==undefined) nameArray=[];  //make empty array (not provided or diceStringGiven only)
+    if(nameArray.length!=0 && typeof(diceStringGiven)!="number") throw new ErrorWrapper("DicePool("+diceStringGiven+", ~) the first parameter of a named die must be a number type which is the number of dice");
+    if(nameArray.length!=0) diceStringGiven+="d6";  //needs to be a string for parsing
+    if(typeof(diceStringGiven)!="string" && !(diceStringGiven instanceof Die) && !(diceStringGiven instanceof ScatterDie) && !(diceStringGiven instanceof DicePool))
+       throw new ErrorWrapper("DicePool("+diceStringGiven+", ~) the first parameter must be a string, Die or DicePool (or ScatterDie).");
+    //if(nameArray.length!=0 && ((diceStringGiven instanceof Die)  || (diceStringGiven instanceof DicePool))) throw new ErrorWrapper("");  //already covered since diceStringGiven isn't a number
+    if((diceStringGiven instanceof Die) || (diceStringGiven instanceof ScatterDie)) this.addDie(diceStringGiven);
+    else if(diceStringGiven instanceof DicePool) this.addAllDice(diceStringGiven);
+    else constructorCalled(this);
+};
+function rollDice(holder){  //short cut. also needed for those that don't know javascript
+    return new DicePool(holder, argumentsToArray(arguments, 1)).sumRoll(!Silent);  //DicePool will validate
+};
+function silentRollDice(holder){  //short cut like above
+    return new DicePool(holder, argumentsToArray(arguments, 1)).sumRoll(Silent);  //DicePool will validate
+};
+function NamedDie(){return new Die(argumentsToArray(arguments));};  //alias/ short cut
+function NamedDicePool(numberOfDice){return new DicePool(numberOfDice, argumentsToArray(arguments, 1));};  //alias/ short cut (DicePool will validate)
+function FudgeDie(){return new Die("1dF");};  //alias
+function StandardCoin(){return new Die("Heads", "Tails");}  //alias
+function Coin(firstName, secondname){  //alias
+    if(arguments.length == 0) return new Die("1z2");  //called Coin()
+    return new Die([firstName, secondname]);   //ignore all other arguments for a coin with named sides
+};
+Spinner = NamedDie;  //alias
+//examples: (short cuts)
+function MagicEightBall(){return new NamedDie("As I see it, yes", "It is certain", "It is decidedly so", "Most likely", "Outlook good", "Signs point to yes", "Without a doubt", "Yes", "Yes - definitely", "You may rely on it", "Reply hazy, try again", "Ask again later", "Better not tell you now", "Cannot predict now", "Concentrate and ask again", "Don't count on it", "My reply is no", "My sources say no", "Outlook not so good", "Very doubtful");};
+function TwisterSpinner(){return new NamedDie("Left Hand Red", "Left Hand Green", "Left Hand Yellow", "Left Hand Blue", "Left Foot Red", "Left Foot Green", "Left Foot Yellow", "Left Foot Blue", "Right Hand Red", "Right Hand Green", "Right Hand Yellow", "Right Hand Blue", "Right Foot Red", "Right Foot Green", "Right Foot Yellow", "Right Foot Blue");};
+function DnDAttack(attackBonus, minimumCritical, opposingAC, damageString, criticalMultiplier, areRollsSilent){
+    if(typeof(attackBonus)!="number") throw new ErrorWrapper("DnDAttack, attackBonus ("+attackBonus+") the must be a number type.");
+    if(typeof(minimumCritical)!="number") throw new ErrorWrapper("DnDAttack, minimumCritical ("+minimumCritical+") the must be a number type.");
+    if(minimumCritical > 20) minimumCritical=20;  //to turn off citical have criticalMultiplier=1
+    if(typeof(opposingAC)!="number") throw new ErrorWrapper("DnDAttack, opposingAC ("+opposingAC+") the must be a number type.");
+    if(typeof(damageString)!="string") throw new ErrorWrapper("DnDAttack, damageString ("+damageString+") the must be a string type.");
+    if(typeof(criticalMultiplier)!="number") throw new ErrorWrapper("DnDAttack, criticalMultiplier ("+criticalMultiplier+") the must be a number type.");
+    if(areRollsSilent!=false) areRollsSilent=true;
+
+    var attackRolled=silentRollDice("1d20");
+    var output="";
+    if(!areRollsSilent) output+="Attack: "+attackRolled+" ";
+    if(attackRolled == 1){output+="Critical miss"; return output;}
+    opposingAC-=attackBonus;  //same thing as an attack bonus. if attackBonus is negative then the opposingAC goes up
+   if (attackRolled >= minimumCritical)
+   {
+       attackRolled=silentRollDice("1d20");
+       var damageRolled=silentRollDice(damageString);
+      if (attackRolled >= opposingAC && (criticalMultiplier!=1 || !areRollsSilent))
+      {
+          if(!areRollsSilent) output+="Threat: "+attackRolled+" Damage rolled: "+damageRolled+" ";
+          output+="Critical hit for "+(damageRolled*criticalMultiplier)+" damage";
+          return output;
+      }
+       if(areRollsSilent) output="Attack ";  //was empty
+       output+="hit for "+damageRolled+" damage";
+       return output;
+   }
+   if (attackRolled >= opposingAC)
+   {
+       if(areRollsSilent) output="Attack ";  //was empty
+       output+="hit for "+silentRollDice(damageString)+" damage";
+       return output;
+   }
+    output+="miss";
+    return output;
+};
+function WarhammerAttackUnit(diceCount, toHitValue, toWoundValue, saveValue, extraSaveValue, areRollsSilent){
+    if(typeof(diceCount)!=="number" || isNaN(diceCount)) throw new ErrorWrapper("WarhammerAttackUnit, diceCount ("+diceCount+") the must be a number type.");
+    if(typeof(toHitValue)!=="number" || isNaN(diceCount)) throw new ErrorWrapper("WarhammerAttackUnit, toHitValue ("+toHitValue+") the must be a number type.");
+    if(toHitValue > 6) return "Impossible to hit";
+    if(typeof(toWoundValue)!=="number" || isNaN(diceCount)) throw new ErrorWrapper("WarhammerAttackUnit, toWoundValue ("+toWoundValue+") the must be a number type.");
+    if(toWoundValue > 6) return "Impossible to wound";
+    if(saveValue===undefined) saveValue=7;  //an impossible number
+    if(typeof(saveValue)!=="number" || isNaN(diceCount)) throw new ErrorWrapper("WarhammerAttackUnit, saveValue ("+saveValue+") the must be a number type.");
+    if(extraSaveValue===undefined) extraSaveValue=7;
+    if(typeof(extraSaveValue)!=="number" || isNaN(diceCount)) throw new ErrorWrapper("WarhammerAttackUnit, extraSaveValue ("+extraSaveValue+") the must be a number type.");
+    if(areRollsSilent!==false) areRollsSilent=true;
+
+    var attackRolled=new DicePool(diceCount+"d6").roll();
+    var successCount=0;
+    var output="";
+    if(!areRollsSilent) output+="To Hit:\n";
+   for (var i=0; i < attackRolled.length; i++)
+   {
+       if(!areRollsSilent) output+=attackRolled[i]+" >= "+toHitValue+": "+(attackRolled[i] >= toHitValue)+"\n";
+       if(attackRolled[i] >= toHitValue) successCount++;
+   }
+    if(successCount==0) return output+'None hit';
+
+    output+="Number hit: "+successCount;
+    if(!areRollsSilent) output+="\n";
+    if(areRollsSilent) output+=". ";
+    else output+="\n";
+    attackRolled=new DicePool(successCount+"d6").roll();
+    successCount=0;
+    if(!areRollsSilent) output+="To Wound:\n";
+   for (var i=0; i < attackRolled.length; i++)
+   {
+       if(!areRollsSilent) output+=attackRolled[i]+" >= "+toWoundValue+": "+(attackRolled[i] >= toWoundValue)+"\n";
+       if(attackRolled[i] >= toWoundValue) successCount++;
+   }
+    if(successCount==0) return output+'None wounded';
+
+    output+="Number wounded: "+successCount;
+    if(!areRollsSilent) output+="\n";
+    if(areRollsSilent) output+=". ";
+    else output+="\n";
+    attackRolled=new DicePool(successCount+"d6").roll();
+    successCount=0;
+    if(!areRollsSilent) output+="To Save:\n";
+   for (var i=0; i < attackRolled.length; i++)
+   {
+       if(!areRollsSilent) output+=attackRolled[i]+" < "+saveValue+": "+(attackRolled[i] < saveValue)+"\n";
+       if(attackRolled[i] < saveValue) successCount++;
+   }
+    if(successCount==0) return output+'All Saved';
+    if(extraSaveValue > 6) return (output+"Unsaved Wounds: "+successCount+".");
+    //else:
+    output+="Unsaved Wounds (first save): "+successCount;
+    if(!areRollsSilent) output+="\n";
+    if(areRollsSilent) output+=". ";
+    else output+="\n";
+    attackRolled=new DicePool(successCount+"d6").roll();
+    successCount=0;
+    if(!areRollsSilent) output+="To Save:\n";
+   for (var i=0; i < attackRolled.length; i++)
+   {
+       if(!areRollsSilent) output+=attackRolled[i]+" < "+extraSaveValue+": "+(attackRolled[i] < extraSaveValue)+"\n";
+       if(attackRolled[i] < extraSaveValue) successCount++;
+   }
+    if(successCount==0) return output+'All Saved';
+    output+="Unsaved Wounds (second save): "+successCount+".";
+    return output;
+};
+function L5RRoll(circumstanceBonus, numberOfRaises, targetNumber, diceRolled, diceKept, hasEmphasis, areRollsSilent){  //even silent will say how many void is recovered
+    if(typeof(circumstanceBonus)!="number") throw new ErrorWrapper("L5RRoll, circumstanceBonus ("+circumstanceBonus+") the must be a number type.");
+    if(typeof(numberOfRaises)!="number") throw new ErrorWrapper("L5RRoll, numberOfRaises ("+numberOfRaises+") the must be a number type.");
+    if(typeof(targetNumber)!="number") throw new ErrorWrapper("L5RRoll, targetNumber ("+targetNumber+") the must be a number type.");
+    if(typeof(diceRolled)!="number") throw new ErrorWrapper("L5RRoll, diceRolled ("+diceRolled+") the must be a number type.");
+    if(typeof(diceKept)!="number") throw new ErrorWrapper("L5RRoll, diceKept ("+diceKept+") the must be a number type.");
+    if(hasEmphasis!=true) hasEmphasis=false;
+    if(areRollsSilent!=false) areRollsSilent=true;
+
+    targetNumber+=(numberOfRaises*5);  //increase difficulty
+    targetNumber-=circumstanceBonus;  //same thing as a bonus. if negative then the targetNumber goes up
+    var diceArrary=[];
+    var totalValue=0;
+    var voidRecovered=0;
+    var output="";
+   for (var i=0; i < diceRolled; i++)
+   {
+       var valueRolled=silentRollDice("1d10!!");
+      if (valueRolled==1 && hasEmphasis)
+      {
+          if(!areRollsSilent) output+="reroll, ";
+          i--;
+          continue;  //roll again by looping around
+      }
+       if(!areRollsSilent) output+=valueRolled;
+       if(!areRollsSilent && i+1 < diceRolled) output+=", ";
+       totalValue+=valueRolled;
+       voidRecovered+=Math.floor(valueRolled/10);  //for each explode. usually 0
+       diceArrary.push(valueRolled);
+   }
+    diceArrary.sort(alphaNumAscending);
+    var diceDropped=diceRolled-diceKept;
+   while (diceDropped > 0)
+   {
+       totalValue-=diceArrary.shift();  //first remove one and subtract it from total
+       diceDropped--;
+   }
+    if(areRollsSilent) output+="Highest Total: "+totalValue+"\n";
+    else output+="\nValues kept: "+(diceArrary+'').replace(/,/g, "+")+" = "+totalValue+"\n";
+    if(totalValue >= targetNumber) output+="You succeeded by "+(totalValue-targetNumber);
+    else output+="You failed by "+(targetNumber-totalValue);
+    voidRecovered/=2;  //every other explode
+    if(voidRecovered >= 1 || !areRollsSilent) output+="\nVoid recovered: "+Math.floor(voidRecovered);
+    return output;
+};
+function IronClawDamage(damageDicePool, defenderDicePool, areRollsSilent){
+    if(!(damageDicePool instanceof DicePool)) throw new ErrorWrapper("IronClawDamage("+damageDicePool+", ~) the first parameter must be a DicePool type.");
+    if(!(defenderDicePool instanceof DicePool)) throw new ErrorWrapper("IronClawDamage(~, "+defenderDicePool+", ~) the second parameter must be a DicePool type.");
+    if(areRollsSilent!=false) areRollsSilent=true;  //silent default
+
+    var damageEveryRoll=damageDicePool.roll();
+    var defenderEveryRoll=defenderDicePool.roll();
+
+    var output="";
+    if(!areRollsSilent) output+="All Damage Rolls (before trimming): "+damageEveryRoll+"\nAll Defender Rolls (before trimming): "+defenderEveryRoll+"\n";
+    IronClawEvenRolls(damageEveryRoll, defenderEveryRoll);
+
+    //if highest roll is a 1 then it botched
+   if (damageEveryRoll[0]==1)
+   {
+       if(!areRollsSilent) output+="All Defender Rolls (no padding): "+defenderEveryRoll+"\n";  //no damage to show
+       return output+"Attacker Botched";
+   }
+    if(!areRollsSilent) output+="All Damage Rolls (after padding): "+damageEveryRoll+"\nAll Defender Rolls (after padding): "+defenderEveryRoll+"\n";
+
+    var totalDamage=0;
+   for (var i=0; i < damageEveryRoll.length; i++)
+   {
+       if(damageEveryRoll[i] >= defenderEveryRoll[i]+5) totalDamage+=2;
+       else if(damageEveryRoll[i] > defenderEveryRoll[i]) totalDamage++;
+   }
+    if(defenderEveryRoll[0]==1){output+="Defender Botched, "; totalDamage++;}  //defender botched takes an extra point of damage
+    output+="Damage Dealt: "+totalDamage;
+    return output;
+};
+function IronClawOpposedRoll(attackerDicePool, defenderDicePool, areRollsSilent){
+    if(!(attackerDicePool instanceof DicePool)) throw new ErrorWrapper("IronClawOpposedRoll("+attackerDicePool+", ~) the first parameter must be a DicePool type.");
+    if(!(defenderDicePool instanceof DicePool)) throw new ErrorWrapper("IronClawOpposedRoll(~, "+defenderDicePool+", ~) the second parameter must be a DicePool type.");
+    if(areRollsSilent!=false) areRollsSilent=true;  //default
+
+    var myEveryRoll=attackerDicePool.roll();
+    var yourEveryRoll=defenderDicePool.roll();
+
+    var output="";
+    if(!areRollsSilent) output+="All Attacker Rolls (before trimming): "+myEveryRoll+"\nAll Defender Rolls (before trimming): "+yourEveryRoll+"\n";
+    IronClawEvenRolls(myEveryRoll, yourEveryRoll);
+
+    //if best value is a 1 then botched
+   if (myEveryRoll[0]==1)
+   {
+       if(!areRollsSilent) output+="All Defender Rolls (no padding): "+yourEveryRoll+"\n";  //there isn't anything for attacker to show
+       output+="Attacker Botched";
+       if(areRollsSilent) output+=". Highest Defender value: "+yourEveryRoll[0];
+       return output;
+   }
+   if (yourEveryRoll[0]==1)
+   {
+       if(!areRollsSilent) output+="All Attacker Rolls (no padding): "+myEveryRoll+"\n";  //there isn't anything for defender to show
+       output+="Defender Botched";
+       if(areRollsSilent) output+=". Highest Attacker value: "+myEveryRoll[0];
+       return output;
+   }
+    if(!areRollsSilent) output+="All Attacker Rolls (after padding): "+myEveryRoll+"\nAll Defender Rolls (after padding): "+yourEveryRoll+"\n";
+
+   for (var i=0; i < myEveryRoll.length; i++)
+   {
+       if(!areRollsSilent) output+=myEveryRoll[i]+" vs "+yourEveryRoll[i]+": ";
+       if(myEveryRoll[i] > yourEveryRoll[i]) return (output+"Attacker wins by "+(myEveryRoll[i]-yourEveryRoll[i])+" value");
+       if(myEveryRoll[i] < yourEveryRoll[i]) return (output+"Attacker loses by "+(yourEveryRoll[i]-myEveryRoll[i])+" value");
+       if(!areRollsSilent) output+="Tie\n";
+   }
+    return (output+"You tied");
+};
+function BattleTechAttackMech(targetNumber, attackType, sideOfRobot, areRollsSilent){
+    if(typeof(targetNumber)!="number") throw new ErrorWrapper("BattleTechAttackMech, targetNumber ("+targetNumber+") must be a number type.");
+    if(typeof(attackType)!="string") throw new ErrorWrapper("BattleTechAttackMech, attackType ("+attackType+") must be a string type.");
+    attackType=attackType.trim();
+    if(typeof(sideOfRobot)!="string") throw new ErrorWrapper("BattleTechAttackMech, sideOfRobot ("+sideOfRobot+") must be a string type.");
+    sideOfRobot=sideOfRobot.trim();
+    if(areRollsSilent!=false) areRollsSilent=true;  //silent default
+
+    if(targetNumber > 12) return "Impossible";
+    var tempRoll=silentRollDice("2d6");
+    var output="";
+    if(!areRollsSilent) output+="Attack roll: "+tempRoll+". ";
+    if(tempRoll < targetNumber){output+="Miss"; return output;}
+
+    var autoCrit=false;
+    var hitSection="";
+    if(sideOfRobot!="Left" && sideOfRobot!="Right" && sideOfRobot!="Center") throw new ErrorWrapper("BattleTechAttackMech. sideOfRobot syntax error. The choices are: \"Left\", \"Right\", or \"Center\".");
+   if (attackType.startsWith("Missiles: "))
+   {
+       if(!(/^Missiles: \d+$/).test(attackType)) throw new ErrorWrapper("BattleTechAttackMech. attackType syntax error. Missiles must be in the form of \"Missiles: x\" where x is the number of missiles fired.");
+       var misslesFired=Number((/\d+$/).exec(attackType)[0]);
+       tempRoll=silentRollDice("2d6");
+       if(!areRollsSilent) output+="Missiles Hit Roll: "+tempRoll+". ";
+       var numberOfMisslesHit=BattleTechTables.missileArray[misslesFired][tempRoll];
+       if(numberOfMisslesHit==undefined) throw new ErrorWrapper("BattleTechAttackMech. attackType has been given an invalid number of missiles that have been fired.");
+       attackType="Weapon";  //use the standard weapon hit locations
+       output+=numberOfMisslesHit+" Missiles hit, ";
+   }
+    output+="Hit Location: ";
+   if (attackType=="Weapon")
+   {
+       tempRoll=silentRollDice("2d6");
+       if(!areRollsSilent) output+="(Roll: "+tempRoll+") ";
+       output+=BattleTechTables.robotHitLocations[sideOfRobot][tempRoll];
+       autoCrit=output.endsWith("(critical)");  //true or false
+   }
+   else if (attackType=="Punch")
+   {
+       tempRoll=silentRollDice("1d6");
+       if(!areRollsSilent) output+="(Roll: "+tempRoll+") ";
+       output+=BattleTechTables.robotPunchLocations[sideOfRobot][tempRoll];
+   }
+   else if(attackType=="Kick")
+   {
+       if(sideOfRobot=="Center") output+=new Die("Left", "Right").roll();
+       else output+=sideOfRobot;
+       output+=" Leg";
+   }
+    else throw new ErrorWrapper("BattleTechAttackMech. attackType syntax error. The choices are: \"Missiles: x\" where x is the number of missiles fired, \"Punch\", \"Kick\", or \"Weapon\".");
+    if(!output.contains("Head")) hitSection=(/^.*?(?:Left|Right|Center) (\w+)$/).exec(output)[1];  //if not head get word after side
+    else hitSection="Head";
+
+    var critCount=0;
+    tempRoll=silentRollDice("2d6");
+    if(!areRollsSilent) output+=". Critical Roll: "+tempRoll;
+    if(tempRoll==12) critCount=3;  //lucky
+    else if(tempRoll >= 10) critCount=2;
+    else if(tempRoll >= 8 || autoCrit) critCount=1;
+    if(critCount==3 && hitSection!="Torso") output+=".\n"+hitSection+" blown off";  //instead of number of criticals except torso which can't be blown off
+    else if (!areRollsSilent || critCount > 0) output+=".\nNumber of Criticals "+critCount;
+    if(!autoCrit && critCount > 0) output+=" (assuming you hit internal)";  //don't print if loud or autocrit. must hit internal for criticals to be rolled
+    if(critCount > 0) output+=": "+BattleTechMechCriticals(critCount);
+    return output;
+};
+function BattleTechMechCriticals(numberOfCriticalHits){
+    if(typeof(numberOfCriticalHits)!="number") throw new ErrorWrapper("BattleTechMechCriticals, numberOfCriticalHits ("+numberOfCriticalHits+") must be a number type.");
+    if(numberOfCriticalHits <= 0) return "No critical hit locations were rolled";
+    if(numberOfCriticalHits >= 24) return "All of them";  //to prevent getting stuck in the loop
+    var hitArray=[];
+   while (numberOfCriticalHits > 0)
+   {
+       var thisRow=new Die("Upper ", "Lower ").roll();
+       thisRow+=silentRollDice("2d6");
+       if(!hitArray.contains(thisRow)){hitArray.push(thisRow); numberOfCriticalHits--;}
+       //else loop back and roll again
+   }
+    hitArray.sort(alphaNumAscending);  //sorted alphabetically making "Upper 12" come before "Upper 6"
+    var output=hitArray+'';
+    output=output.replace(/,/g, "; ");
+    return output;
+};
+var BattleTechTables={};  //must exist to hold the tables
+BattleTechTables.robotHitLocations={  //the first 2 are undefined because you can't roll 0 or 1 on 2d6. like this so that you can give it exactly what you rolled
+    Left: [undefined, undefined, "Left Torso (critical)", "Left Leg", "Left Arm", "Left Arm", "Left Leg", "Left Torso", "Center Torso", "Right Torso", "Right Arm", "Right Leg", "Head"],
+    Center: [undefined, undefined, "Center Torso (critical)", "Right Arm", "Right Arm", "Right Leg", "Right Torso", "Center Torso", "Left Torso", "Left Leg", "Left Arm", "Left Arm", "Head"],
+    Right: [undefined, undefined, "Right Torso (critical)", "Right Leg", "Right Arm", "Right Arm", "Right Leg", "Right Torso", "Center Torso", "Left Torso", "Left Arm", "Left Leg", "Head"]
+};
+BattleTechTables.robotPunchLocations={  //the first is undefined because you can't roll 0 on 1d6. like this so that you can give it exactly what you rolled
+    Left: [undefined, "Left Torso", "Left Torso", "Center Torso", "Left Arm", "Left Arm", "Head"],
+    Center: [undefined, "Left Arm", "Left Torso", "Center Torso", "Right Torso", "Right Arm", "Head"],
+    Right: [undefined, "Right Torso", "Right Torso", "Center Torso", "Right Arm", "Right Arm", "Head"]
+};
+BattleTechTables.missileArray=[
+    undefined,  //0. you can't fire these number of missiles. but need to be accounted for due to being an array
+    undefined,  //1. are undefined so that you can put in exactly how many you fired
+    //some are undefined so that you can put in exactly what you rolled since you can't roll 0 or 1 on 2d6
+    /*2*/ [undefined, undefined, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2],
+    /*3*/ [undefined, undefined, 1, 1, 1, 2, 2, 2, 2, 2, 3, 3, 3],
+    /*4*/ [undefined, undefined, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4],
+    /*5*/ [undefined, undefined, 1, 2, 2, 3, 3, 3, 3, 4, 4, 5, 5],
+    /*6*/ [undefined, undefined, 2, 2, 3, 3, 4, 4, 4, 5, 5, 6, 6],
+    /*7*/ undefined,
+    /*8*/ undefined,
+    /*9*/ [undefined, undefined, 3, 3, 4, 5, 5, 5, 5, 7, 7, 9, 9],
+    /*10*/ [undefined, undefined, 3, 3, 4, 6, 6, 6, 6, 8, 8, 10, 10],
+    /*11*/ undefined,
+    /*12*/ [undefined, undefined, 4, 4, 5, 8, 8, 8, 8, 10, 10, 12, 12],
+    /*13*/ undefined,
+    /*14*/ undefined,
+    /*15*/ [undefined, undefined, 5, 5, 6, 9, 9, 9, 9, 12, 12, 15, 15],
+    /*16*/ undefined,
+    /*17*/ undefined,
+    /*18*/ undefined,
+    /*19*/ undefined,
+    /*20*/ [undefined, undefined, 6, 6, 9, 12, 12, 12, 12, 16, 16, 20, 20]
+];
+/*
+http://home.windstream.net/fcsi/Penetratinghits.txt
+http://www.pryderockindustries.com/downloads/gameaids/tables_bt_bmrr_tw_grey.pdf
+http://www.sarna.net/wiki/CBT_Tables
+? http://mwomercs.com/forums/topic/5855-internal-structure-and-critical-hits/
+*/
+function OneRollEngine(numberOfDice){  //TODO: more dice: Expert, hard, wiggle, Awesome, trump
+    //http://en.wikipedia.org/wiki/One-Roll_Engine for details on other dice types
+    if(typeof(numberOfDice)!="number") throw new ErrorWrapper("OneRollEngine("+numberOfDice+") parameter must be a number type");
+    var diceResults=new DicePool(numberOfDice+"d10sa").roll();  //sorted ascending
+    var engineResults=[];
+   for (var i=0; i < diceResults.length;)  //incrementing done in nested loop
+   {
+       var count=0;
+       for(var thisValue=diceResults[i]; i < diceResults.length && diceResults[i]==thisValue; i++){count++;}
+       engineResults.push(count+'x'+thisValue);  //results are still in order of Height ascending
+   }
+    return engineResults;
+}
+var AlwaysScatter=true;  //for below
+function ScatterPool(alwaysScatter){
+    if(alwaysScatter!=true) alwaysScatter=false;
+    var myPool=new DicePool("2d6");  //each created only once
+    var myScatterDie=new ScatterDie(alwaysScatter);
+    //this.roll = function(){return myPool.roll();}  //avoids this function to show the difference
+   this.scatter = function(balisticSkill, isSilent){
+       if(isNaN(balisticSkill)) balisticSkill=0;
+       var distance=(myPool.sumRoll(isSilent)-balisticSkill);  //silent default is handled by sumRoll
+       var myScatter=myScatterDie.roll();  //get the result of the scatter die
+       //TODO if !isSilent then write myScatter
+       if(distance <= 0 || myScatter=='Direct Hit') return 'Direct Hit';
+       return myScatter+', '+distance+' inches away';
+   }
+    if(this instanceof ScatterPool) return this;  //if this is an object instead of being called as a function
+    myPool.addDie(myScatterDie);
+    return myPool;  //as a function this returns the created DicePool
+};
+function ScatterDie(alwaysScatter){
+    if(alwaysScatter!=true) alwaysScatter=false;
+   this.roll = function(){  //pretends to be a named die
+       var output="";
+       if(!alwaysScatter && silentRollDice("1d3")==3) output+="Direct Hit";
+       else output+=("Scatter Direction: "+silentRollDice("1z360")+" degrees");
+       return output;
+   }
+    this.isFudge = function(){return false;};  //these are needed so that it can pose as a Die
+    this.getSides = function(){return 360;};
+   this.getStats = function(){
+       var returnObject={};
+       returnObject.nameArray=[];
+       returnObject.isNegativeDice=false;
+       returnObject.doesUseZero=true;
+       returnObject.isFudgeDie=false;
+       returnObject.sideCount=360;
+       returnObject.doesExplode=false;
+       returnObject.doesPenetrate=false;
+       returnObject.doesCompoundExplode=false;
+       //so that these will be undefined
+       //returnObject.rerollCriteria=rerollCriteria;
+       //returnObject.explodeValue=explodeValue;
+       returnObject.constantModifier=0;
+       //returnObject.dieName=dieName;
+       return returnObject;
+   };
+   this.getName = function(){
+       return 'ScatterDie('+alwaysScatter+')';
+   }
+    return this.roll();  //if called as a function it returns the result of the roll
+};
+function isBotch(numberArray, botchValue){
+    if(botchValue==undefined) botchValue=1;  //this means that the botch value can't be undefined
+    if(typeof(numberArray)=="number") return (numberArray==botchValue);
+    if(!(numberArray instanceof Array)) throw new ErrorWrapper("isBotch("+numberArray+", ~) the first parameter must be an array or a number");
+   for (var i=0; i < numberArray.length; i++)
+   {
+       if(numberArray[i]!=botchValue) return false;
+   }
+    return true;
+};
+function toggleDoc(){
+    //document.getElementById("functionDoc").style.display can't be stored and set in a var without updating document anyway
+    if(document.getElementById("functionDoc").style.display=="none") document.getElementById("functionDoc").style.display="inline";
+    else document.getElementById("functionDoc").style.display="none";
+}
+function argumentsToArray(argumentsGiven, fromIndex){
+    if(argumentsGiven==undefined) return undefined;
+    if(fromIndex==undefined) fromIndex=0;
+    if((argumentsGiven.length-fromIndex)==1 && (argumentsGiven[fromIndex] instanceof Array)) return argumentsGiven[fromIndex];
+       //if the last argument is the only one to be looked at and it is an array then return it so to prevent returning an array array
+    var returnArray=[];
+    for(var i=fromIndex; i < argumentsGiven.length; i++){if(argumentsGiven[i]!=undefined) returnArray.push(argumentsGiven[i]);}
+    if(returnArray.length==0) return undefined;  //indicate that there are no defined values from that index
+    return returnArray;
+};
+function IronClawEvenRolls(numberArray1, numberArray2){
+    if(!(numberArray1 instanceof Array)) throw new ErrorWrapper("IronClawEvenRolls("+numberArray1+", ~) the first parameter must be an array type.");
+    if(!(numberArray2 instanceof Array)) throw new ErrorWrapper("IronClawEvenRolls(~, "+numberArray2+") the second parameter must be an array type.");
+
+    numberArray1.sort(alphaNumDescending);  //sort array. descending
+    numberArray2.sort(alphaNumDescending);
+
+    //remove every 1 from each
+    while(numberArray1[numberArray1.length-1]==1) numberArray1.pop();  //checks if last element is a 1
+    while(numberArray2[numberArray2.length-1]==1) numberArray2.pop();
+    //to remove redundant 1s
+
+    //pad with 1s so that each pool has the same number of dice
+    while(numberArray1.length < numberArray2.length) numberArray1.push(1);
+    while(numberArray1.length > numberArray2.length) numberArray2.push(1);
+}
+function groupParser(groupString){  //TODO tons of testing. and make a loud option returned as the 2nd element
+   //TODO have a before and after string but keep the rest as is (objects)
+   //<a>You can sepperate multiple kinds of grand totals with ; or , each of which will be displayed in the same result box.</a><br />
+   //<a>Note: Due to the use of parentheses there is no reason to affect the combination of each number sepperated by ; or , (which isn't totalled togther anyway).</a><br />
+    if(!groupString.contains("{") || !groupString.contains("}")) return silentRollDice(groupString);
+   while (groupString.contains("{"))
+   {
+       var parseArray=findFirstCompleteCurlyBrackets(groupString);
+       if(parseArray == null) throw new ErrorWrapper('{} wasn\'t paired');  //TODO: wrong bracket order
+       var sendArray=parseInner(parseArray[1]);  //array of sums
+       var outsource=new numberGroup(parseArray[2]);  //modifiers end at [,+{}]
+       outsource.dropDoing(sendArray);  //sendArray is changed
+       groupString=parseArray[0]+"["+outsource.minMaxDoing(sendArray.summation())+"]"+numberGroup(parseArray[2]);
+       //TODO: I want {1d20, 1d6, 1d4}dl1 to return an array.length==2 but then what? do I allow ({1d20, 1d6, 1d4}dl1).summation()?
+   }
+    return eval(groupString);  //so that it will be an array (or number) instead of string
+   function parseInner(stringGiven){  //TODO have something like this for dicepool so it can have named dice in the constructor (typeof will say if such an object exists)
+       var result=[];
+      while (stringGiven.length>0)
+      {
+         if (stringGiven.charAt(0)=='[')
+         {
+             var arrayReturnValue=getArray(stringGiven);
+             if(arrayReturnValue[1]==undefined) throw new ErrorWrapper('[] wasn\'t paired');  //TODO
+             result.push(arrayReturnValue[1].summation());
+             stringGiven=arrayReturnValue[0];
+         }
+         else
+         {
+             var firstPart=(/^.+?,/).exec(stringGiven)[0];  //convert to string
+             if(firstPart=="null") firstPart=stringGiven;
+             else firstPart=firstPart.substring(0, firstPart.length-1);
+             result.push(silentRollDice(firstPart));
+             stringGiven=stringGiven.substring(firstPart.length);
+         }
+          if(stringGiven.charAt(0)==',') stringGiven=stringGiven.substring(1);
+          stringGiven=stringGiven.trim();
+      }
+       return result;
+      function getArray(arrayStringGiven){
+          if(arrayStringGiven.charAt(0)!='[') return [arrayStringGiven];  //[1] is undefined
+          var bracketCount=1;
+          var builtArray='[';
+         for (var i=1; bracketCount>0 && i < arrayStringGiven.length; i++)
+         {
+             if(arrayStringGiven.charAt(i)=='[') bracketCount++;
+             else if(arrayStringGiven.charAt(i)==']') bracketCount--;
+             builtArray+=arrayStringGiven.charAt(i);
+         }
+          if(bracketCount>0) return [arrayStringGiven];  //[1] is undefined
+          return [arrayStringGiven.substring(builtArray.length), eval(builtArray)];  //if(arrayStringGiven.length==builtArray.length) then [0] is the empty string
+      };  //from string array get that array and return it and the remaining string
+   }
+}
+function numberGroup(diceStringGiven){  //TODO: rename. maybe add successes later
+    var dropKeepSwitch="None";
+    var lowHighSwitch="None";
+    var dropKeepValue=0;
+    var minMaxSwitch="None";
+    var minMaxValue=0;
+    var sortDirection="None";
+   this.getStats = function(){
+       var returnObject={};
+       returnObject.dropKeepSwitch=dropKeepSwitch;
+       returnObject.lowHighSwitch=lowHighSwitch;
+       returnObject.dropKeepValue=dropKeepValue;
+       returnObject.minMaxSwitch=minMaxSwitch;
+       returnObject.minMaxValue=minMaxValue;
+       returnObject.sortDirection=sortDirection;
+       return returnObject;
+   };
+   function minMaxCounting(holder){  //doesn't need to know this
+       if(minMaxSwitch!="None") throw new ErrorWrapper("More than one min/max criteria specified. This is not possible.");
+      if (combineRegex(DicePool.minMaxRegexStart, /-?\d+/).test(holder))
+      {
+          if((/max/).test(holder)) minMaxSwitch="Max";  //contains the word max
+          else minMaxSwitch="Min";
+          holder=holder.replace(DicePool.minMaxRegexStart, "");  //chop off
+          minMaxValue=parseInt(holder);  //to capture the number
+          holder=holder.replace(/^-?\d+/, "");
+      }
+       return holder;
+   };
+   this.minMaxDoing = function(total){
+       if(minMaxSwitch=="None") return total;
+       if(minMaxSwitch=="Min" && total < minMaxValue) return minMaxValue;  //did not reach min
+       else if(minMaxSwitch=="Max" && total > minMaxValue) return minMaxValue;  //exceeded max
+       return total;
+   };
+   function dropCounting(holder, maxDrop){  //doesn't need to know this
+       //first replace shorthand
+       if(dropKeepValue!=0) throw new ErrorWrapper("More than one drop/keep criteria specified. This is not possible, instead add the numbers for a single criteria.");
+      if (DicePool.dropKeepRegexShortHand.test(holder))
+      {
+          var replaceString=" ";
+          if(holder.startsWith("d")) replaceString+="drop ";  //replace with words so I can use same code
+          else replaceString+="keep ";
+          if((/^[dk]h/).test(holder)) replaceString+="highest ";  //explict must be checked first
+          else if((/^[dk]l/).test(holder)) replaceString+="lowest ";
+          else if(holder.startsWith("d")) replaceString+="lowest ";  //defaults
+          else replaceString+="highest ";
+          if(!(/^[dk][hl]?\d+/).test(holder)) replaceString=" "+replaceString.trim();  //chop off trailing space unless it needs it for a #
+          holder=holder.replace(/^[dk][hl]?/, replaceString);
+      }
+       if(holder.startsWith(' keep')) dropKeepSwitch='Keep';  //the word keep is the only way to keep drop on the other hands has synonyms
+       else dropKeepSwitch='Drop';
+       holder=holder.replace(combineRegex(DicePool.dropKeepRegexStart, /\s(?:the\s)?/), "");  //chop off
+       if(holder.startsWith('low')) lowHighSwitch='Low';
+       else lowHighSwitch='High';
+       holder=holder.replace(/^(?:low|high)est/, "");  //will have one of those due to pre-processing checking (in main)
+       if((/^\s\d+/).test(holder)) dropKeepValue=parseInt(holder);
+       else dropKeepValue=1;
+       if(dropKeepValue==0){dropKeepSwitch="None"; lowHighSwitch="None";}  //just ignore it
+       holder=holder.replace(/^\s\d+/, "");  //delete
+       return holder;
+   };
+   this.dropDoing = function(everyRoll){
+       /*rolledValues.everyRoll=everyRoll;  //set for dropKeepValue==0. otherwise reset later
+       rolledValues.droppedRolls=[];  //reset*/
+       var droppedOnes=[];
+      if (sortDirection!="None")
+      {
+          if(sortDirection=="a") everyRoll.sort(alphaNumAscending);
+          else everyRoll.sort(alphaNumDescending);
+      }
+       if(dropKeepValue==0) return droppedOnes;  //save processing time and prevents a few problems. droppedOnes empty
+       var numberedDiceRolled=[];
+       var namedDiceRolled=[];
+      for (var i=0; i < everyRoll.length; i++)
+      {
+          if(!isNaN(everyRoll[i])) numberedDiceRolled.push(everyRoll[i]);  //if the named die is a number it ends up here
+          else namedDiceRolled.push(everyRoll[i]);
+      }
+       var effectiveDropCount=dropKeepValue;
+       if(dropKeepSwitch=='Keep') effectiveDropCount=numberedDiceRolled.length-dropKeepValue;
+       if(effectiveDropCount <= 0) return droppedOnes;  //save time. only possible if keeping too many. droppedOnes is empty
+       if(effectiveDropCount > numberedDiceRolled.length) throw new ErrorWrapper("Number of values to ignore ("+dropKeepValue+") exceeds the number of values:\n"+numberedDiceRolled);
+          //not enough values to drop
+
+       var dropKeepDirection='Down';  //default sort descending
+       if(dropKeepSwitch=='Keep' && lowHighSwitch=='High') dropKeepDirection="Up";  //"keep highest 3" sort ascending
+       else if(dropKeepSwitch=='Drop' && lowHighSwitch=='Low') dropKeepDirection="Up";  //"drop lowest 3" sort ascending
+
+       if(dropKeepDirection=="Up") numberedDiceRolled.sort(function(a, b){return a - b;});  //sort array. although ascending is default a function is needed due to below
+       else numberedDiceRolled.sort(function(a, b){return b - a;});  //sort array descending
+       for(var i=effectiveDropCount; i > 0; i--){droppedOnes.push(numberedDiceRolled.shift());}  //remove first numberedDiceRolled (pushing it on droppedOnes) until you drop the right number of them
+
+       for(var i=0; i < droppedOnes.length; i++){everyRoll.removeElement(droppedOnes[i]);}  //of those that were dropped now remove them for real (instead of from the sorted copy)
+
+       return droppedOnes;
+   };
+   function constructorCalled(diceStringGiven){
+       var holder=diceStringGiven.toLowerCase().replace(/\s/g, ' ');  //replace all whitespace with space
+      while (holder.length > 0)  //shorthand loop
+      {
+          if(DicePool.dropKeepRegexShortHand.test(holder)) holder=dropCounting(holder);
+         else if ((/^s[ad]?/).test(holder))
+         {
+             if(sortDirection!="None") throw new ErrorWrapper("More than one sort direction specified. This is not possible.");
+             holder=holder.substring(1);  //chop off 's'
+             if((/^[ad]/).test(holder)){sortDirection=holder.charAt(0); holder=holder.substring(1);}  //store then chop off 'd' or 'a'
+             else sortDirection="a";  //default
+         }
+          else break;
+      }
+      while (holder.length > 0)  //so that everything can be any order. longhands
+      {
+          if(combineRegex(DicePool.dropKeepRegexStart, /\s(?:the\s)?(?:low|high)est(?:\s\d+)?/).test(holder)) holder=dropCounting(holder);
+              //= /^\s(?:drop(?:ping)?|remov(?:e|ing)|ignor(?:e|ing)|keep(?:ping)?)\s(?:the\s)?(?:low|high)est(?:\s\d+)?/
+          else if(combineRegex(DicePool.minMaxRegexStart, /-?\d+/).test(holder)) holder=minMaxCounting(holder);
+         else if ((/^\ssort(?:(?:\sthe)?\sdice)?(?:\s(?:a|de)scending)?(?:\sorder)?/).test(holder) || (/^\ssort(?:(?:\sthe)?\sdice)?\sin(?:\s(?:a|de)scending)?\sorder/).test(holder))
+         {
+             if(sortDirection!="None") throw new ErrorWrapper("More than one sort direction specified. This is not possible.");
+             if((/(?:a|de)scending/).test(holder)) holder=holder.replace(/^\ssort(?:(?:\sthe)?\sdice)?(?:\sin)?\s(?:a|de)scending(?:\sorder)?/, (/(a|de)scending/).exec(holder)[1]);
+             else holder=holder.replace(/^\ssort(?:(?:\sthe)?\sdice)?(?:\sin)?(?:\sorder)?/, '');  //remove the text
+             if(holder.startsWith('de')){sortDirection='d'; holder=holder.substring(2);}  //store then chop off 'de'
+             else if(holder.startsWith('a')){sortDirection='a'; holder=holder.substring(1);}  //store then chop off 'a'
+             else sortDirection="a";  //default
+         }
+          else break;
+          //holder=holder.trim();  //just in case there is extra whitespace... except that whitespace is required
+      }
+       return holder;
+   }
+    if(arguments.length==0 || diceStringGiven==undefined) return;
+    //TODO validity check string and number
+    if(typeof(diceStringGiven)!='string') throw new ErrorWrapper("numberGroup("+diceStringGiven+") the parameter must be a string type");
+    return constructorCalled(diceStringGiven);
+}
+function findFirstCompleteCurlyBrackets(totalString){
+    if(!totalString.contains("{") || !totalString.contains("}")) return null;  //contains no groups
+    if(!(/[{].*?[}]/).test(totalString)) return null;  //are not grouped correctly
+    var innerText=(/^.*?[}]/).exec(totalString)[0];  //catch all up to the first close brace (including the brace itself)
+    var afterText=totalString.substring(innerText.length);  //everything after
+    innerText=innerText.substring(0, innerText.length-1);  //remove '}'
+    var beforeText=innerText;  //copy for now
+    innerText=(/[{].*?$/).exec(innerText)[0];  //catch all after the first open brace (including the brace itself)
+    beforeText=beforeText.substring(0, (beforeText.length-innerText.length));  //from 0 to beforeText if it didn't have innerText. in order to remove it
+    innerText=innerText.substring(1);  //remove '{'
+    return [beforeText, innerText, afterText];  //innermost does not have {} which are gone
+}
+
+var Draw={};
+Draw.WarhammerBellCurve = function(diceCount, toHitValue, toWoundValue, toSaveValue, extraSave, secondColumn){
+    if(secondColumn==undefined) secondColumn='>=';
+    if(extraSave==undefined) extraSave=7;  //impossible
+    var out = '<br />\n<b>Warhammer Bell Curve:</b> Dice Count: '+diceCount+'. To Hit Value: '+toHitValue+'. To Wound Value: '+toWoundValue+'. Save Value: '+toSaveValue;
+    if(extraSave < 7) out+='. Extra Save: '+extraSave;
+    out+='<br />';
+
+    var rollData=[];
+    for(var i=0; i < diceCount; i++) rollData.push(0);  //needs to start as this for it to combine correctly
+    rollData.push(1);  //[diceCount]
+    //the start data represents that the dice being equal to diceCount is 100% and all other values are 0%
+    if(toHitValue > 1) rollData=WarhammerCombine(rollData, toHitValue);
+    if(toWoundValue > 1) rollData=WarhammerCombine(rollData, toWoundValue);
+    if(toSaveValue < 7) rollData=WarhammerCombine(rollData, 8-(toSaveValue));  //weird but true
+    if(extraSave < 7) rollData=WarhammerCombine(rollData, 8-(extraSave));
+
+    out += Draw.generateBinomialTable(rollData, secondColumn);  //must be sent 1D
+    document.getElementById('graphResults').innerHTML += out;
+
+   function WarhammerCombine(originalCurve, targetNumber){
+       var results=[originalCurve[0]];  //set [0]. 0 can't be sent to Warhammer. the number is as is
+      for (var diceIndex=1; diceIndex < originalCurve.length; diceIndex++)
+      {
+          if(originalCurve[diceIndex]==0) continue;  //ignore the impossible values
+          var rollData=Warhammer(diceIndex, targetNumber);
+         for (var i=0; i < rollData.length; i++)
+         {
+             var chanceOfSuccess=rollData[i]*originalCurve[diceIndex];  //mulitply because both must be true
+             if(results[i]==undefined) results[i]=chanceOfSuccess;
+             else results[i]+=chanceOfSuccess;  //add exclusive events for either to be true
+         }
+      }
+       for(var i=0; i < results.length; i++) if(results[i]==undefined) results[i]=0;  //everything else did not occur. must fix up the number
+       return results;
+   }
+   function Warhammer(diceCount, targetNumber){
+       var diceArray = new DicePool(diceCount+'d6').getAllDice();
+       var finishedPolys=[];
+      for (var diceIndex=0; diceIndex < diceArray.length; diceIndex++)
+      {
+          var polyNom=everyDieValueWeighted(diceArray[diceIndex]);
+          var possibleNumberWins=0;
+          for(var i=0; i < polyNom.length; i++)  //count probability for each
+             if(polyNom[i][0] >= targetNumber) possibleNumberWins++;
+          var binomProb=generate_Binomials(1, (possibleNumberWins/polyNom.length));
+          var polyNom=[];
+         for (var i=0; i < binomProb.length; i++)
+         {
+             polyNom.push([i, binomProb[i]]);  //to be in the form of [value, freq]
+         }
+          finishedPolys.push(polyNom);  //stored as polys so I can multiply them
+      }
+       finishedPolys=Polynomial.multiplyPolynomials(finishedPolys, new DicePool());  //given an empty pool
+       var results=[];  //strip out the results so that it is 1D again
+       for(var i=0; i < finishedPolys.length; i++) results[finishedPolys[i][0]]=finishedPolys[i][1];
+       for(var i=0; i < results.length; i++) if(results[i]==undefined) results[i]=0;  //everything else did not occur. must fix up the number
+       return results;
+   }
+}
+Draw.diceBellCurve = function(poolGiven, secondColumn, binom){
+    if(secondColumn==undefined) secondColumn='>=';
+    var resultsDiv = document.getElementById('graphResults');
+    var out = '<br />\n<b>Roll:</b> ' + poolGiven.getName();
+    if(binom!=undefined) out+=' each '+binom;
+    out+='<br />';
+
+    if(!(poolGiven instanceof DicePool)) throw new ErrorWrapper('?? must be dice pool');
+    if(poolGiven.getAllDice().length==0){resultsDiv.innerHTML += out + 'No Data'; return;}
+
+    var rollData;
+    rollData=parseStr(poolGiven, binom);
+   if (typeof(rollData) == 'object')  //an array otherwise undefined
+   {
+       //out+=rollData;
+       if(rollData[0][1]==undefined) out += Draw.generateBinomialTable(rollData, secondColumn);  //1D means Binomial
+       else out += Draw.generateDiceSumTable(rollData, secondColumn);
+   }
+    else out+=rollData;  //message for debugging (string)
+
+    resultsDiv.innerHTML += out;
+
+   function parseStr(poolGiven, binom){
+       var diceArray=poolGiven.getAllDice();  //TODO: poolGiven is now only used for getStats() and brute
+
+       var doAnyExplode=false;
+      for (var i=0; i < diceArray.length; i++)  //check each die
+          if(diceArray[i].getStats().doesExplode || diceArray[i].getStats().doesCompoundExplode){doAnyExplode=true; break;}
+
+      if (binom!=undefined)
+      {
+          if((/^\d+/).test(''+binom)) binom='=='+binom;
+          if(binom.startsWith("=") && !binom.startsWith("==")) binom='='+binom;  //must be double equal signs for eval
+          if(poolGiven.getStats().outsource.getStats().dropKeepValue!=0) throw new ErrorWrapper('?? binom can\'t have drop count');  //TODO: make error
+
+          var finishedPolys=[];
+         for (var diceIndex=0; diceIndex < diceArray.length; diceIndex++)
+         {
+             var polyNom=everyDieValueWeighted(diceArray[diceIndex]);
+             var possibleNumberWins=0;
+            for(var i=0; i < polyNom.length; i++)  //count probability for each
+                if(eval(''+polyNom[i][0]+binom)) possibleNumberWins++;
+             var binomProb=generate_Binomials(1, (possibleNumberWins/polyNom.length));
+             var polyNom=[];
+            for (var i=0; i < binomProb.length; i++)
+            {
+                polyNom.push([i, binomProb[i]]);  //to be in the form of [value, freq]
+            }
+             finishedPolys.push(polyNom);
+         }
+          finishedPolys=Polynomial.multiplyPolynomials(finishedPolys, poolGiven);
+          var results=[];  //strip out the results so that it is 1D again
+          for(var i=0; i < finishedPolys.length; i++) results[finishedPolys[i][0]]=finishedPolys[i][1];
+          return results;
+      }
+
+       if(poolGiven.getStats().outsource.getStats().dropKeepValue!=0) return bruteForce(poolGiven, doAnyExplode);  //can't be done in any other way
+
+      if (!doAnyExplode)
+      {
+          var finishedPolys=[];
+          for(var i=0; i < diceArray.length; i++){finishedPolys.push(Polynomial.createDiePolynomial(diceArray[i], 0));}  //0 indicates no explosions yet
+          var rollData=Polynomial.multiplyPolynomials(finishedPolys, poolGiven);
+          //does not have any kind of explode
+          return rollData.sort(sumAscending);  //sort by sum ascending
+      }
+
+   /*   for (var i=0; i < diceArray.length; i++)  //check each die
+          if(diceArray[i].getStats().rerollCriteria!=undefined && diceArray[i].getStats().doesExplode) return bruteForce(poolGiven, false);  //can't be done in any other way
+       //this is for regular explodes and penetrating but not compound
+   */
+       var rollData=[[0, 1]];  //for first pass then this is overwritten
+      for (var explodeCount=1; Number(rollData[rollData.length-1][1].toFixed(4))!=0 && explodeCount < 20000; explodeCount++)  //explode loop
+      {
+          var finishedPolys=[];
+         for (var i=0; i < diceArray.length; i++)
+         {
+             finishedPolys.push(Polynomial.createDiePolynomial(diceArray[i], explodeCount));  //explosions with explosion count
+         }
+          rollData=Polynomial.multiplyPolynomials(finishedPolys, poolGiven);
+      }
+       return rollData.sort(sumAscending);  //sort by sum ascending
+   }
+   function bruteForce(myPool, doAnyExplode){
+       var results=[[0, 1]];  //for first pass then this is overwritten
+       var explodeCount=0;
+       var explodeMax=explodeCount+5;
+       if(!doAnyExplode){explodeCount=0; explodeMax=1;}
+      for (; Number(results[results.length-1][1].toFixed(4))!=0 && explodeCount < explodeMax; explodeCount++)  //explode loop
+      {  //start with 3 explosions to save time since it will often need at least that much
+          var diceArray=myPool.getAllDice();
+          var rollData=Polynomial.createDiePolynomial(diceArray[0], explodeCount);
+
+          if(diceArray.length > 1) rollData=cartesianProduct(rollData, Polynomial.createDiePolynomial(diceArray[1], explodeCount));
+         else  //pad with [] so that they are sums
+         {
+             results=[];
+             for(var i=0; i < rollData.length; i++)
+                results.push([rollData[i]]);
+             rollData=results;
+         }
+         for (var i=2; i < diceArray.length; i++)
+         {
+             rollData=nextCartesianProduct(rollData, Polynomial.createDiePolynomial(diceArray[i], explodeCount));
+         }
+
+          if(doAnyExplode && explodeCount > 0) rollData=explodeSplit(rollData, diceArray);  //splits non-compound explosions into the correct dice
+
+          var outterStats=myPool.getStats().outsource.getStats();
+         if ((outterStats.dropKeepSwitch=="Drop" && outterStats.lowHighSwitch=="Low") || (outterStats.dropKeepSwitch=="Keep" && outterStats.lowHighSwitch=="High"))
+         {
+            for(var i=0; i < rollData.length; i++)
+                rollData[i]=rollData[i].sort(sumAscending);  //sort by sum ascending
+         }
+         else
+         {
+            for(var i=0; i < rollData.length; i++)
+                rollData[i]=rollData[i].sort(sumAscending).reverse();  //sort by sum descending
+         }
+         for (var i=0; i < rollData.length; i++)
+         {
+             var effectiveDropCount=outterStats.dropKeepValue;
+             if(outterStats.dropKeepSwitch=='Keep') effectiveDropCount=rollData[i].length-effectiveDropCount;  //number of dice - dropKeepValue
+            for(var dropCount=effectiveDropCount; dropCount > 0; dropCount--)
+                rollData[i].shift();  //remove first element until you drop the right number of them
+         }
+
+          //got these: drop/keep, reroll (handled by Polynomial.createDiePolynomial), min/max, compound, regular, and pen explosions
+
+          results=[];
+         for (var i=0; i < rollData.length; i++)
+         {
+             var sum=0, chance=1;
+            for (var j=0; j < rollData[i].length; j++)
+                {sum+=rollData[i][j][0]; chance*=rollData[i][j][1];}
+             Polynomial.addPolynomials(results, myPool.getStats().outsource.minMaxDoing(sum), chance);
+         }
+          results=results.sort(sumAscending);  //sort by sum ascending
+          //var tempScope=Number(results[results.length-1][1].toFixed(4));
+      }
+       return results;
+   }
+}
+Draw.compareDiceBellCurve = function(firstPoolGiven, secondPoolGiven){  //TODO: add a header, doc, also consider comparing >= col instead of exact
+    var resultsDiv = document.getElementById('graphResults');
+    var out = '<br />\n<b>Roll:</b> ' + firstPoolGiven.getName() + ' vs ' + secondPoolGiven.getName();
+    out+='<br />';
+
+    if(!(firstPoolGiven instanceof DicePool)) throw new ErrorWrapper('?? must be dice pool');
+    if(!(secondPoolGiven instanceof DicePool)) throw new ErrorWrapper('?? must be dice pool');
+    if(firstPoolGiven.getAllDice().length==0 || secondPoolGiven.getAllDice().length==0){resultsDiv.innerHTML += out + 'Not enough Data'; return;}
+
+    var rollData1, rollData2;
+    rollData1=parseStr(firstPoolGiven);
+    rollData2=parseStr(secondPoolGiven);
+   if (typeof(rollData1) == 'object' && typeof(rollData2) == 'object')  //an array otherwise undefined
+   {
+       out = Draw.generateDiceCompareTable(firstPoolGiven.getName(), secondPoolGiven.getName(), rollData1, rollData2);
+       //not appended but replaced. out is only appending for the debug strings
+       //out+=rollData1.toSource() + '<br/>\n' + rollData2.toSource();
+   }
+    else out+=rollData1 + rollData2;  //message for debugging (string)
+
+    resultsDiv.innerHTML += out;
+
+   function parseStr(poolGiven){
+       var diceArray=poolGiven.getAllDice();  //TODO: poolGiven is now only used for getStats() and brute
+
+       var doAnyExplode=false;
+      for (var i=0; i < diceArray.length; i++)  //check each die
+          if(diceArray[i].getStats().doesExplode || diceArray[i].getStats().doesCompoundExplode){doAnyExplode=true; break;}
+
+       if(poolGiven.getStats().outsource.getStats().dropKeepValue!=0) return bruteForce(poolGiven, doAnyExplode);  //can't be done in any other way
+
+      if (!doAnyExplode)
+      {
+          var finishedPolys=[];
+          for(var i=0; i < diceArray.length; i++){finishedPolys.push(Polynomial.createDiePolynomial(diceArray[i], 0));}  //0 indicates no explosions yet
+          var rollData=Polynomial.multiplyPolynomials(finishedPolys, poolGiven);
+          //does not have any kind of explode
+          return rollData.sort(sumAscending);  //sort by sum ascending
+      }
+
+   /*   for (var i=0; i < diceArray.length; i++)  //check each die
+          if(diceArray[i].getStats().rerollCriteria!=undefined && diceArray[i].getStats().doesExplode) return bruteForce(poolGiven, false);  //can't be done in any other way
+       //this is for regular explodes and penetrating but not compound
+   */
+       var rollData=[[0, 1]];  //for first pass then this is overwritten
+      for (var explodeCount=1; Number(rollData[rollData.length-1][1].toFixed(4))!=0 && explodeCount < 20000; explodeCount++)  //explode loop
+      {
+          var finishedPolys=[];
+         for (var i=0; i < diceArray.length; i++)
+         {
+             finishedPolys.push(Polynomial.createDiePolynomial(diceArray[i], explodeCount));  //explosions with explosion count
+         }
+          rollData=Polynomial.multiplyPolynomials(finishedPolys, poolGiven);
+      }
+       return rollData.sort(sumAscending);  //sort by sum ascending
+   }
+   function bruteForce(myPool, doAnyExplode){
+       var results=[[0, 1]];  //for first pass then this is overwritten
+       var explodeCount=0;
+       var explodeMax=explodeCount+5;
+       if(!doAnyExplode){explodeCount=0; explodeMax=1;}
+      for (; Number(results[results.length-1][1].toFixed(4))!=0 && explodeCount < explodeMax; explodeCount++)  //explode loop
+      {  //start with 3 explosions to save time since it will often need at least that much
+          var diceArray=myPool.getAllDice();
+          var rollData=Polynomial.createDiePolynomial(diceArray[0], explodeCount);
+
+          if(diceArray.length > 1) rollData=cartesianProduct(rollData, Polynomial.createDiePolynomial(diceArray[1], explodeCount));
+         else  //pad with [] so that they are sums
+         {
+             results=[];
+             for(var i=0; i < rollData.length; i++)
+                results.push([rollData[i]]);
+             rollData=results;
+         }
+         for (var i=2; i < diceArray.length; i++)
+         {
+             rollData=nextCartesianProduct(rollData, Polynomial.createDiePolynomial(diceArray[i], explodeCount));
+         }
+
+          if(doAnyExplode && explodeCount > 0) rollData=explodeSplit(rollData, diceArray);  //splits non-compound explosions into the correct dice
+
+          var outterStats=myPool.getStats().outsource.getStats();
+         if ((outterStats.dropKeepSwitch=="Drop" && outterStats.lowHighSwitch=="Low") || (outterStats.dropKeepSwitch=="Keep" && outterStats.lowHighSwitch=="High"))
+         {
+            for(var i=0; i < rollData.length; i++)
+                rollData[i]=rollData[i].sort(sumAscending);  //sort by sum ascending
+         }
+         else
+         {
+            for(var i=0; i < rollData.length; i++)
+                rollData[i]=rollData[i].sort(sumAscending).reverse();  //sort by sum descending
+         }
+         for (var i=0; i < rollData.length; i++)
+         {
+             var effectiveDropCount=outterStats.dropKeepValue;
+             if(outterStats.dropKeepSwitch=='Keep') effectiveDropCount=rollData[i].length-effectiveDropCount;  //number of dice - dropKeepValue
+            for(var dropCount=effectiveDropCount; dropCount > 0; dropCount--)
+                rollData[i].shift();  //remove first element until you drop the right number of them
+         }
+
+          //got these: drop/keep, reroll (handled by Polynomial.createDiePolynomial), min/max, compound, regular, and pen explosions
+
+          results=[];
+         for (var i=0; i < rollData.length; i++)
+         {
+             var sum=0, chance=1;
+            for (var j=0; j < rollData[i].length; j++)
+                {sum+=rollData[i][j][0]; chance*=rollData[i][j][1];}
+             Polynomial.addPolynomials(results, myPool.getStats().outsource.minMaxDoing(sum), chance);
+         }
+          results=results.sort(sumAscending);  //sort by sum ascending
+          //var tempScope=Number(results[results.length-1][1].toFixed(4));
+      }
+       return results;
+   }
+}
+Draw.binomialBellCurve = function(trials, probability, secondColumn) {
+    if(secondColumn==undefined) secondColumn='>=';
+    var out = '<br />\n<b>Trials:</b> ' + trials + ' <b>Probability:</b>' + probability + '<br />';
+
+    rollData=generate_Binomials(trials, probability);
+    //out+=rollData;
+    out += Draw.generateBinomialTable(rollData, secondColumn);
+    document.getElementById('graphResults').innerHTML += out;
+}
+Draw.generateBinomialTable = function(rollData, secondColumn){
+    if(rollData.length == 0) return '';
+    var results=[];  //pad the results to 2D so I can use Draw.generateDiceSumTable
+    for(var i=0; i < rollData.length; i++) results.push([i, rollData[i]]);
+
+    var output=Draw.generateDiceSumTable(results, secondColumn);
+    return output.replace('<th>Roll</th>', '<th>Successes</th>');
+}
+Draw.generateDiceCompareTable = function(name1, name2, rollData1, rollData2){
+    if(rollData1.length == 0 || rollData2.length == 0) return '';
+    var out = '';
+    var abMax = -1;  //so that the first time is always true
+    var diffData=[];
+
+    //can't simply measure if freq since also need to convert weighted
+    rollData1=toProb(rollData1);
+    rollData2=toProb(rollData2);
+
+   for (var i=0, j=0; i < rollData1.length || j < rollData2.length;) {
+      if (i >= rollData1.length)
+      {
+          diffData.push([rollData2[j][0], (rollData2[j][1])]);
+          j++;
+          continue;
+      }
+      if (j >= rollData2.length)
+      {
+          diffData.push([rollData1[i][0], (-rollData1[i][1])]);
+          i++;
+          continue;
+      }
+       if(rollData1[i][1]==0){i++; continue;}  //skip those not possible to roll
+       if(rollData2[j][1]==0){j++; continue;}
+
+      if (rollData1[i][0]==rollData2[j][0])
+      {
+          diffData.push([rollData1[i][0], (rollData2[j][1]-rollData1[i][1])]);
+          i++; j++;
+      }
+      else if(rollData1[i][0] < rollData2[j][0])
+      {
+          diffData.push([rollData1[i][0], (-rollData1[i][1])]);
+          i++;
+      }
+      else //if(rollData1[i][0] > rollData2[j][0])
+      {
+          diffData.push([rollData2[j][0], (rollData2[j][1])]);
+          j++;
+      }
+       if(abMax < Math.abs(diffData[diffData.length-1][1])) abMax=Math.abs(diffData[diffData.length-1][1]);
+   }
+
+    out = '<table border="1" cellpadding="0" cellspacing="2" width="100%">';
+    out += "\n";
+    out += '<tr><th>Roll</th>';
+    out += '<th>Diff</th>';
+    out += '<th align="center" width="49%">'+name1+'</th>';
+    out += '<th align="center" width="49%">'+name2+'</th></tr>';
+    out += "\n";
+
+   for (var i=0; i < diffData.length; i++) {
+       //if(diffData[i][1]==0) continue;  //diff 0 are shown
+       out += '<tr><td align="center">' + diffData[i][0];  //roll
+       out += '</td><td align="right">';
+       out += (100 * diffData[i][1]).toFixed(3);  //non-freq is weighted but might not be the probability
+       out += '%</td><td valign="center" align="right">';
+      if (diffData[i][1] > 0)
+      {
+          out += '</td><td valign="center">';
+          out += '<div style="background-color: blue; width:' + Math.abs(100 * diffData[i][1] / abMax).toFixed(3)+'%; height: 0.8em">&nbsp;</div>';
+      }
+      else
+      {
+          out += '<div style="background-color: red; width:' + Math.abs(100 * diffData[i][1] / abMax).toFixed(3)+'%; height: 0.8em">&nbsp;</div>';
+          out += '</td><td valign="center">';
+      }
+       out += '</td></tr>';
+       out += "\n";
+   }
+    out += '</table>';
+    return out;
+   function toProb(rollData){
+       var total=0;
+       for(var i=0; i < rollData.length; i++) total+=rollData[i][1];
+       if(total==1) return rollData;  //already prob
+       for(var i=0; i < rollData.length; i++) rollData[i][1]/=total;
+       return rollData;
+   }
+}
+Draw.generateDiceSumTable = function(rollData, secondColumn){
+    if(rollData.length==0) return;  //nothing to report
+    if(secondColumn=='=') secondColumn='==';  //heh symmetry. adds an '=' so that eval can read it
+    var min, max, count=0, sum=0;
+   for (var i=0; i < rollData.length; i++)
+   {
+       if(rollData[i][1]==0) continue;  //freq is 0 means it can't be done (shouldn't exist)
+       if(min==undefined || rollData[i][0] < min) min = rollData[i][0];
+       if(max==undefined || max < rollData[i][0]) max = rollData[i][0];
+       count += rollData[i][1];
+       sum += (rollData[i][0] * rollData[i][1]);  //must be wieghted since the ones that occur more often are more likely
+   }
+    var deviationSquareSum = 0;
+    var avg = sum / count;
+   for (var i=0; i < rollData.length; i++)
+   {
+       //if(rollData[i][1]==0) continue;
+       var dev = rollData[i][0] - avg;
+       dev *= dev;  //squared
+       deviationSquareSum += (dev * rollData[i][1]);  //weighted
+   }
+    var standardDeviation = Math.sqrt(deviationSquareSum / count);
+
+    var out = '<b>Statistics</b>';
+    out += '<br>Min: ' + min;
+    out += '<br>Max: ' + max;
+    out += '<br>Avg: ' + avg.toFixed(2);
+    out += '<br>Std Dev: ' + standardDeviation.toFixed(3);
+
+    return out+genTable(rollData, secondColumn);
+   function genTable(rollData, secondColumn){
+       if(rollData.length == 0) return '';
+       var usesFreq=(Number(rollData[0][1].toFixed(6)) >= 1);  //prevent machine episilon
+       var max = 0;
+       var totalFreq = 0;
+       var out = '';
+       var secondValues=[];
+
+      for (var i=0; i < rollData.length; i++) {
+          if(rollData[i][1]==0){secondValues.push(0); continue;}
+          if(max < rollData[i][1]) max = rollData[i][1];
+          totalFreq += rollData[i][1];
+          var secondSum=0;
+         for (var j=0; j < rollData.length; j++) {
+             if(eval(''+rollData[j][0]+secondColumn+rollData[i][0])) secondSum+=rollData[j][1];
+         }
+          if(!usesFreq && secondSum > 1) secondSum=1;  //rounding error: can't have more than 100%
+          secondValues.push(secondSum);
+      }
+
+       out = '<table border="1" cellpadding="0" cellspacing="2" width="100%">';
+       out += "\n";
+       out += '<tr><th>Roll</th>';
+       if(usesFreq) out += '<th>Freq</th>';
+       out += '<th>Chance</th><th>'+secondColumn.replace('>', '&gt;').replace('<', '&lt;')+'</th><th align="center">Bar</th></tr>';
+       out += "\n";
+
+      for (var i=0; i < rollData.length; i++) {
+          if(rollData[i][1]==0) continue;  //roll isn't possible
+          out += '<tr><td align="center" width="1%">' + rollData[i][0];  //roll
+          if(usesFreq && rollData[i][1] > 1e7) out += '</td><td align="center" width="1%">' + rollData[i][1].toPrecision(5);  //freq
+          else if(usesFreq) out += '</td><td align="center" width="1%">' + Number(rollData[i][1].toPrecision(5));  //freq
+          out += '</td><td align="right" width="1%">';
+          out += (100 * rollData[i][1] / totalFreq).toFixed(3);  //non-freq is weighted but might not be the probability
+          out += '%</td><td align="right" width="1%">';
+          out += (100 * secondValues[i] / totalFreq).toFixed(3);
+          out += '%</td><td valign="center">';
+          out += '<div style="background-color: ';
+          if(rollData[i][1] == max) out += 'green';  //not rounded
+          else out += 'blue';
+          out += '; width:' + (100 * rollData[i][1] / max).toFixed(3)+'%; height: 0.8em">&nbsp;</div>';
+          out += '</td></tr>';
+          out += "\n";
+      }
+       out += '</table>';
+       return out;
+   }
+}
+
+var Polynomial={};
+Polynomial.createDiePolynomial = function(dieObject, explodeCount){
+    if((dieObject instanceof ScatterDie) && explodeCount==0) return [['Direct Hit', 1], ['Scatter', 2]];  //returned correctly instead of output meaningless data
+    if(dieObject instanceof ScatterDie) return [['Direct Hit', (1/3)], ['Scatter', (2/3)]];
+    //if(dieObject instanceof ScatterDie) return [[0, 0]];  //ignored. didn't work
+    var results=[], values=[], chance=[];
+    var dieMax=dieObject.getSides()+dieObject.getStats().constantModifier;
+    dieObject=dieObject.getStats();
+    var reroll=dieObject.rerollCriteria;
+    var totalPossible;
+    var previousPossible=1;
+    if(!dieObject.doesExplode && !dieObject.doesCompoundExplode) explodeCount=0;  //this die doesn't explode
+   for (var explodeIndex=0; explodeIndex <= explodeCount; explodeIndex++)
+   {
+       totalPossible=0;
+      for (var i=1; i <= (dieMax-dieObject.constantModifier); i++)
+      {
+          var die=i;
+          if(dieObject.doesUseZero) die--;
+          //if(dieObject.isFudgeDie) die--;  //uses constantModifier below
+          if(dieObject.doesPenetrate && explodeIndex > 0) die--;
+          if(dieObject.nameArray.length!=0) die=nameArray[die];  //named dice are always coins and never negative
+          if(!isNaN(die)) die+=dieObject.constantModifier;
+          if(dieObject.isNegativeDice) die*=-1;
+          if(explodeIndex > 0 && dieObject.doesCompoundExplode) die+=(dieMax*explodeIndex);  //modified here for rerolling reasons. sum for compound
+         if (reroll==undefined || !eval(die+''+reroll))
+         {
+             totalPossible++;
+             if(explodeIndex != explodeCount && i == (dieMax-dieObject.constantModifier)) continue;  //same as break; skip over the max since it would explode
+             if(explodeIndex > 0 && dieObject.doesExplode) die+=(dieMax*explodeIndex);  //modified here for rerolling reasons. sum for regular
+             if(explodeCount==0) results.push([die, 1]);  //value, freq
+             else values.push(die);
+         }
+      }
+      if (explodeCount > 0)
+      {
+          if(dieObject.doesCompoundExplode) previousPossible*=totalPossible;
+         for (var i=0; i < totalPossible-1; i++)
+         {
+             if(dieObject.doesExplode) chance.push(Math.pow(totalPossible, (explodeIndex+1)));  //1/probability
+             else chance.push(previousPossible);  //1/probability
+         }
+      }
+   }
+    if(dieObject.doesExplode) chance.push(Math.pow(totalPossible, (explodeCount+1)));  //1/probability
+    else chance.push(previousPossible);  //1/probability
+    if(results.length!=0) return results;
+    for(var i=0; i < values.length; i++)
+      results.push([values[i], (1/chance[i])]);
+    return results;
+    /*estimation of drops: 4d6k2 get 7
+    1-P(1 pair not 7)^6 where 6 is Combination(4 trials pick 2)
+    */
+    /*actual probability with reroll: 2d4!r3
+    1: 1/3
+    2: 1/3
+    4+: 1/3
+    5: 1/3
+    6: 1/3
+    8+: 1/3
+    for regular (and pen) Math.pow((1/sidesPossible), (explodeIndex+1)) works fine
+
+    actual probability with reroll: 2d4!!r3
+    1: 1/3
+    2: 1/3
+    4+: 1/3
+    5: 1/4
+    6: 1/4
+    7: 1/4
+    8+: 1/4
+    for compound it isn't so simple... the number that exists in this explosion times running total chance
+    */
+}
+
+Polynomial.multiplyPolynomials = function(polyNomGiven, myPool){
+    if(myPool==undefined) myPool=new DicePool();  //empty pool
+    var polyNom=polyNomGiven.slice(0);  //clone to avoid changing original
+    var results=polyNom[0];
+    polyNom.shift();
+   while (polyNom.length!=0)
+   {
+       var newPoly=[];
+       var nextPoly=polyNom[0];
+
+       //if(poolInfo is drop/keep) then ignore lower of i or j only on first pass of each poly
+          //that's not true. the lowest depends on all dice and thus affects every final sum differently
+      for (var i=0; i < results.length; i++)
+      for (var j=0; j < nextPoly.length; j++)
+      {
+          var newValue=results[i][0]+nextPoly[j][0];  //Ax^B this is B
+          var newFreq=results[i][1]*nextPoly[j][1];  //Ax^B this is A
+          Polynomial.addPolynomials(newPoly, newValue, newFreq);
+      }
+       results=newPoly;
+       polyNom.shift();
+   }
+    //I do not need to sort since they are still in ascending order from creation to here
+    return combineResults(results, myPool);  //number array
+   function combineResults(results, myPool){
+       var newData=[];
+      for (var i=0; i < results.length; i++)
+      {
+          if(results[i][1]==0) continue;  //not possible to roll
+          var modifiedValue=(results[i][0]+myPool.getStats().constantModifier);
+          modifiedValue=myPool.getStats().outsource.minMaxDoing(modifiedValue);
+          Polynomial.addPolynomials(newData, modifiedValue, results[i][1]);  //[value, freq] need to use this in case of min/max
+      }
+       //now all the data has been updated with the totalModifier and min/max
+       return newData;
+   }
+}
+Polynomial.addPolynomials = function(poly, value, freq){
+   for(var i = 0; i < poly.length; i++){
+       if(poly[i][0] == value){poly[i][1]+=freq; return;}  //sum exists so increase freq
+   }
+    poly.push([value, freq]);  //sum is new. the sums are done in order ascending so that when pushed they are still in order
+}
+
+function generate_Binomials(trials, probability){
+    /*var lessThan=0;  //I only care about exactly
+    for(var i=0; i < numberDesired; i++)  //0 is valid since it is all of them failing
+       lessThan+=Binomial_distribution(i, trials, probability);  //adding up mutually exclusive events
+    var exactly=Binomial_distribution(numberDesired, trials, probability);
+    var greaterThan=0;
+    for(var i=numberDesired+1; i <= trials; i++)
+       greaterThan+=Binomial_distribution(i, trials, probability);  //adding up mutually exclusive events
+    //alert('lessThan='+lessThan+'\nexactly='+exactly+'\ngreaterThan='+greaterThan);  //add together for more results
+    */
+    var bellCurve=[];
+   for(var i=0; i <= trials; i++)
+       bellCurve.push(Binomial_distribution(i, trials, probability));
+    return bellCurve;
+   function Binomial_distribution(numberDesired, trials, probability){  //Combination * p^k * (1-p)^(n-k) where p is probability of win
+       if(numberDesired==0 && probability==0) return 1;  //always
+       if(numberDesired > trials || probability==0) return 0;  //impossible. notice how (n-k)! is undefined
+       var result=Combination(numberDesired, trials);
+       result*=Math.pow(probability, numberDesired);
+       result*=Math.pow((1-probability), (trials-numberDesired));
+       return result;
+   }
+}
+function Combination(numberDesired, trials){  //n!/(k!*(n-k)!) where n=number of trials k=number you want
+    var demoninator=Math.factorial(trials-numberDesired);
+    demoninator*=Math.factorial(numberDesired);
+    return (Math.factorial(trials)/demoninator);
+}
+
+function everyDieValueWeighted(myDie){
+    var results=[[0, 1]];  //for first pass then this is overwritten
+    var explodeCount=0;
+    var explodeMax=explodeCount+5;
+    if(!myDie.getStats().doesExplode && !myDie.getStats().doesCompoundExplode){explodeCount=0; explodeMax=1;}
+   for (; Number(results[results.length-1][1].toFixed(4))!=0 && explodeCount < explodeMax; explodeCount++)  //explode loop
+   {
+       var rollData=Polynomial.createDiePolynomial(myDie, explodeCount);
+
+      if (explodeMax > 1 && explodeCount > 0)
+      {
+          //pad with [] so that they are sums
+          results=[];
+          for(var i=0; i < rollData.length; i++)
+             results.push([rollData[i]]);
+          rollData=results;
+
+          rollData=explodeSplit(rollData, [myDie]);  //splits non-compound explosions into the correct dice
+      }
+       results=[];
+      for (var i=0; i < rollData.length; i++)
+      {
+          var sum=0, chance=1;
+         for (var j=0; j < rollData[i].length; j++)
+             {sum+=rollData[i][j][0]; chance*=rollData[i][j][1];}
+          Polynomial.addPolynomials(results, sum, chance);
+      }
+       results=results.sort(sumAscending);  //sort by sum ascending
+       //results is only sumed to know when to stop, rollData is what is returned
+   }
+    return rollData;
+}
+
+function explodeSplit(rollData, diceArray){
+    var results=[];
+   for (var sumIndex=0; sumIndex < rollData.length; sumIndex++)
+   {
+       var thisSum=[];
+      for (var diceIndex=0; diceIndex < diceArray.length; diceIndex++)
+      {
+          var explodeValue = diceArray[diceIndex].getStats().explodeValue;  //is undefined if !doesExplode
+         if (diceArray[diceIndex].getStats().doesExplode && rollData[sumIndex][diceIndex][0] >= explodeValue)  //reg and pen but not compound
+         {
+             if(diceArray[diceIndex].getMinValue() < 1) throw new ErrorWrapper("explodeSplit can't handle dice with a minimum value less than 1.");
+             if(diceArray[diceIndex].hasNames()) throw new ErrorWrapper("explodeSplit can't handle named dice.");
+             var doesPenetrate = diceArray[diceIndex].getStats().doesPenetrate;
+            if (doesPenetrate)
+            {
+                rollData[sumIndex][diceIndex][0]-=explodeValue;  //remove first explosion
+                explodeValue--;  //every explosion after the first is 1 less
+            }
+             var timesExploded = Math.ceil(rollData[sumIndex][diceIndex][0]/explodeValue)-1;  //max is explodeCount. not the same as Math.floor due to whole numbers
+             if(doesPenetrate) timesExploded++;  //1 explosion has already happened
+             var remainderValue = rollData[sumIndex][diceIndex][0]%explodeValue;
+             if(remainderValue==0 && !doesPenetrate) remainderValue=explodeValue;  //if pen it can't roll max but can roll 0
+             //TODO: some dice have 0 (z) and then there's fudge and modifiers... which are impossible to seperate
+             var newChance=Math.pow(rollData[sumIndex][diceIndex][1], (1/(timesExploded+1)));  //each die is the same exploded or not
+             thisSum.push([remainderValue, newChance]);
+             for(var i=0; i < timesExploded; i++) thisSum.push([explodeValue, newChance]);
+         }
+          else thisSum.push([rollData[sumIndex][diceIndex][0], rollData[sumIndex][diceIndex][1]]);
+      }
+       results.push(thisSum);
+   }
+    return results;
+};
+
+function cartesianProduct(array1Given, array2Given){  //they aren't changed
+    var results=[];
+   for (var i=0; i < array1Given.length; i++)
+   for (var j=0; j < array2Given.length; j++)
+       results.push([array1Given[i], array2Given[j]]);
+    return (results);
+}
+
+function nextCartesianProduct(array1Given, array2Given){  //they aren't changed
+    var results=[];
+   for(var i=0; i < array1Given.length; i++)
+   for(var j=0; j < array2Given.length; j++)
+   {
+       var thisRow=array1Given[i].slice();  //copy array
+       thisRow.push(array2Given[j]);  //the difference is here: array2Given[j] is added to a copy of array1Given[i] so that it will be on the same level
+       results.push(thisRow);
+   }
+    return results;
+}
+/*function combineCartesian(arrayGiven){  //goal: turn [[[a, 1], red], [[a, 1], green]] into [[a, 1, red], [a, 1, green]]
+    var results=[];
+   for (var i=0; i < arrayGiven.length; i++)  //per group: [[a, 1], red]
+   {
+       var thisRow=arrayGiven[i][0].slice(0);  //copy first element: [a, 1]
+       //I don't know why it needs to be copied. seems like arrayGiven[i][0].push(arrayGiven[i][1]); should've worked
+       thisRow.push(arrayGiven[i][1]);  //add second element: red
+       results.push(thisRow);  //group done
+   }
+    return results;
+}*/  //see exmaple in function doc
+function alphaNumAscending(a, b){
+    if(!isNaN(a) && !isNaN(b)) return (a-b);
+    if(!isNaN(a) && isNaN(b)) return -1;
+    if(isNaN(a) && !isNaN(b)) return 1;
+    if(a > b) return 1;
+    if(a < b) return -1;
+    return 0;
+}
+function alphaNumDescending(a, b){
+    if(!isNaN(a) && !isNaN(b)) return (b-a);
+    if(!isNaN(a) && isNaN(b)) return -1;
+    if(isNaN(a) && !isNaN(b)) return 1;
+    if(a > b) return -1;
+    if(a < b) return 1;
+    return 0;
+}
+function sumAscending(a,b){return a[0]-b[0];}
+</script>
+<base target="_blank" />
+</head>
+<body>
+<br />
+<a>Code:</a><br />
+<textarea id="inputCode" rows="7" cols="50">var myDiceString="2d6";
+rollDice(myDiceString);
+Draw.diceBellCurve(new DicePool(myDiceString));
+//Draw.compareDiceBellCurve(new DicePool(""), new DicePool(""));
+</textarea><br />
+<input type="button" onclick="main();" value="Execute" /><br />
+<br /><a>Output:</a><br />
+<textarea id="results" rows="7" cols="50"></textarea><br />
+<div id="graphResults"></div>
+<!--
+various notes:
+
+http://anydice.com/
+not sure whether local or server. it's fast and has js but that's just for the tabs and forms etc
+is a new language. limitation of max total depth of functions (not just recursion)
+has a few functions: explode (all explodes are regular) and sort
+does not have any javascript libraries (obviously) but does have abs and 3 things
+"2d10!!r1" is very difficult. nothing is impossible due to programming
+ditto for "2d10!p"
+min/max doesn't exist
+learning curve: if you've used roll20 (standard dice notation) then it won't help you at all
+has some interesting stuff like d3 > d2 but none of them I would call useful
+drop/keep exists and can add pools and perform basic math
+you must make custom dice for rerolls but {2..10} is simple
+fudge dice is {-1,0,1}
+
+http://topps.diku.dk/torbenm/troll.msp
+server-side computations (painful as it refreshes entire page)
+is a new language
+their min/max functions are keep lowest/highest
+but there is no actual min/max
+(their drop/keep is useless as it drops specific values instead of lowest highest)
+there is no real drop/keep
+they have regular exploding (although not user friendly)
+they do not have p or compound exploding
+you can add dice but not dice pools ie: "d6+d6+d8" but not "2d6+d8"
+basic math is the same way (counts as singleton and pools are not)
+there are no fudge dice
+has plenty of predefined functions and allows users to make them
+they have reroll (although not user friendly)
+
+only a sim: http://rpggeek.com/filepage/64586/l5r-roller
+
+stuff link 2 has:
+the syntax for count successes is different (due to using shorthand instead of a function)
+allows for multiple reroll criteria
+Grouping Rolls. which will be very difficult: {4d6+3d8}kh1 means keep highest 1 of that pool but can also {4d6+3d8, {4d2+2d4}}kh1
+
+stuff link 1 has:
+using x to mean * there's also (division sign) for / but there's no keyboard for that so it's harder to detect
+names Penetrating exceptions
+    example function
+one system that has 1-5 explode on d%
+    due to rare make example function
+
+turns out: http://mathforum.org/library/drmath/view/52207.html
+this approach will work fast but will not work for named dice and drop/keep
+could Look up combinatorics and generating functions for drop/keep
+-->
+<!--total TODO in order:
+make sure all of these are in the function doc:
+    <a>Drop/keep and min/max only apply to dice pools. A dice pool will take the number of dice given and create a number of dice of that type.</a><br />
+    <a>Both kinds of exploding and % are passed down from pool to individual dice.</a><br />
+    <a>It is possible to have dice which haved sides with custom values known as a Named dice. For example silentRollDice("1z2", "Heads", "Tails") will return either "Heads" or "Tails" instead of 0 or 1.</a><br />
+    ScatterDie in dice pool
+reroll opimising has alota errors
+error checking. minor error checking in private functions
+have Draw ignore ScatterDie/Named Die instead of crashing
+(at least here)
+review L5R subset for fastness
+stats: pre-generate L5R tables since way too slow (debug to confirm not stuck) http://rumkin.com/reference/dnd/diestats.php has xk1 averages from 1-10
+    I don't understand his c program
+finish groupParser (this is a lot of time)
+more OneRollEngine
+    and stats for it? somehow
+stats: binom: re1 (use at least 1)
+(now we're in buisness since I am now better than all except rare weird stats)
+everything else
+-->
+<!--TODO: list
+see Draw.compareDiceBellCurve above
+   have a Draw.compareCurves() which will convert the 2 arrays into 2D then will convert the wieghts to probability.
+       then subtract probability for the result. if(-#) first curve if(#) second. have 3 columns: #, first curve, second (do not have the prob or '>=')
+       the # will be as is, the first curve will be right aligned and red, the second left aligned and blue. the sum would be 0
+   stats: add "vs" functionality to compare 2 different bell curves
+       have the bell curves return their (2D) array with a wrapper that draws it
+       so that I can sent bell arrays to a compare function which returns array (also with draw wrapper)
+both: doc constants and stuff: there's also full 4+ function (+-*/% and ^&|~ but the last is unary...)
+make a sample draw that draws ScatterPool with balastic. which is like "-5+2d6 min 0" except with 1/3 direct hit included in 0
+
+few other things below (grouping)
+currently explosions must be before reroll (put in functions)
+allow both a min and max but validate it like reroll
+1d5..10 for a named die from 5 to 10. optimised as 1d5+5. longhand: 1d5 to 10
+maybe make a NumberPool so that "2d6 drop lowest, 1d% min of 3" will be allowed, have a parser function so that grouping "{{}, {}}" will be parsed
+    and replaced with objects. although loud will be a pain I'm sure
+validity doesn't check array contents but maybe it should (during loop)
+review and clean up code
+
+impossible: user unput for any choices etc
+-->
+<br /><br /><a style="text-decoration: underline; font-weight: bold;">Basic Description:</a><br />
+<a>The dice notation used most closely resembles </a><a href="https://wiki.roll20.net/Dice_Reference">Roll20.net</a><a> which uses syntax well known as demonstrated by </a><a href="http://en.wikipedia.org/wiki/Dice_notation">Wikipedia</a><a>.</a><br />
+<a>The Code section is sent to eval() that is to say it is javascript with predefined functions (see their documentation below).</a><br />
+<a>All numbers must be whole numbers, although named dice can have sides named as any value including decimal numbers (named dice are for advanced users).</a><br />
+<a>The string variable named myDiceString (as default above) is sent to both the rollDice and Draw.diceBellCurve functions.</a><br />
+<a>The rollDice function will generate random numbers and output the result. The Draw.diceBellCurve function draws statistics of for the dice specified.</a><br />
+<a>For the basic user change the 2d6 to whatever dice is desired (the quotes must remain).</a><br />
+<a>Continue reading this section for information on how to specify the dice desired.</a><br />
+<a>The dice options and dice pools may be in any order, however shorthand (if any) must follow the dice then the long hand (if any).</a><br />
+<a>When the description shows a format: # is a number, | is "or" and [] are optional the () are for grouping. Do not include any of these symbols when using the program.</a><br />
+<a>An advanced user should also read the function documentation section which explains every function available. An advanced user must understand the </a><a href='http://www.w3schools.com/js/'>basics of javascript</a><a>.</a><br />
+<a>The function rollDice expects the dice string to be in the form of XdY where X is the number of dice, d is the dice type, and Y is the number of sides each die has.</a><br />
+<a>Each die in the pool is added together. A leading negative ('-') may be used for each die to be negative.</a><br />
+<a>The string given to rollDice is not case sensitive but everything else is case sensitive. The string given to rollDice converts all whitespace into spaces.</a><br />
+<a>Some replacements are done before any other processing: XkY translates into Xd10!! keep highest Y. Keep reading for an explaination.</a><br />
+<a>If the number of sides starts with a % (Xd%) it is replaced with 100 (Xd100). then all remaining % are replaced with '00'. For example 2d2% becomes 2d200 and 1d%% becomes 1d10000</a><br />
+<a>The dice type can be either 'd' or 'z'. In XdY the sides of d (die) are numbered from 1 to Y and z (zero) are from 0 to Y-1.</a><br />
+<a>Fudge dice (aka Fate dice) are supported. To use them say XdF (or XzF). Fudge die have 3 sides which are labeled -1, 0, and +1.</a><br />
+<br />
+<a>You can ignore certain values by putting "drop lowest 2" where the 2 lowest values will be removed or "keep the highest 3" where all but the 3 highest values will be dropped.</a><br />
+<a>If no number is given for drop/keep then the number 1 is used. You can also use the words "remove" or "ignore" to do the same thing as "drop".</a><br />
+<a>Here's the full format of drop/keep: (drop[ping]|remov(e|ing)|ignor(e|ing)|keep[ping]) [the ](low|high)est[ #].</a><br />
+<a>The number of values to drop (x) must be: 0 &lt;= x &lt;= number of dice. If the number of dice to keep is more than the number of dice then all of them are kept. Number of dice and number of side must be greater than 0.</a><br />
+<br />
+<a>Exploding, compound exploding, and penetrating exploding dice are supported.</a><br />
+<a>Explosions of any kind have the format: [penetrating|penetrate|compound[ing]] (explosion[s]|exploding|explode) [di[c]e].</a><br />
+<a>Exploding dice means that whenever a die rolls the highest possible value, another die is rolled of the same number of sides. Any number of dice can explode any number of times including the new die added.</a><br />
+<a>Using any kind of exploding dice means that there is no maximum sum, although the higher numbers being less likely.</a><br />
+<a>Penetrating exploding dice means that whenever a die explodes the new die rolled has 1 subtracted from that roll.</a><br />
+<a>Each die added from a penetrating explosion may also explode (whether or not is rolled max value is determined before 1 is subtracted). Each new die only has 1 subtracted from it (it does not accumulate).</a><br />
+<a>For example: "2d10 penetrate explode" rolls 6 and 10, the second die explodes so that another (1d10-1) is rolled which gets a (10-1=9) then a (3-1=2). The total is 6+10+9+2=27.</a><br />
+<a>Compound exploding dice means that whenever a die explodes the new die rolled is added directly to the die that exploded as though it was a single die. Dice can compound explode any number of times.</a><br />
+<a>For example: "2d6 explode drop highest" rolls 6 and 1, the first die exploded so that another 1d6 is rolled which gets a 6 then a 2. Every die is 6+1+6+2 so that one of the 6s is dropped due to being the highest.<br />So that the result is 6+1+2=9.</a><br />
+<a>However if it was compound: "2d6 compound explode drop highest" rolls (6+6+2) and 1 which is 14 and 1. A total of 1 after dropping the highest (14 is the highest die).</a><br />
+<br />
+<a>You may establish a minimum or maximum value for a set of dice like: XdY [with] [a] (min|max)[imum] [of] #. This will only change the total of those dice.</a><br />
+<a>Minimum and maximum can have a negative value in which case note that: -&infin; &lt; min &lt;= sum and -&infin; &lt; sum &lt;= max. Which means that '-2d6 min -2' will always be -2 since -2d6 can't have a sum higher than -2.</a><br />
+<br />
+<a>Constants may be added to either the sum or individual dice. If the constant is before any dice then it is added to the sum (it may have a leading -).</a><br />
+<a>Any other constants will be added to the dice set before it in which case the number is added to each side's value.</a><br />
+<a>For example: "2+2d6" rolls 5 and 1 for a total of 2+5+1=8. But "2d6+2" rolls (5+2=7) and (1+2=3) for a total of 7+3=10.</a><br />
+<a>Currently the only way to connect dice and constants to dice and constants is with either + or -. You can't have a leading + or a adding a negative.</a><br />
+<br />
+<a>You may have certain die values be rerolled. A range of values or a specific value may be given (see format).</a><br />
+<a>Rerolling has this format: reroll [di[c]e [that are]] (greater|less) than [or equal [to]] #. Or this one: reroll [di[c]e [that are]] [not] equal [to] #.</a><br />
+<a>Whenever a die lands on a value it is compared to the reroll criteria and that die is rolled again and again until it is a value that is allowed.</a><br />
+<br />
+<a>Sorting of the dice values may be done. This has no impact on the functionality only on the output.</a><br />
+<a>Sorting has this format: sort [[the] dice] [in] [ascending|descending] [order].</a><br />
+<a>All values are broken up into numbers and others with the numbers coming before everything else.</a><br />
+<a>The sort is either ascending or descending with the numbers being sorted numerically and the others alphabetically. Ascending is default.</a><br />
+<br />
+<a>All dice options have sorthand notation. An exception is that for the dice themselves there is no longhand for number of sides and number of dice.</a><br />
+<a>All plus and minus must also be symbolic (such as '+') instead of using words. Constants must remain the same. There is no shorthand for minimum and maximum.</a><br />
+<a>All shorthand follows the dice without a space such as: "2d6!dL". The shorthand may be in any order following the dice.</a><br />
+<a>Drop/Keep shorthand format is: XdY(d|k)[h|L][#]. where 'd' is for 'drop' and 'k' for 'keep'. 'L' for 'Lowest' or 'h' for highest.</a><br />
+<a>Exploding shorthand is: XdY! for regular exploding dice, XdY!! for compound exploding, and XdY!p for penetrating exploding.</a><br />
+<a>Rerolling shorthand format is: XdYr[?]#. Replace the optional '?' with any form of comparison operator such as '&lt;=' or '!='. If 'r=#' or 'r#' is given it will be replaced with 'r==#'.</a><br />
+<a>Sorting shorthand format is: XdYs[a|d]. 'a' is ascending (which is default if 's' is alone) and 'd' is descending.</a><br />
+<br />
+<a>Example String: "3d2 +3d4! drop the lowest 2"</a><br />
+<a>Example String: "5 + 5z5r5!! + 5"</a><br />
+<a>Example String: "4k3sa"</a><br />
+<a>Example String: "4dF+2d3!!"</a><br />
+<br />
+<a>The Twister spinner choices are either red, green, yellow, or blue on either left or right, hand or foot (16 options).</a><br />
+<a>The 20 possible Magic 8-Ball responses are:</a><br />
+<pre style="color: green;">
+As I see it, yes
+It is certain
+It is decidedly so
+Most likely
+Outlook good
+Signs point to yes
+Without a doubt
+Yes
+Yes - definitely
+You may rely on it
+</pre>
+<pre>
+Reply hazy, try again
+Ask again later
+Better not tell you now
+Cannot predict now
+Concentrate and ask again
+</pre>
+<pre style="color: red;">
+Don't count on it
+My reply is no
+My sources say no
+Outlook not so good
+Very doubtful
+</pre>
+<br /><br />
+<a href="javascript:toggleDoc()">Toggle Function Documentation</a><br />
+<div id="functionDoc" style="display:none;"><h1>Function Documentation</h1>
+<a>Javascript 1.2 is required so that things like Array.prototype.concat exist (see </a><a href="http://www.w3schools.com/jsref/jsref_concat_array.asp">Documentation</a><a>)</a><br />
+<h3>Built into standard objects</h3>
+<pre>
+Math.factorial(numberGiven)
+    (static function) returns the factorial of numberGiven without using recursion
+    if numberGiven isn't a number it returns NaN (type conversion is not attempted). if numberGiven is Infinity it returns Infinity.
+    if numberGiven is less than 0 or not an integer it returns undefined
+Array.prototype.indexOf(obj, fromIndex)  //see: <a href="http://www.w3schools.com/jsref/jsref_indexof_array.asp">Documentation</a>
+Array.prototype.toSource()
+    returns a string that represents the array with [] around it
+    any arrays contained this will be called recursively
+    for any other element it is converted to string using ''+obj
+    although not very helpful see: <a href="https://developer.mozilla.org/en-US/docs/JavaScript/Reference/Global_Objects/Array/toSource">Documentation</a>
+Array.prototype.removeIndex(index){return this.splice(index, 1);}
+    removes that index of the array (and returns the removed element)
+Array.prototype.removeElement(obj){var foundIndex=this.indexOf(obj); this.removeIndex(foundIndex); return foundIndex;}
+    removes that object from the array and returns the index that was removed
+Array.prototype.summation()
+    returns the summation of every element in the array (using Number() on each element to try to convert it to a number)
+    if the array contains arrays it is deep calling summation() of them
+String.prototype.trim()
+    returns a string that is the same except does not have leading or trailing spaces (original string is unchanged)
+String.prototype.startsWith(prefix)
+    returns true if the string begins with suffix
+String.prototype.endsWith(suffix)
+    returns true if the string ends with suffix
+String.prototype.contains(substring)
+    returns true if the string contains the substring
+
+contains and containsExact return true if the array contains obj
+Array.prototype.contains(obj)  //uses == (2) which converts types
+Array.prototype.containsExact(obj)  //uses === (3) which also matches types
+</pre>
+<h3>Predefined function list</h3>
+<pre>
+<script>document.write(ErrorWrapper);</script>  //so that you can throw your own errors
+main()
+    called by the Execute button. simply calls eval() of the code box and catches errors
+
+<script>document.write(write);</script>  //avoids race condition and is a simple way to write to the output box
+<script>document.write(writeln);</script>
+toggleDoc()
+    hides or shows this section of Function Documentation
+isBotch(valueArray, botchValue)
+    checks to see if every number in valueArray matches the botchValue
+    botchValue is 1 by default (in this way it can't be undefined)
+    valueArray can be either a number or an array of values (numbers or otherwise)
+    returns true if every value in the array matches (using ==) the botchValue
+    returns false if any is not the botchValue
+argumentsToArray(argumentsGiven, fromIndex)
+    converts an argument object into an array starting from the fromIndex and returns the array
+    if the returned array would contain only a single element which is an array instead that first element is returned
+IronClawEvenRolls(numberArray1, numberArray2)
+    a utility used for the Iron Claw example functions
+    first the 2 arrays are sorted descending
+    then every 1 is removed from each array
+    then the shorter array has 1s added to it until it is the same length
+    the arrays are changed but nothing is returned
+combineRegex(regex1, regex2)
+    takes any combination of 2 strings or regex objects, concatenates them, and returns the new regex as a regex object
+everyDieValueWeighted(myDie)
+    this is a utility used for drawing bell curves for dice. myDie is a die object
+    the return value is a 2D array in the form of [value, freq or chance]
+    explosions are included. the last values of the explosion will have chance rounded to 5 decimal places
+    the result is returned and the parameters are not changed
+explodeSplit(rollData, diceArray)
+    this is a utility used for drawing bell curves for dice. diceArray is a 1D array of die objects
+    rollData must be a 2D array in the form of [value, chance] with the value as though it was compound
+    this function splits the die value that's exploded into its smaller parts
+    this function assumes that the minimum value is more than 0. Do not call this function if this is not true as the results will not be correct
+    the result is returned (in the same form as rollData) and the parameters are not changed
+generate_Binomials(trials, probability)
+    using the number of trials and probability this function loops for each possible
+    number of successes and returns an array of each chance (probability) with the array index representing the number of successes
+    if you want the chance of getting exactly a number then use that array index otherwise you will need to sum up these mutually exclusive events
+Combination(numberDesired, trials)
+    used for generate_Binomials but is general enough that someone else might want to use it
+    the formula is n!/(k!*(n-k)!) where n=trials and k=numberDesired
+    the result is returned
+cartesianProduct(array1Given, array2Given)
+    returns a 2D array which has every possible combination of the elements of the 2 arrays given
+    the result has a minimum of 2D. It will have 2 dimensions only if each array given is 1D
+    see the exmaple following nextCartesianProduct
+nextCartesianProduct(array1Given, array2Given)
+    this functions just like cartesianProduct except that array1Given is the result of either cartesian product function
+    this takes the each element of array1Given as an array and appends to it every possible element of array2Given
+    the inputs array1Given and array2Given are not changed. the returned array is of the same format as cartesianProduct
+    if sending 2 arrays to cartesianProduct would result in this: [[[a, 1], red], [[a, 1], green]]
+    then sending the same 2 arrays to nextCartesianProduct would instead result in this: [[a, 1, red], [a, 1, green]]
+    this exists so that more than 2 lists may be combined. see example that follows
+example code for cartesianProduct and nextCartesianProduct:
+    //you may copy this code as is and it will run
+    var array1=cartesianProduct(['a', 'b', 'c'], [1, 2, 3]);
+    writeln(array1.toSource()+'\n');
+    //the output will is: [[a, 1], [a, 2], [a, 3], [b, 1], [b, 2], [b, 3], [c, 1], [c, 2], [c, 3]]
+    writeln(nextCartesianProduct(array1, ['red', 'green', 'blue']).toSource());
+    //the output is: [[a, 1, red], [a, 1, green], [a, 1, blue], [a, 2, red], [a, 2, green], [a, 2, blue], [a, 3, red], [a, 3, green], [a, 3, blue], [b, 1, red]...
+alphaNumAscending(a, b), alphaNumDescending(a, b) and sumAscending(a,b)
+    these are sorting functions in that they are ment to be sent to Array.sort
+    these are the functions used for sorting internally with alphaNumAscending being ascending and alphaNumDescending being descending
+    alphaNumAscending and alphaNumDescending are used for some DicePool functions and for numberGroup sorting. sumAscending is used for drawing functions
+    Array.sort(alphaNumAscending).reverse()!=Array.sort(alphaNumDescending) which is why there are seperate functions. although sumAscending can be reversed correctly
+    <script>document.write(sumAscending);</script>  //entire code. [0] is the sum and [1] is the freq/chance. see Polynomial.createDiePolynomial for details
+    alphaNumAscending and alphaNumDescending split the array into 2 sections as described in the basic description sorting section
+    the numbers are always first (in either ascending or descending order) which is why one is not the reverse of the other
+    the numbers are subtracted and the others are compared with &lt; and &gt;
+
+<script>document.write(NamedDie);</script>  //alias/ short cut
+<script>document.write(NamedDicePool);</script>  //alias/ short cut
+
+rollDice(holder, nameArray) or rollDice(holder, firstName, secondName, ...)
+    if there are more than 2 arguments it first converts the list of arguments into an array
+    then it returns the sum of a roll with the dice specified
+    full code: return new DicePool(holder, argumentsToArray(arguments, 1)).sumRoll(!Silent);
+silentRollDice(holder, nameArray) or silentRollDice(holder, firstName, secondName, ...)
+    if there are more than 2 arguments it first converts the list of arguments into an array
+    then it returns the sum of a roll with the dice specified
+    full code: return new DicePool(holder, argumentsToArray(arguments, 1)).sumRoll(Silent);
+
+<script>document.write(FudgeDie);</script>  //alias
+<script>document.write(StandardCoin);</script>  //alias
+<script>document.write(Coin);</script>
+Spinner = NamedDie;  //alias
+MagicEightBall()  //short cut
+    returns a NamedDie with the 20 Magic Eight Ball answers (see above)
+TwisterSpinner()  //short cut
+    returns a NamedDie with the 16 Twister Spinner choices (see above)
+ScatterDie(alwaysScatter)
+    Scatter Dice have a 1/3 change to be a direct hit and otherwise will scatter in a random direction
+    if alwaysScatter is true then the 1/3 change of direct hit is ignored and will always scatter in a random direction
+    alwaysScatter default is false.
+    this outputs nothing and returns a string with the results with the scatter direction in degrees of whole numbers
+    how to measure the degrees from is not specified. you might also need to round the number to something that can be more easily measured
+    this can be called as a function which returns this.roll()
+    this can also be created as an object which acts as a Die object and has the functions: roll(), isFudge(), getSides(), getStats(), and getName()
+    compare to the die object for some of the rational. the reason why functions exist for it is to be used internally as a die object
+    roll() is the same as calling ScatterDie as a function. it returns a string with either "Direct Hit" or "Scatter Direction: ? degrees"
+    isFudge() returns false
+    getSides() returns 360
+    getName() returns "ScatterDie('+alwaysScatter+')" where alwaysScatter is whether or not it always scatters
+    getStats()
+       the values returned in the copy object are always the same:
+       nameArray=[];
+       isNegativeDice=false;
+       doesUseZero=true;
+       isFudge=false;
+       sideCount=360;
+       doesExplode=false;
+       doesPenetrate=false;
+       doesCompoundExplode=false;
+       constantModifier=0;
+       everything else is undefined
+ScatterPool(alwaysScatter)
+    alwaysScatter is false by default. it passes alwaysScatter to the ScatterDie
+    if called as a function it creates a DicePool object with a ScatterDie(alwaysScatter) and 2d6 then returns the DicePool object
+    otherwise (ie if created as an object) the only function it contains is:
+    scatter(balisticSkill, isSilent)
+       balisticSkill is 0 by default. isSilent is sent to DicePool.sumRoll(isSilent) for the 2d6
+       if the scatter die is direct hit or if balisticSkill &gt;= the 2d6 roll then "Direct Hit" is returned
+       otherwise a string is returned which contains the scatter die's direction and the distance in inches based on balisticSkill
+    it does not contain roll() so that it will not be confused with DicePool objects
+var AlwaysScatter=true;
+    this is a defined global so that you may say ScatterDie(AlwaysScatter) or (!AlwaysScatter) instead of true or false
+    this is simply more easy to read (!AlwaysScatter means "not AlwaysScatter" which is the value false)
+var Silent=true;
+    this is a defined global so that you may say DnDAttack(0, 20, 15, "1d10", 2, Silent) or !Silent) instead of true or false
+    this is simply more easy to read (!Silent means "not Silent" which is the value false)
+
+DnDAttack(attackBonus, minimumCritical, opposingAC, damageString, criticalMultiplier, areRollsSilent)
+    does what you'd expect: attackBonus is added to the attack roll when comparing against the opposingAC
+    if the natural roll was &gt;= minimumCritical then it auto-hits and roll 1d20 vs opposingAC for a critical
+    if critical damage rolled * criticalMultiplier. to turn off critical hits make criticalMultiplier = 1
+    damageString will be given to silentRollDice so it needs to have correct syntax
+    areRollsSilent is true by default. when areRollsSilent is false more information is recorded.
+    nothing is written to the output. the information is in a string which is returned
+    the return value if silent is in this form: [Critical] miss | (Attack | Critical hit) for x damage
+    if it is not silent then the natural attack is always displayed first and the natural rolled for threat range is displayed right before "Critical hit"
+L5RRoll(rollBonus, numberOfRaises, targetNumber, diceRolled, diceKept, hasEmphasis, areRollsSilent)
+    does what you'd expect: rollBonus is added to the roll. rollBonus could be either any modifier to the total
+    numberOfRaises will raise the targetNumber by 5 each. diceRolled and diceKept are as they sound: the number of dice you
+    are rolling and the number of dice you will keep. it always keeps the highest ones
+    hasEmphasis is false by default but if true will indicate to reroll 1s
+    areRollsSilent is true by default. when areRollsSilent is false more information is recorded.
+    nothing is written to the output. the information is in a string which is returned
+    the return value if silent is in this form: Highest Total: x \n You (succeeded | failed) by y [\n Void recovered: z]
+    if it is not silent then every value rolled is displayed (or "reroll" if applicable) then has "Values kept: x1 + x2... = y"
+    instead of "Highest Total" and always displays "Void recovered" even when 0
+IronClawDamage(damageDicePool, defenderDicePool, areRollsSilent)
+    returns the results of the damage by giving it the damager and defender dice pools
+    damageDicePool and defenderDicePool must be DicePool objects
+    nothing is written to the output. the information is in a string which is returned
+    areRollsSilent is true by default. when areRollsSilent is false more information is recorded.
+    the return value will be either: Attacker Botched or (Defender Botched)? Damage Dealt: x where "Defender Botched" is optional and x is the total damage
+    if areRollsSilent is false then every value of both rolls are displayed before every 1 is removed
+    and then again after 1s are added so that each pool has the same number of dice
+IronClawOpposedRoll(attackerDicePool, defenderDicePool, areRollsSilent)
+    returns the results of an opposed roll that compares every value (from the highest to lowest) until one of the pools has a higher value
+    attackerDicePool and defenderDicePool must be DicePool objects
+    nothing is written to the output. the information is in a string which is returned
+    areRollsSilent is true by default. when areRollsSilent is false more information is recorded.
+    if the Attacker Botches then that is returned along with the Highest Defender value (this has priority over the defender botching)
+    if the Defender Botches then that is returned along with the Highest Attacker value
+    if the Attacker has a higher (or lower) max value than the Defender then the difference is shown as "Attacker (wins | loses) by x value"
+    where x is the difference and | means or
+    if the highest values are the same it moves on to compare the next highest until either a difference is found
+    "You tied" will be returned if every die in each pool is the same value
+    if areRollsSilent is false then every value of both rolls are displayed before every 1 is removed
+    and then again after 1s are added so that each pool has the same number of dice
+    every value compared is also displayed (if areRollsSilent is false)
+BattleTechAttackMech(targetNumber, attackType, sideOfRobot, areRollsSilent)
+    targetNumber is what number needs to be rolled on 2d6 in order to hit the target
+    attackType must be either: "Missiles: x" where x is the number of missiles fired, "Punch", "Kick", or "Weapon" for all other weapons
+    sideOfRobot must be either "Left", "Center", or "Right"
+    areRollsSilent is true by default. when areRollsSilent is false more information is recorded.
+    nothing is written to the output. the information is in a string which is returned
+    first it determines if you hit. if areRollsSilent is false it records the attack rolled
+    if you miss then that is returned and it stops there
+    if the attackType was missiles it determines how mant missiles hit, if rolls are not silent it records the rolled number
+    then based on attackType (missiles hit the same locations as weapons) it determines where you hit the mech, if not silent it records the rolled number
+    see BattleTechTables.robotHitLocations and BattleTechTables.robotPunchLocations below for information on hit locations
+    then 2d6 is rolled to see how many critical hits would be landed assuming you hit internal armor, if not silent it records the rolled number
+    unless the weapon hit location rolled a 2 (which is the only automatic critical) it reminds you that critical hits only apply if you hit internal armor
+    if the determined number of critical hits (0 to 3) is not 0 then BattleTechMechCriticals is called with that number
+    if not silent it records "Number of Criticals 0"
+    if the number of critical hits would be 3 and the location is not a torso then it says "x blown off" instead
+WarhammerAttackUnit(diceCount, toHitValue, toWoundValue, saveValue, areRollsSilent)
+    diceCount is the number of 6 sided dice to be rolled for the attack
+    toHitValue, toWoundValue, and saveValue represent the values the names suggest.
+    if toHitValue or toWoundValue is greater than 6 it will return a string indicating the impossible
+    saveValue has a default value of 7 meaning the unit can't save
+    areRollsSilent is true by default. when areRollsSilent is false more information is recorded.
+    nothing is written to the output. the information is in a string which is returned
+    first it rolls a number of 6 sided dice equal to diceCount and sees how many were greater than or equal to the toHitValue
+    then it rolls a number of 6 sided dice equal to the number of dice that hit comparing each to the toWoundValue in the same way
+    then with the number that succeeded it rolls more 6 sided dice seeing if each are less than saveValue
+    the number of wounds is indicated in the string returned
+    the returned string may instead have a message such as 'None wounded'
+    if areRollsSilent is false moer information is recorded: each die's value is displayed for each roll
+OneRollEngine(numberOfDice)
+    numberOfDice is the number of 10 sided dice that will be rolled
+    nothing is written to the output. the information is in a string which is returned
+    the returned string will have the results sorted by Height ascending
+    and be in the form of: AxB, CxD. where A-D are numbers and x is litteral
+BattleTechMechCriticals(numberOfCriticalHits)
+    returns a string in the form of: (Upper | Lower) x; (Upper | Lower) y; ...
+    where x and y etc are the number(s) rolled on 2d6 for hit location.
+    the criticals will be rerolled until all of them are unique
+    you may give it any number from 1 to 24. it is not aware of anything else including mech hit location (such as Left Arm)
+    if given 3 it will not return that the limb should be blown off
+BattleTech Functions for attacking vehicles and vehicle criticals are not included because I found conflicting tables online.
+
+var BattleTechTables={};
+    reserved. must exist to hold the tables but does nothing itself
+BattleTechTables.robotHitLocations[sideOfRobot][silentRollDice("2d6")]
+    used to determine where weapon hits the enemy mech
+    sideOfRobot must be either "Left", "Center", or "Right"
+    the second number is the result rolled on 2d6
+    returns a string of the hit location in the form of: (Left | Right | Center) (Torso | Arm | Leg) | Head
+    or if 2 was rolled either: "Left Torso (critical)", "Center Torso (critical)", or "Right Torso (critical)"
+    undefined is returned if either the sideOfRobot or the number rolled was invalid
+BattleTechTables.robotPunchLocations[sideOfRobot][silentRollDice("1d6")]
+    used to determine where your punch lands on an enemy mech
+    sideOfRobot must be either "Left", "Center", or "Right"
+    the second number is the result rolled on 1d6
+    returns a string of the hit location in the form of: (Left | Right | Center) (Torso | Arm) | Head
+    undefined is returned if either the sideOfRobot or the number rolled was invalid
+BattleTechTables.missileArray[misslesFired][silentRollDice("2d6")]
+    used to determine how many missiles hit your target
+    misslesFired is the number of missiles fired
+    the second number is the result rolled on 2d6
+    returns the number of missiles that hit
+    undefined is returned if either the smisslesFired or the number rolled was invalid
+Kicking does not have a table because it is so simple: "Left Leg" if on the left side, "Right Leg" if on the right and for center use:
+    hitLocation=new Die("Left Leg", "Right Leg").roll();
+
+var Draw={};
+    reserved. must exist to hold the drawing functions but does nothing itself
+    for any of the bell curves created that involve exploding dice it will stop when the last value has about 0.000% chance
+Draw.diceBellCurve(poolGiven, secondColumn, binom)
+    poolGiven must be a DicePool object. if there is any drop/keep then every die that non-compound explodes must have a minimum value of 1
+    secondColumn is a string and is '&gt;=' by default. which is sent to Draw.generateDiceSumTable or Draw.generateBinomialTable along with the generated data
+    binom must be a string indicating criteria that each die value is compared to
+    an example of binom is '&lt;=3' which means: count the number of possible values that are less than or equal to 3
+    if binom is given '='+number it will be changed to '=='+number so that eval may read it correctly
+    each possible die value is sent to eval(value+binom) and count the number that are true
+    binom can also be given a number which defaults to '=='+number
+    if binom is provided then Draw.generateBinomialTable is called otherwise Draw.generateDiceSumTable is called
+    nothing is written to the output or returned. see Draw.generateDiceSumTable and Draw.generateBinomialTable for more information
+    the returned string of Draw.generateDiceSumTable or Draw.generateBinomialTable is then appended to the graph area
+Draw.binomialBellCurve(trials, probability, secondColumn)
+    secondColumn is a string and is '&gt;=' by default. which is sent to Draw.generateBinomialTable along with the generated data
+    most of the code:
+    rollData=generate_Binomials(trials, probability);
+    Draw.generateBinomialTable(rollData, secondColumn);
+    nothing is written to the output or returned. see generate_Binomials and Draw.generateBinomialTable for more information
+    the returned string is then appended to the graph area
+Draw.WarhammerBellCurve(diceCount, toHitValue, toWoundValue, saveValue, extraSaveValue, secondColumn)
+    diceCount is the number of 6 sided dice to be rolled for the attack
+    toHitValue, toWoundValue, and saveValue represent the values the names suggest.
+    the extraSaveValue represents if the unit has an extra save (Reanimation Protocol or Feel No Pain) this is not the same thing as reroll failures
+    set saveValue to 7 to represent that the unit can't save. extraSaveValue is 7 by default
+    secondColumn is a string and is '&gt;=' by default. which is sent to Draw.generateBinomialTable along with the generated data
+    nothing is written to the output or returned. see Draw.generateBinomialTable for more information
+    the returned string is then appended to the graph area
+Draw.generateDiceSumTable(rollData, secondColumn)
+    secondColumn does not have a default (it must be provided) and if secondColumn is '=' it will become '==' instead
+    rollData must be an 2D array each containing [value, freq or chance] where value is the sum of the dice, chance is the probability of getting that exact sum
+    if a sum isn't possible is must be rollData[i][1]=0 to indicate not possible. but it must be defined
+    and freq is the number of possible ways that sum can be rolled. the probability is calculated based on summing the frequencies
+    you may use freq or chance but they must all be one or the other not both
+    an html table is returned as a string with the percent chances rounded to 3 places
+    the green bar of the table is the most likely. there might be more than one green bar
+    rounding may cause 2 numbers to be the same but only 1 of them is green which means that without rounding the green one is slightly greater
+    the table will not contain rows that have freq/chance of exactly 0. if you want the row to display as 0 then make
+    rollData[i][1]=0.000001 (so that it rounds to 0% but isn't 0) this only works for chances and there is no freq equivelent
+    above the table there are also some statistics: Min (Minimum Sum), Max (Maximum Sum), Avg (Average Sum), Std Dev (Standard Deviation)
+Draw.generateBinomialTable(rollData, secondColumn)
+    secondColumn does not have a default (it must be provided) and if secondColumn is '=' it will become '==' instead
+    rollData must be a 1D array where the array index represents the number of successes and the array value is the probability of getting that result
+    all values of the array must be defined. to represent an impossible number use rollData[i]=0
+    Draw.generateDiceSumTable is called after some overhead. see Draw.generateDiceSumTable for more information
+    the html is returned as a string
+
+var Polynomial={};
+    reserved. must exist to hold the polynomial functions but does nothing itself
+    each polynomial function is used by drawing functions (see above) to generate the rollData
+    all polynomials are 2D arrays with each element [constant, exponent]
+    for example x^3 + 2x - 3x^5 + x^-2 + 5 is [[1, 3], [2, 1], [-3, 5], [1, -2], [5, 0]]
+    for the formula for why polynomials can represent dice sums see <a href='http://mathforum.org/library/drmath/view/52207.html'>Math Reference</a>
+    this approach will work fast at finding every possible sum but will not work for named dice and drop/keep
+Polynomial.createDiePolynomial(dieObject, explodeCount)
+    given a Die object (dieObject) and the number of times you want it to be able to explode (explodeCount) it generates all values as a polynomial
+    the first value (the constant) represents the die's value
+    the second value (exponent) represents either the freq if there are no explosions (explodeCount is 0 or dieObject doesn't explode) or the chance otherwise
+    the result is returned and the dieObject isn't changed
+Polynomial.addPolynomials(poly, value, freq)
+    poly must be a 2D array. it must be a polynomial
+    value and freq are the elements of the new element you want to be added
+    freq can be either a frequency or probability (mutually exclusive): either way functions the same
+    it searches poly to find that freq and adds value to it's value if found
+    if not found poly.push([value, freq])
+    poly does not need to be sorted in any way. poly is changed and nothing is returned
+Polynomial.multiplyPolynomials(polyNomGiven, myPool)
+    polyNomGiven must be an array of polynomials (making it a 3D array)
+    each polynomial is multiplied together then each common term is added together
+    for example: (2x^2 + 2)*(x^2 - 2) = 2x^4 - 2x^2 - 4
+    myPool is the DicePool used to generate the polynomials. it is used for min/max and constant modifiers
+    if myPool is undefined it will default to an empty DicePool which will have no impact on the results
+    the result is returned. polyNomGiven and myPool are not changed
+
+groupParser(groupString)
+    work in progress. do not call because it is not tested or finished
+findFirstCompleteCurlyBrackets(totalString)
+    a utility used for groupParser. it is done and works fine
+    it finds the first '}' then the closest '{' that comes before it
+    the return value is [beforeText, innerText, afterText] where each are strings
+    with peices of totalString either before, after, or inside those braces
+    the innerText does not have {} any more
+numberGroup(diceStringGiven)
+    if numberGroup is called as a function it will return the diceStringGiven that remains after the constructor (diceStringGiven doesn't change)
+    see the object documentaion below for details
+</pre>
+<h3>Predefined objects and the functions they contain</h3>
+<pre>
+Die(diceStringGiven, nameArray)
+{
+    this object represents a single die of any kind except Scatter Die.
+    the roll function is the only one that does not simply return read-only information about the die
+
+    hasNames()
+       returns true if the die uses the nameArray, ie if it is a named die
+    setName(nameGiven)
+       gives this die a name. not to be confused with the nameArray which represents the value of each side
+       instead the nameGiven has no impact on the die's functionality and is only used when calling getName
+    getName()
+       returns the name if it has been set otherwise generateString is called
+    generateString()
+       returns a string that represents the details of the die
+       if the string is sent to a Die constructor a duplicate will be created
+       this assumes that the die is not named, if nameArray is not empty then generateString simply returns the number of sides
+    equals(otherDie)
+       returns true if each of the stats (see getStats) of this is the same as otherDie
+       the exception is that the die's name (see setName) is not considered
+       if the dice are named dice each element of nameArray is conpared
+    getStats()
+       returns an object that has a copy of every attribute of this die
+       the object returned is not a die object and only has copies of the values so that these values can't be changed
+       keep in mind that rerolling is optimised which may make some of the following attributes different than expected
+       the attributes of die (that are returned by getStats) are as follows:
+       nameArray: (a copy is made) empty by default. this contains the values of each of the die's sides if it is a named die
+       isNegativeDice: false by default. this indicates if the die is positive or negative. if negative the result rolled will be negative
+       doesUseZero: false by default. this indicates if the die starts at zero instead of 1. this is also true for fudge dice
+       isFudge: false by default. this indicates if the die is a fudge die which is numbered -1, 0, 1
+       sideCount: 0 by default although it is never possible to have such a die since an error will be thrown instead.
+          this indicates the number of possible values the die has
+       doesExplode: false by default. this indicates if the die explodes by adding another die. this is true for doesPenetrate but not doesCompoundExplode
+       doesPenetrate: false by default. when true, 1 is subtracted from each die added due to explosions
+       doesCompoundExplode: false by default. when true, the explosions are considered a single die value. mutually exclusive with doesExplode
+       dieName: undefined by default. has no meaning and is only set by setName
+       rerollCriteria: undefined by default. reroll optimising may cause this value to be different than expected
+          undefined indicates that there are no values that are rerolled otherwise it is a string with a logical numerical comparison followed by a number
+          so that eval(''+valueRolled+rerollCriteria) is true. it is copied from the contructor directly following the 'r'
+       explodeValue: undefined by default. reroll optimising may cause this value to be different than expected
+          this is the value that will cause an explosion. because of this is can't be the final result of a roll
+       constantModifier: 0 by default. reroll optimising may cause this value to be different than expected
+          this is a constant modifier that is added to each value rolled before reroll but after explosions are determined
+    isFudge()
+       returns true if the die is a fudge die
+    getMaxValue()
+       returns the value which is on the last side of the die which is also the maximum possible value unless it is a named die
+       if it is a named die is just returns the name of the last side reguardless of whether or not it is the maximum value
+    getMinValue()
+       returns the value which is on the first side of the die which is also the minimum possible value unless it is a named die
+       if it is a named die is just returns the name of the first side reguardless of whether or not it is the minimum value
+    getSides()
+       returns the number sides the die has
+    flip() or spin()
+       these are both aliases for roll() (since Die could also be called a coin or spinner)
+    roll()
+       outputs nothing but returns a random possible side. the name of the side is returned if it exists
+       otherwise the side value is returned. coin starting at 0 and fudge die have been accounted for
+       if the die explodes (not compound) then an array of every rolled value is returned
+       compound exploding and penetrating exploding have been accounted for
+    constructor()
+       although not a function that can be called it is listed here to show all the different ways the Die object can be created using the keyword new
+       Die() using this will make a standard 6 sided die
+       Die(diceString) this will make the die as normal ie as specified by the string. it will not be a named die.
+          for details on the diceString see the "basic description" at the top. the differences for diceString are: must contain only a single die with
+          an optional 1, must not indicate a scatter die, and must not contain min/max, drop/keep or sorting
+       Die(name1, name2, ...) if given 2 or more arguments, each argument will be used as the value of each side of a named die just like nameArray
+          names may be passed as anything objects, strings, numbers etc
+       Die(nameArray) given an array each elements will be used as the value of each side of a named die. an array with a single string element is the only way
+          to get a single sided named die since normally a single parameter (except an array) would be read as diceString
+}
+DicePool(diceStringGiven, nameArray)
+{
+    dice pool is an object that holds an array of dice and some other functionality.
+    it is not a wrapper but contains new functions that do not exist elsewhere
+
+    first some static members:
+    DicePool.minMaxRegexStart = /^\s(?:with\s)?(?:a\s)?(?:min|max)(?:imum)?\s(?:of\s)?/;
+    DicePool.dropKeepRegexShortHand = /^[dk][hl]?\d*/;
+    DicePool.dropKeepRegexStart = /^\s(?:drop(?:ping)?|remov(?:e|ing)|ignor(?:e|ing)|keep(?:ping)?)/;
+
+    setName(nameGiven)
+       gives this dice pool a name. the nameGiven has no impact on the dice pool's functionality and is only used when calling getName
+    getName()
+       returns the name if it has been set otherwise generateString is called
+    generateString()
+       returns a string that represents the details of the dice pool
+       it calls generateString for each die contained in the dice pool then it adds dice pool information
+       if the string is sent to a Dice Pool constructor a duplicate will be created
+    getAllDice(){return diceArray.slice();};  //copies array so that it is read only
+       returns an array of die objects which this pool contains
+    getStats()
+       returns an object that has a copy of every attribute of this dice pool
+       the object returned is not a dice pool object and only has copies of the values so that these values can't be changed
+       keep in mind that this does not include the stats of the dice contained. for that you must call getStats for each die in diceArray
+       the attributes of dice pool (that are returned by getStats) are as follows:
+       nameArray is not returned since it would always be empty. instead see the stats of each die contained
+       diceArray: empty by default. (a copy is made) this is the array that contains every die that is in the dice pool including scatter die
+       constantModifier: 0 by default. this is a constant modifier that is added as the first element of any roll so that it will be added to the sum
+       allFudge: false by default. this represents whether or not every die in the dice pool is a fudge die
+       outsource: an empty numberGroup object by default. see numberGroup for more information
+       poolName: undefined by default. has no meaning and is only set by setName
+       rolledValues: an empty object by default. (a copy is made) whenever roll() is called this object is created which holds everyRoll and droppedRolls
+          everyRoll is an array that is the same as the one returned by roll()
+          droppedRolls is an array that contains every die value that was dropped due to drop/keep. it may be empty
+          if roll has not been called since the last time this dice pool was changed then each everyRoll and droppedRolls are undefined
+    generateSumString(everyRoll, droppedRolls)
+       returns a string formatting the results of a dice roll
+       everyRoll and droppedRolls must be arrays of numbers although droppedRolls is optional
+       the string will be a list of everyRoll values with + separating them
+       it will display the total after min/max, the removed values and the previous total before min/max
+       if all the dice are fudge the sign will be diplayed without seperation such as: "+-0+ = 1"
+       named dice will be seperated by comma in the dice list and not be counted for the total
+    add(newDiceStringPassed, nameArray)
+       used to add dice to the dice pool. called by the constructor but may also be called elsewhere
+       newDiceStringPassed must have correct syntax for a Die object (diceStringGiven) except that
+       if multiple dice are indicated they will be parsed into multiple Die objects
+    addDie(newDieObject)
+       adds the given die to the pool
+       newDieObject must be a Die object
+    addAllDice(newDice)
+       adds the given dice to the pool
+       newDice must be either an array of Die objects or a DicePool object
+       if newDice is a DicePool object then getAllDice() will be called
+       no other properties from the other DicePool will be used
+    getSize()
+       returns the number of dice in the pool
+    roll()
+       rolls every die in the pool and returns an array of those values
+       all forms of exploding have already been accounted for and so has drop/keep
+       this outputs nothing and does not find the total hense min/max is not performed
+    sumRoll(isSilent)
+       returns roll().summation() with min/max accounted for
+       isSilent is true by default but if it is false then this will call writeln(generateSumString(everyRoll, droppedRolls));
+    countSuccessesRoll(successCriteria, failureCriteria, areRollsSilent)
+       rolls the dice pool and adds the number of dice that meat the successCriteria, subtracting the ones that meat the failureCriteria
+       it returns a string with the results
+       failureCriteria is optional and areRollsSilent is true by default. if you would like to set areRollsSilent without setting
+       failureCriteria give it something absurd or pass it undefined
+       the criterias must be something that is evaluated numerically such as ">3"
+       a number must be given. if a number is given but no comparison operated then "==" is used by default
+       if "=" is the comparison operated then it will be changed to "==" to meat the javascript standards
+       the returned string says the number of net successes or failures or if it come up even
+       if areRollsSilent is false then it will also display every roll followed by each value's comparisions
+       then the total Successes, total Failures then the net total
+    opposedRollByDice(otherDicePoolObject, failurePenalty, areRollsSilent)
+       this rolls both dice pools counting the number of dice that have higher or lower values
+       otherDicePoolObject must be a Dice Pool object and failurePenalty and areRollsSilent must be true or false
+       failurePenalty is true by default and areRollsSilent is true by default
+       both dice pools are rolled then their values are sorted descending
+       the highest die in each pool is compared and if this is higher or lower it increases a respective counter (by 1)
+       note that in each opposed roll is compared with &gt; followed by &lt; which means that named dice will be compared by name length
+       if failurePenalty is false and this has a lower die than the other pool then nothing happens (ie there is no failure counter)
+       the return value is a string indicating how many dice you (this) lost or won by or if i was a tie
+       if areRollsSilent is false then the returned string also contains a list of every die from each pool
+    opposedSumRoll(otherDicePoolObject, areRollsSilent)
+       same as opposedRollByDice except that this compares the sum of each pool's rolls instead of each die
+       the return value is a string indicating whether you win, lose, or tie
+       if areRollsSilent is false then the returned string also contains each total value
+    opposedRollByBestValue(otherDicePoolObject, areRollsSilent)
+       same as opposedSumRoll except that this compares each pool's best value instead of the sums
+       note that in each opposed roll is compared with &gt; followed by &lt; which means that named dice will be compared by name length
+       if the best dies are the same value then it goes to the next best value and so on
+       it returns a string that says the difference between the values that were different
+       missing dice are considered a value of 0
+       if areRollsSilent is false the returned string also contains the dice values compared
+    constructor()
+       although not a function that can be called it is listed here to show all the different ways the DicePool object can be created using the keyword new
+       DicePool() this creates an empty dice pool that does not contain any dice and all values are default
+       DicePool(diceString) this will make each die as normal ie as specified by the string.
+          for details on the diceString see the "basic description" at the top
+       DicePool(numberOfDice, name1, ...) or DicePool(numberOfDice, nameArray) will create add a number of dice equal to numberOfDice. each added die is
+          named using the other parameters passed see the Die constructors for details
+       DicePool(DicePoolGiven) this is not a copy constructor. addAllDice is called with DicePoolGiven then finish
+       DicePool(DieGiven) given either a Die or ScatterDie object will have it call addDie then finish
+}
+numberGroup(diceStringGiven)
+{
+    this is part of DicePool that has been outsourced to handle drop/keep, min/max, and sorting
+    diceStringGiven is the string containing the information for these functions such as " drop lowest 1 min 6"
+
+    getStats()
+       returns an object that has a copy of every attribute of this numberGroup
+       the object returned is not a numberGroup object and only has copies of the values so that these values can't be changed
+       the attributes of numberGroup (that are returned by getStats) are as follows:
+       dropKeepSwitch: "None" by default also ignored if dropKeepValue is 0. the possible values are "Drop" and "Keep".
+       lowHighSwitch: "None" by default also ignored if dropKeepValue is 0. the possible values are "Low" and "High".
+          the combination of dropKeepSwitch and lowHighSwitch must be used to determine which way to sort the values and how many to remove
+       dropKeepValue: 0 by default. the number of values that will be either dropped or kept
+       minMaxSwitch: "None" by default. the other possible values are "Min" and "Max" which indicate if min/max is
+          used and which one will be used
+       minMaxValue: 0 by default although it must be assigned a value if min/max is used. the number assigned may be 0
+       sortDirection: "None" by default. the other possible values are 'a' and 'd' which stands for ascending and descending.
+          note that all values are sorted alphabetically and numerically not only the numbers
+    dropDoing(everyRoll)
+       everyRoll is an array of numbers that contains every value that was rolled after explosions, reroll, and everything except min/max
+       this will drop the correct number of dice or throw an error if not enough values exist
+       it ignores all values that are NaN which will always remain in everyRoll
+       everyRoll will be changed (if needed) and the return value is an array of every value dropped
+       this function also handles sorting. if none then everyRoll will remain in the same order with some removed
+       DicePool.roll() calls this then adds the constant (if any) then sumRoll calls minMaxDoing
+       this is also called other places internally
+    minMaxDoing(total)
+       total is a number that is compared to the min or max value
+       the correct possible total is returned instead (possibly the same number)
+       this is called by DicePool.sumRoll() and other places internally
+    constructor()
+       although not a function that can be called it is listed here for clarity
+       there is only one kind of constructor which is passed a string that contains things from diceString: min/max, drop/keep, and sorting
+       if the string does not start with shorthand then it must start with a space (or be empty)
+}
+For those who know javascript and want to know more than this information has provided, look at the code yourself: everything is included in this 1 file.
+</pre></div>
+<br /><br /><br /><br />
+<script>document.getElementById("inputCode").focus();</script>
+</body>
+</html>

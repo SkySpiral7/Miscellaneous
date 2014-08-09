@@ -1,0 +1,165 @@
+<html>
+<head>
+<title>Catch Rate Calculator</title>
+<base target="_blank" />
+</head>
+<script language="javascript">
+function thepoint()
+{
+    document.getElementById("Terter").title="Hover over this for a percent: calculate first.";
+    document.getElementById("Bout").value="";
+    document.getElementById("TryOut1").value="";
+    document.getElementById("TryOut2").value="";
+    document.getElementById("TryOut3").value="";
+    document.getElementById("TryOut4").value="";
+    document.getElementById("TryOutResult").value="";
+    var tert=/^\d*$/;  //I love regex!
+    var CuHP = document.getElementById("CurrentHP").value;
+    var MaxHP = parseInt(document.getElementById("MaxHP").value);
+    var CaRate = parseInt(document.getElementById("CatchRate").value);
+    var BaRate = parseInt(document.getElementById("BallRate").value);
+    if(!(/^\+?\d*%?$/).test(CuHP) || !tert.test(MaxHP) || !tert.test(CaRate) || !tert.test(BaRate)){alert("Positive numbers only."); return 0;}
+    if(parseInt(CuHP) == 0 || MaxHP == 0 || CaRate == 0 || BaRate == 0){alert("Each Field is required. Whole numbers only."); return 0;}
+   if((/^\+?\d*%$/).test(CuHP))
+   {
+       CuHP=parseInt(CuHP);
+       if(CuHP > 100){alert("Too much hp."); return 0;}
+       CuHP/=100;
+       CuHP*=MaxHP;
+       CuHP=parseInt(CuHP);
+   }
+    else if(parseInt(CuHP) > MaxHP){alert("Too much current HP."); return 0;}
+    else CuHP=parseInt(CuHP);
+    CuHP*=2;
+    MaxHP*=3;
+    var ashoot;
+    if(document.thisert.Status[0].checked) ashoot=1;
+    else if(document.thisert.Status[1].checked) ashoot=1.5;
+    else if(document.thisert.Status[2].checked) ashoot=2;
+    else{alert("error"); return 0;}
+    ashoot*=CaRate*BaRate;
+    ashoot*=(MaxHP-CuHP);
+    ashoot/=MaxHP;
+    ashoot=16711680/ashoot;
+    ashoot=Math.sqrt(ashoot);
+    ashoot=Math.sqrt(ashoot);
+    ashoot=1048560/ashoot;
+    document.getElementById("Bout").value=ashoot;
+    ashoot++;
+    ashoot/=65536;
+    ashoot=Math.pow(ashoot, 4);  //four times
+    ashoot=parseInt(ashoot*1000*100);
+    ashoot/=(1000);
+    document.getElementById("Terter").title="Hover over this for a percent: "+ashoot+"%.";
+}
+function tryforit()
+{
+    document.getElementById("TryOut1").value="";
+    document.getElementById("TryOut2").value="";
+    document.getElementById("TryOut3").value="";
+    document.getElementById("TryOut4").value="";
+    document.getElementById("TryOutResult").value="";
+    var thegoal = document.getElementById("Bout").value;
+    if(!(/^\d*(\.\d*)?$/).test(thegoal) || parseInt(thegoal) == 0){alert("You must calculate first."); document.getElementById("Bout").value=""; return 0;}
+   if (thegoal >= 65535){
+       document.getElementById("TryOut1").value="This";
+       document.getElementById("TryOut2").value="does";
+       document.getElementById("TryOut3").value="not";
+       document.getElementById("TryOut4").value="matter.";
+       document.getElementById("TryOutResult").value="Sure Thing.";
+       return 0;
+   }
+    var runingtry = Math.random()*65535;
+    document.getElementById("TryOut1").value=runingtry;
+    if(thegoal < runingtry){document.getElementById("TryOutResult").value="Failed."; return 0;}
+    runingtry = Math.random()*65535;
+    document.getElementById("TryOut2").value=runingtry;
+    if(thegoal < runingtry){document.getElementById("TryOutResult").value="Failed."; return 0;}
+    runingtry = Math.random()*65535;
+    document.getElementById("TryOut3").value=runingtry;
+    if(thegoal < runingtry){document.getElementById("TryOutResult").value="Failed."; return 0;}
+    runingtry = Math.random()*65535;
+    document.getElementById("TryOut4").value=runingtry;
+    if(thegoal < runingtry){document.getElementById("TryOutResult").value="Failed."; return 0;}
+    document.getElementById("TryOutResult").value="Success!";
+}
+function takeageuss()
+{
+    var level=parseInt(document.next.Level.value.trim());
+   if (!(/^\d+$/).test(document.next.Level.value.trim()) || level < 1 || level > 100)
+   {
+       alert("Bad level");
+       return 0;
+   }
+    document.next.Level.value=level;
+    var vaguegeuss = Math.random()*1.5;  //2.5-4 = 1.5
+    vaguegeuss = parseInt(vaguegeuss*100);
+    vaguegeuss/=100;
+    vaguegeuss+=2.5;
+    vaguegeuss*=level;
+    document.next.MaxHP.value=parseInt(vaguegeuss);
+}
+function multitry()
+{
+    var ashoot=document.getElementById("Bout").value;
+    if(ashoot >= 65535){document.getElementById("percenttry").value='100'; return;}
+    ashoot++;  //DO NOT combine with above (late binding of "1")
+    ashoot/=65536;
+    ashoot=Math.pow(ashoot, 4);  //four times
+    ashoot=1-ashoot;
+    ashoot=Math.pow(ashoot, document.getElementById("numtry").value);
+    ashoot=1-ashoot;
+    ashoot*=100;
+    if(ashoot > 100) ashoot=100;
+    document.getElementById("percenttry").value=ashoot;
+}
+</script>
+<body onload="document.next.CurrentHP.focus();">
+    <form name="next">
+    <b>Hover over red words for an <font color="red"><span title="Yes, like this.">explanation.</span></font></b><br />
+    <a>Underlined words are hyperlinked. Each Field is required. Whole numbers only.</a><br />
+    <a><font color="red"><span title="You may use percent.">Current</span></font> / </a><a href="http://www.legendarypokemon.net/ivcalc"><font color="black">Max HP</font></a>
+    <a> (Put in level for a Max HP guess.)</a><br />
+    <input type="text" id="CurrentHP" maxlength="4" size="4" /><a> / </a>
+    <input type="text" id="MaxHP" maxlength="3" size="3" onkeydown="if(event.shiftKey==0 && event.keyCode==9){document.next.CatchRate.focus(); return false;}" />
+    <input type="text" id="Level" maxlength="3" size="3" />
+    <input type="Button" value="LvHP Guess" onclick="takeageuss();" /><br />
+    <a href="http://bulbapedia.bulbagarden.net/wiki/List_of_Pok%C3%A9mon_by_catch_rate"><font color="black">Catch Rate</font></a>
+    <a> and </a>
+    <a href="http://bulbapedia.bulbagarden.net/wiki/Pok%C3%A9_Ball#Types_of_Pok.C3.A9_Ball"><font color="red"><span title="Normal: 1, Great/Safari: 1.5, Ultra: 2, Master: 255">Ball Rate</span></font></a><br />
+    <input type="text" id="CatchRate" maxlength="3" size="3" onkeydown="if(event.shiftKey==1 && event.keyCode==9){document.next.MaxHP.focus(); return false;}" /><a> and </a>
+    <input type="text" id="BallRate" maxlength="3" size="3" />
+    </form>
+    <a>Status:</a><br />
+    <form name="thisert">
+       <input type="radio" name="Status" id="1" checked /><label for="1">None.</label><br />
+       <input type="radio" name="Status" id="1.5" /><label for="1.5">Paralyze, poison, or burn.</label><br />
+       <input type="radio" name="Status" id="2" /><label for="2">Sleep or freeze.</label><br /><br />
+    </form>
+    <input type="Button" onclick="thepoint();" value="Calculate!" /><br /><br />
+    <a href="http://bulbapedia.bulbagarden.net/wiki/Catch_rate"><font color="black">Aim</font></a><br /><br />
+    <input type="text" id="Bout" /><a><font color="red"><span id="Terter" title="Hover over this for a percent: calculate first."> Out of 65,535.</span></font></a><br />
+    <p>If you threw <input type="text" size="2" maxlength="2" id="numtry" onblur="multitry();" /> balls there is a <input type="text" size="4" id="percenttry" />% chance of one of them working.</p>
+    <input type="Button" onclick="tryforit();" value="Try For It!"/>
+    <input type="text" id="TryOut1" />
+    <input type="text" id="TryOut2" />
+    <input type="text" id="TryOut3" />
+    <input type="text" id="TryOut4" /><br /><br />
+    <a>Result: </a><input type="text" id="TryOutResult" />
+    <br /><br /><a>Random thoughts:</a>
+    <ul>
+    <li>If a pokemon was to have a catch rate less then 3, then the masterball could fail.<br />
+    But in that case, the programmers would up the power of the masterball to once again make it a guaranty (765).</li>
+    <li>Even if the catch is a sure thing, it will still shake 4 times (for each of the random numbers).</li>
+    <li>It is technically possible to catch a pokemon with a catch rate of 3 (lowest which is legendary) at full hp with no status effects by using a normal ball, but the chances are about 1 in 256 (about 0.4%).</li>
+    <li>Here's 2 more links: <a href="http://www.psypokes.com/dex/typeanalysis.php">Type calculator</a>, <a href="http://www.marriland.com/tools/team-builder">Pokemon based types effectiveness and average stats</a></li>
+    </ul>
+<br /><br />
+</body>
+</html>
+<!--
+http://www.calcaria.net/javascript/2006/09/javascript-hover-over-html-popup.html
+event.keyCode==13 enter key
+I love pattern matching!
+Don't make fun of my code: it's better than yours.
+-->

@@ -1,0 +1,93 @@
+<html>
+<title>L5R dice</title>
+<script>
+if(!String.prototype.trim){String.prototype.trim=function(){return this.replace(/^\s+|\s+$/g, '');};}
+function main() {  //called by button. this calls up everything else
+    var holder=document.getElementById("roll").value;
+    if((/\n|\t/).test(holder)){alert("Roll: Stop that. No endlines or tabs."); return;}
+    holder=holder.trim();
+    if(!(/^\d+$/).test(holder)){alert("Roll: Stop that. Numbers only."); return;}
+    document.getElementById("roll").value=holder;  //just to make things look nicer
+
+    holder=document.getElementById("keep").value;
+    if((/\n|\t/).test(holder)){alert("Keep: Stop that. No endlines or tabs."); return;}
+    holder=holder.trim();
+    if(!(/^\d+$/).test(holder)){alert("Keep: Stop that. Numbers only."); return;}
+    document.getElementById("keep").value=holder;  //just to make things look nicer
+
+    document.getElementById("results").value="";  //clear all results
+    document.getElementById("total").value="";
+    document.getElementById("void").value="";
+    rollIt(parseInt(document.getElementById("roll").value), parseInt(document.getElementById("keep").value));
+};
+function dropDoing(everyRoll, dropCount) {
+    //if drop count is 0: it will sort, not enter the loop, then return
+    var returnHolder = new Array();
+    var droppedOnes = new Array();
+    everyRoll.sort(function sortTheNumber(a, b){return a - b;});  //sort array. although ascending is default a function is needed due to below
+    while(dropCount > 0){droppedOnes.push(everyRoll.shift()); dropCount--;}  //remove first element until you drop the right number of them
+    returnHolder.push(everyRoll);  //that's right: an array of arrays
+    returnHolder.push(droppedOnes);  //either array could be empty
+    return returnHolder;
+};
+function rollIt(roll, keep) {  //entire program in one huge funtion (should split up some)
+    var total=0, ender="";
+    var temp=0, i=0;  //used in for loops
+    var errorSwitch=0;  //no error
+    var badRoll = new Array();  //to keep all the removed ones; does not reset until total does
+    var everyRoll = new Array();  //wierd/cool/bad: dynamic size (via [] but I won't do that)
+    var returnHolder = new Array();  //so that multiple things can be returned
+    var explodeCount=0;
+    var emphasis=document.getElementById("emphasis").checked;
+
+    if(roll == 0) errorSwitch=1;// goto errorLand;}  //avoid bad numbers
+    else if(keep == 0) errorSwitch=2;// goto errorLand;}  //avoid bad numbers
+    else if(roll < keep) errorSwitch=3;// goto errorLand;}  //not enough values to drop
+   else
+   {
+      for (i=0; i < roll; i++)
+      {
+          temp=Math.ceil(Math.random()*10);  //ceil to start at 1
+          while(temp%10==0){temp+=Math.ceil(Math.random()*10); explodeCount++;}
+          if(emphasis && temp==1) i--;  //reroll
+          else everyRoll.push(temp);  //same as everyRoll[i]=temp;
+      }
+       returnHolder=dropDoing(everyRoll, roll-keep);
+       everyRoll=returnHolder.shift();
+       badRoll=returnHolder.shift();
+       roll=everyRoll.length;  //not the same if any were dropped
+      for (i=0; i < roll; i++)
+      {
+          ender+=everyRoll[i];
+          if(i+1!=roll) ender+="+";  //if(i+1!=multi) avoids putting a '+' after the last number of multi
+          total+=everyRoll[i];
+      }
+   }
+    //errorLand:;  //there is no goto statement
+    if(errorSwitch == 0) ender+="="+total;
+    else if(errorSwitch==1) ender+="You can't roll 0 dice.";
+    else if(errorSwitch==2) ender+="You can't keep 0 dice.";
+    else if(errorSwitch==3) ender+="You can't keep more than you have.";
+    if(badRoll.length > 0) ender+=" removed: "+badRoll;
+    document.getElementById("results").value+=ender;
+    document.getElementById("total").value=total;
+    if(explodeCount%2==1) explodeCount--;
+    explodeCount/=2;
+    document.getElementById("void").value=explodeCount;
+};
+</script>
+<br />
+<a>Roll what?</a><br />
+<input type="text" size="2" id="roll" />
+<a>k</a>
+<input type="text" size="2" id="keep" />
+<input type="button" onclick="main();" value="Roll" />
+<label><input type="checkbox" id="emphasis" /> Emphasis</label>
+<br /><br />
+<a>Result:</a>
+<input type="text" size="40" id="results" /><br />
+<a>Total:</a>
+<input type="text" size="2" id="total" /><br />
+<a>Void Points Recovered:</a>
+<input type="text" size="2" id="void" />
+</html>
