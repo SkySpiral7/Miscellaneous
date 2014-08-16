@@ -15,11 +15,11 @@ import java.util.Scanner;
  * <p>This class is a wrapper around File. It extends File and has a method for many of the String methods. The String based methods
  * perform the action over the file contents (even files larger than Integer.MAX_VALUE). These methods include getting a substring
  * of the file contents and modifying the file contents.</p>
- * 
+ *
  * <p>Methods that operate on file contents are not possible for folders or files that do not exist.
  * If you want a nonexistent file to have empty contents use {@link File#createNewFile()} which does
  * nothing if the file already exists.</p>
- * 
+ *
  * <p>I have no idea if this class is thread safe and which parts would be.</p>
  */
 public class FileToStringAdapter extends File {
@@ -83,7 +83,7 @@ public class FileToStringAdapter extends File {
      * This method is exactly like #charAt(long) except this method uses RandomAccessFile for instant access regardless of file
      * size. The only catch is that it doesn't recognize character encoding and therefore only works on ascii plain text files.
      * Therefore the index is the byte index instead of the character index and the character returned is assumed to be 1 byte in size.
-     * 
+     *
      * @throws IllegalStateException if the file does not exist or is a directory.
      * @throws IndexOutOfBoundsException if the index argument is negative or not less than the length of this file.
      * @see String#charAt(int)
@@ -92,8 +92,7 @@ public class FileToStringAdapter extends File {
     	requireFileContents();
     	if(index < 0 || index >= length())
     		throw new IndexOutOfBoundsException("File content length is " + length() + " but index was: " + index);
-    	
-        //TODO: convert other closables to this
+
     	try (RandomAccessFile seekableFile = new RandomAccessFile(this, "r")) {
 			seekableFile.seek(index);
 			return (char) seekableFile.readByte();
@@ -115,10 +114,8 @@ public class FileToStringAdapter extends File {
     	if(index < 0 || index >= length())
     		throw new IndexOutOfBoundsException("File content length is " + length() + " (in bytes) but index was: " + index);
 
-    	Scanner thisFileScanner;
     	long currentIndex = 0;
-        try {
-        	thisFileScanner = new Scanner(this);
+        try (Scanner thisFileScanner = new Scanner(this)) {
         	thisFileScanner.useDelimiter("");  //why isn't this setDelimiter?
            while (thisFileScanner.hasNext())  //always true
            {
@@ -126,12 +123,10 @@ public class FileToStringAdapter extends File {
         	   {
         		   char returnValue = thisFileScanner.next().charAt(0);  //always a string length of 1
         		   //scanner y u no have nextChar?
-        		   thisFileScanner.close();
         		   return returnValue;
     		   }
         	   thisFileScanner.next(); currentIndex++;
            }
-           thisFileScanner.close();
         } catch (FileNotFoundException e){}  //not possible
 
         throw new IndexOutOfBoundsException("File content length is " + currentIndex + " (in characters) but index was: " + index);
@@ -140,21 +135,18 @@ public class FileToStringAdapter extends File {
     /**
      * This method was created to address the dichotomy between file length (number of bytes) and number
      * of characters the file contains. Note that the entire file must be read in order for this to be possible.
-     * 
+     *
      * @throws IllegalStateException if the file does not exist or is a directory.
      * @return the number of characters that the file contains
      */
     public long countCharacters() {
     	requireFileContents();
 
-    	Scanner thisFileScanner;
     	long currentIndex = 0;
-        try {
-        	thisFileScanner = new Scanner(this);
+        try (Scanner thisFileScanner = new Scanner(this)) {
         	thisFileScanner.useDelimiter("");  //why isn't this setDelimiter?
  		   //scanner y u no have nextChar?
            while(thisFileScanner.hasNext()){currentIndex++; thisFileScanner.next();}
-           thisFileScanner.close();
         } catch (FileNotFoundException e){}  //not possible
         return currentIndex;
     }
@@ -163,6 +155,7 @@ public class FileToStringAdapter extends File {
      * Populates a character array with a section of the file's contents.
      * srcBegin and dstBegin are inclusive and srcEnd is exclusive.
      * Each are zero indexed.
+     * @throws IllegalStateException if the file does not exist or is a directory.
      * @throws IndexOutOfBoundsException
      * @see String#getChars(int, int, char[], int)
      */
@@ -178,9 +171,7 @@ public class FileToStringAdapter extends File {
 
     	long currentSource = 0;
     	int currentDst = dstBegin;
-    	Scanner thisFileScanner;
-        try {
-        	thisFileScanner = new Scanner(this);
+        try(Scanner thisFileScanner = new Scanner(this)) {
         	thisFileScanner.useDelimiter("");  //why isn't this setDelimiter?
            while (thisFileScanner.hasNext())  //always true
            {
@@ -194,7 +185,6 @@ public class FileToStringAdapter extends File {
         	   else thisFileScanner.next();
         	   currentSource++;
            }
-           thisFileScanner.close();
         } catch (FileNotFoundException e){}  //not possible
     }
 
@@ -229,29 +219,116 @@ public class FileToStringAdapter extends File {
 
     /**
      * Returns true if the file's contents match the CharSequence.
+     * @throws IllegalStateException if the file does not exist or is a directory.
      * @see String#contentEquals(CharSequence)
      */
     public boolean contentEquals(CharSequence cs) {
-        //TODO: method stub
-    	return false;
+    	if(cs == null) return false;
+    	requireFileContents();
+    	int csIndex = 0;
+    	int csLength = cs.length();
+        try(Scanner thisFileScanner = new Scanner(this)) {
+        	thisFileScanner.useDelimiter("");  //why isn't this setDelimiter?
+ 		   //scanner y u no have nextChar?
+           while (thisFileScanner.hasNext())
+           {
+        	   if(csIndex == csLength) return false;  //file has more characters than cs
+        	   if(cs.charAt(csIndex) != thisFileScanner.next().charAt(0)) return false;  //characters don't match
+        	   //next is always a string length of 1
+        	   csIndex++;
+           }
+        } catch (FileNotFoundException e){}  //not possible
+        //file contents have ended but cs did not
+
+    	return (csIndex == csLength);
+    	//therefore they only match if cs has no further characters
     }
 
     /**
      * Returns true if both files have the same contents.
+     * @throws IllegalStateException if this file or the one passed in does not exist or is a directory.
      * @see String#contentEquals(CharSequence)
      */
     public boolean contentEquals(File otherFile) {
-        //TODO: method stub
-        return false;
+    	if(otherFile == null) return false;
+    	requireFileContents();
+    	FileToStringAdapter otherAdapter = new FileToStringAdapter(otherFile);
+    	otherAdapter.requireFileContents();
+
+        //if(this.length() != otherAdapter.length()) return false;
+    	//not possible: due to character encoding 2 files of different # bytes can have the same contents
+    	try(Scanner thisFileScanner = new Scanner(this);
+    		Scanner otherFileScanner = new Scanner(otherAdapter);)
+		{
+        	thisFileScanner.useDelimiter("");  //why isn't this setDelimiter?
+ 		   //scanner y u no have nextChar?
+        	otherFileScanner.useDelimiter("");
+           while (thisFileScanner.hasNext() && otherFileScanner.hasNext())
+           {
+        	   if(!thisFileScanner.next().equals(otherFileScanner.next())) return false;  //characters don't match
+        	   //next are always a string length of 1
+               if(thisFileScanner.hasNext() != otherFileScanner.hasNext()) return false;  //one file is shorter
+           }
+        } catch (FileNotFoundException e){}  //not possible
+        //both files have ended
+    	return true;
     }
 
     /**
      * Returns true if the file's contents matches the String ignoring case.
      * @see String#equalsIgnoreCase(String)
      */
-    public boolean contentEqualsIgnoreCase(String anotherString) {
-        //TODO: method stub
-        return false;
+    public boolean contentEqualsIgnoreCase(CharSequence cs) {
+    	if(cs == null) return false;
+    	requireFileContents();
+    	int csIndex = 0;
+    	int csLength = cs.length();
+        try(Scanner thisFileScanner = new Scanner(this)) {
+        	thisFileScanner.useDelimiter("");  //why isn't this setDelimiter?
+ 		   //scanner y u no have nextChar?
+           while (thisFileScanner.hasNext())
+           {
+        	   if(csIndex == csLength) return false;  //file has more characters than cs
+        	   String csString = ""+cs.charAt(csIndex);
+        	   String scanString = thisFileScanner.next();
+        	   if(!csString.equalsIgnoreCase(scanString)) return false;  //characters don't match
+        	   //next is always a string length of 1
+        	   csIndex++;
+           }
+        } catch (FileNotFoundException e){}  //not possible
+        //file contents have ended but cs did not
+
+    	return (csIndex == csLength);
+    	//therefore they only match if cs has no further characters
+    }
+
+    /**
+     * Returns true if both files have the same contents.
+     * @see String#equalsIgnoreCase(String)
+     */
+    public boolean contentEqualsIgnoreCase(File otherFile) {
+    	if(otherFile == null) return false;
+    	requireFileContents();
+    	FileToStringAdapter otherAdapter = new FileToStringAdapter(otherFile);
+    	otherAdapter.requireFileContents();
+
+        //if(this.length() != otherAdapter.length()) return false;
+    	//not possible: due to character encoding 2 files of different # bytes can have the same contents
+    	try(Scanner thisFileScanner = new Scanner(this);
+    		Scanner otherFileScanner = new Scanner(otherAdapter);)
+		{
+        	thisFileScanner.useDelimiter("");  //why isn't this setDelimiter?
+ 		   //scanner y u no have nextChar?
+        	otherFileScanner.useDelimiter("");
+           while (thisFileScanner.hasNext() && otherFileScanner.hasNext())
+           {
+        	   if(!thisFileScanner.next().equalsIgnoreCase(otherFileScanner.next())) return false;  //characters don't match
+        	   //next are always a string length of 1
+               if(thisFileScanner.hasNext() != otherFileScanner.hasNext()) return false;  //one file is shorter
+           }
+        } catch (FileNotFoundException e){}  //not possible
+        //both files have ended
+    	return true;
     }
 
     /**
@@ -367,7 +444,7 @@ public class FileToStringAdapter extends File {
     /**
      * Returns a substring of the file's contents starting at beginIndex until the end of the file.
      * @throws IndexOutOfBoundsException if: beginIndex is negative, beginIndex is larger than the length of this file's contents
-     * or if the range can't fit into a String. 
+     * or if the range can't fit into a String.
      * @see String#substring(int)
      */
     public String substring(long beginIndex){return substring(beginIndex, length());}
@@ -378,7 +455,7 @@ public class FileToStringAdapter extends File {
      * Each are zero indexed. Each are character index however endIndex is lenient: if characterCount < endIndex <= fileLength
      * then it is assumed that all characters were desired and endIndex is automatically set to characterCount. This allows
      * file.length() to be passed into for the endIndex.
-     * 
+     *
      * @throws IndexOutOfBoundsException if:
      * <ul>
      * <li>beginIndex is negative</li>
@@ -398,21 +475,18 @@ public class FileToStringAdapter extends File {
     		throw new IndexOutOfBoundsException("beginIndex: " + beginIndex + "; endIndex: " + endIndex + "; Range too large to fit into a string");
     	if(beginIndex == endIndex) return "";  //done
 
-    	Scanner thisFileScanner;
         StringBuffer contentBuffer = new StringBuffer();
     	long currentIndex = 0;
-        try {
-        	thisFileScanner = new Scanner(this);
+        try(Scanner thisFileScanner = new Scanner(this)) {
         	thisFileScanner.useDelimiter("");  //why isn't this setDelimiter?
  		   //scanner y u no have nextChar?
-           while (thisFileScanner.hasNext())  //always true
+           while (thisFileScanner.hasNext())
            {
         	   if(currentIndex == endIndex) break;
         	   if(currentIndex >= beginIndex) contentBuffer.append(thisFileScanner.next());  //always a string length of 1
         	   else thisFileScanner.next();
         	   currentIndex++;
            }
-           thisFileScanner.close();
         } catch (FileNotFoundException e){}  //not possible
         //no special catch is required for characterCount < endIndex <= fileLength: hasNext returns false and everything is fine
         return contentBuffer.toString();

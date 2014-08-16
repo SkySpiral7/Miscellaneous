@@ -25,6 +25,7 @@ public class UT_FileToStringAdapter {
     private String smallFileContents = "ABCDEFGHIJKLMNOPQRSTUVWXYZ\r\nABCDEFGHIJKLMNOPQRSTUVWXYZ\r\nabcdefghijklmnopqrstuvwxyz\r\nabcdefghijklmnopqrstuvwxyz";
     private FileToStringAdapter smallFile = new FileToStringAdapter(projectPath+"smallFile.txt");
     private FileToStringAdapter largeFile = new FileToStringAdapter(projectPath+"no largeFile.txt");
+    //TODO: after done, turn the large file on for certain tests to find out which ones it can reasonably do
     private long largeFileLastSectionIndex = smallFileContents.length()+6+Integer.MAX_VALUE+(8*1024);
     //6 is for the 2 blank lines and first section's end line
     //Integer.MAX_VALUE is for the 0s and (8*1024) is for the end lines of the 0s
@@ -122,7 +123,6 @@ public class UT_FileToStringAdapter {
     }
 
     @Test
-    @Ignore
     public void test_contentEquals() {
         assertTrue(smallFile.contentEquals(smallFileContents));
         assertFalse(smallFile.contentEquals("AB"));
@@ -131,9 +131,8 @@ public class UT_FileToStringAdapter {
     }
 
     @Test
-    @Ignore
     public void test_contentEqualsIgnoreCase() {
-        assertTrue(smallFile.contentEquals(smallFileContents.toLowerCase()));
+        assertTrue(smallFile.contentEqualsIgnoreCase(smallFileContents.toLowerCase()));
 
         if(largeFile.exists()) assertFalse(largeFile.contentEquals(smallFileContents.toLowerCase()));
     }
@@ -287,7 +286,7 @@ public class UT_FileToStringAdapter {
         tempFile.setFileContents("456");
         assertEquals("456", tempFile.contentsAsString());
     }
-    
+
     @Test
     @Ignore
     public void test_contains() {
