@@ -112,8 +112,8 @@ If all dice are kept it performs wonders and is able to do 3,300k3,300 within a 
 hand 3k1 the next slowest takes only 3 seconds).
 
 If all dice are kept a formula is used that is very fast but otherwise it must find every possible
-combination. At my college I asked the two teachers of Probability and Statistics (and the Computer
-Science teacher) and a month later they agreed that this problem would require far more knowledge and
+combination. At my college I asked the two professors of Probability and Statistics (and the Computer
+Science professor) and a month later they agreed that this problem would require far more knowledge and
 skill then they had. In fact this problem might even be NP-Complete. If anyone is able to solve this
 problem I would greatly appreciate it.
 

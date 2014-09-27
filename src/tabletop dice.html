@@ -1807,7 +1807,7 @@ Draw.diceBellCurve = function(poolGiven, secondColumn, binom){
 }
 Draw.compareDiceBellCurve = function(firstPoolGiven, secondPoolGiven){  //TODO: add a header, doc, also consider comparing >= col instead of exact
     var resultsDiv = document.getElementById('graphResults');
-    var out = '<br />\n<b>Roll:</b> ' + firstPoolGiven.getName() + ' vs ' + secondPoolGiven.getName();
+    var out = '<br />Right minus left<br />\n<b>Roll:</b> ' + firstPoolGiven.getName() + ' vs ' + secondPoolGiven.getName();
     out+='<br />';
 
     if(!(firstPoolGiven instanceof DicePool)) throw new ErrorWrapper('?? must be dice pool');
@@ -1819,7 +1819,7 @@ Draw.compareDiceBellCurve = function(firstPoolGiven, secondPoolGiven){  //TODO: 
     rollData2=parseStr(secondPoolGiven);
    if (typeof(rollData1) == 'object' && typeof(rollData2) == 'object')  //an array otherwise undefined
    {
-       out = Draw.generateDiceCompareTable(firstPoolGiven.getName(), secondPoolGiven.getName(), rollData1, rollData2);
+       out += Draw.generateDiceCompareTable(firstPoolGiven.getName(), secondPoolGiven.getName(), rollData1, rollData2);
        //not appended but replaced. out is only appending for the debug strings
        //out+=rollData1.toSource() + '<br/>\n' + rollData2.toSource();
    }
@@ -2368,7 +2368,6 @@ function sumAscending(a,b){return a[0]-b[0];}
 <textarea id="inputCode" rows="7" cols="50">var myDiceString="2d6";
 rollDice(myDiceString);
 Draw.diceBellCurve(new DicePool(myDiceString));
-//Draw.compareDiceBellCurve(new DicePool(""), new DicePool(""));
 </textarea><br />
 <input type="button" onclick="main();" value="Execute" /><br />
 <br /><a>Output:</a><br />
@@ -2884,6 +2883,11 @@ Draw.generateBinomialTable(rollData, secondColumn)
     all values of the array must be defined. to represent an impossible number use rollData[i]=0
     Draw.generateDiceSumTable is called after some overhead. see Draw.generateDiceSumTable for more information
     the html is returned as a string
+Draw.compareDiceBellCurve(dicePoolLeft, dicePoolRight)
+    pass in 2 DicePool objects. It will calculate the probabilities for each pool.
+    it will then take right minus left as the new probability and draw it.
+    the left is in red (negative) and right is blue (positive).
+    larger bar means the difference in probability is great.
 
 var Polynomial={};
     reserved. must exist to hold the polynomial functions but does nothing itself
