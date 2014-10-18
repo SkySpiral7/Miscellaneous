@@ -69,6 +69,32 @@ Space. Specific Exclusions, option to allow repeating characters or leading/ tra
 **Outputs**: random text of the specified length meeting the requirements indicated
 
 
+##old json.js
+A single function that parses JSON no matter how old the javascript engine is.
+It will validate to ensure that eval does not run injected code.
+
+Obviously JSON.parse should be used instead whenever possible.
+But the reason I made this was in response to these 2 webpages:
+[Blog addressing common security hole](http://blog.mindedsecurity.com/2011/08/ye-olde-crockford-json-regexp-is.html)
+and [Standard removed the code in response](http://www.rfc-editor.org/errata_search.php?rfc=4627).
+
+But this hole was very easy to fix!
+I am annoyed that they simply said "don't use" instead of fixing it (which is easy to do).
+Seriously look at the code, it's 8 short lines. Yet it solves the holes.
+
+The 2 webpages above should be updated to solve the problem not just show it. Same goes for these 2 pages:
+[A stackoverflow question](http://stackoverflow.com/questions/6041741/fastest-way-to-check-if-a-string-is-json-in-php/6041857#6041857)
+and [Wikipedia](http://en.wikipedia.org/wiki/JSON#JavaScript_eval.28.29).
+But I know there are [more out there](https://www.google.com/search?q=%22Eaeflnr-u%22).
+
+I have tested this code against the known problems and a few others but it is in the untested branch because I have
+not made a unit test file for it.
+
+**Inputs**: string that might be JSON
+
+**Outputs**: an object or undefined
+
+
 ##shell js tester.html
 A simple wrapper for testing javascript. Not exactly "untested" but it will remain in this branch.
 
