@@ -22,6 +22,7 @@ import java.util.Scanner;
  *
  * <p>I have no idea if this class is thread safe and which parts would be.</p>
  */
+//TODO: performance: use the bufferedreader example: mytools
 public class FileToStringAdapter extends File {
     private static final long serialVersionUID = 6167875537836192550L;
 
@@ -275,7 +276,8 @@ public class FileToStringAdapter extends File {
     }
 
     /**
-     * Returns true if the file's contents matches the String ignoring case.
+     * Returns true if the file's contents matches the CharSequence ignoring case.
+     * @throws IllegalStateException if the file does not exist or is a directory.
      * @see String#equalsIgnoreCase(String)
      */
     public boolean contentEqualsIgnoreCase(CharSequence cs) {
@@ -304,6 +306,7 @@ public class FileToStringAdapter extends File {
 
     /**
      * Returns true if both files have the same contents.
+     * @throws IllegalStateException if this file or the one passed in does not exist or is a directory.
      * @see String#equalsIgnoreCase(String)
      */
     public boolean contentEqualsIgnoreCase(File otherFile) {
@@ -332,28 +335,31 @@ public class FileToStringAdapter extends File {
     }
 
     /**
-     * Compares the file's contents to the String.
+     * Compares the file's contents to the CharSequence.
+     * @throws IllegalStateException if the file does not exist or is a directory.
      * @see String#compareTo(String)
      */
-    public int compareContents(String anotherString) {
-        //TODO: method stub
+    public int compareContents(CharSequence cs) {
+    	//TODO: method stub
         return 0;
     }
 
     /**
-     * Compares the file's contents to the String ignoring case.
+     * Compares the file's contents to the CharSequence ignoring case.
+     * @throws IllegalStateException if the file does not exist or is a directory.
      * @see String#compareToIgnoreCase(String)
      */
-    public int compareContentsIgnoreCase(String anotherString) {
+    public int compareContentsIgnoreCase(CharSequence cs) {
         //TODO: method stub
         return 0;
     }
 
     /**
      * Returns true if the file's contents, after the offset, starts with the String.
+     * offset is inclusive and is the character index of the first character to be used.
      * @see String#startsWith(String, int)
      */
-    public boolean startsWith(String prefix, long toffset) {
+    public boolean startsWith(String prefix, long offset) {
         //TODO: method stub
         return false;
     }
@@ -381,8 +387,8 @@ public class FileToStringAdapter extends File {
     public long indexOf(char ch){return indexOf(ch, 0);}
 
     /**
-     * This method searches the file's contents, starting at fromIndex, for the first matching character
-     * and returns the index.
+     * This method searches the file's contents, starting at fromIndex (inclusive character index), for the
+     * first matching character and returns the index.
      * @see String#indexOf(int, int)
      */
     public long indexOf(char ch, long fromIndex) {
@@ -398,8 +404,8 @@ public class FileToStringAdapter extends File {
     public long lastIndexOf(char ch){return lastIndexOf(ch, length()-1);}
 
     /**
-     * This method searches the file's contents, starting at fromIndex, for the last matching character
-     * and returns the index.
+     * This method searches the file's contents, starting at fromIndex (inclusive character index), for the
+     * last matching character and returns the index.
      * @see String#lastIndexOf(int, int)
      */
     public long lastIndexOf(char ch, long fromIndex) {
@@ -415,7 +421,7 @@ public class FileToStringAdapter extends File {
     public long indexOf(String str){return indexOf(str, 0);}
 
     /**
-     * This method searches the file's contents, starting at fromIndex, for the first matching substring
+     * This method searches the file's contents, starting at fromIndex (inclusive character index), for the first matching substring
      * and returns the index.
      * @see String#indexOf(String, int)
      */
@@ -432,7 +438,7 @@ public class FileToStringAdapter extends File {
     public long lastIndexOf(String str){return lastIndexOf(str, length()-1);}
 
     /**
-     * This method searches the file's contents, starting at fromIndex, for the last matching character
+     * This method searches the file's contents, starting at fromIndex (inclusive character index), for the last matching character
      * and returns the index.
      * @see String#lastIndexOf(String, int)
      */
@@ -502,9 +508,8 @@ public class FileToStringAdapter extends File {
     public void concat(String newContents) throws IOException {
     	if(!this.exists()) this.createNewFile();
     	requireFileContents();
-        BufferedWriter out = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(this, true)));
-        out.write(newContents);
-        out.close();
+        try(BufferedWriter out = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(this, true)));)
+        {out.write(newContents);}
     }
 
     /**
@@ -517,9 +522,8 @@ public class FileToStringAdapter extends File {
     	if(!this.exists()) this.createNewFile();
     	requireFileContents();
     	//TODO: if enough places add file creation to requireFileContents(true)
-        BufferedWriter out = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(this)));
-        out.write(newContents);
-        out.close();
+        try(BufferedWriter out = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(this)));)
+        {out.write(newContents);}
     }
 
     /**
@@ -532,15 +536,28 @@ public class FileToStringAdapter extends File {
      * This method replaces the first character in the file's contents that matches target with the replacement.
      * @see String#replace(char, char)
      */
-    public void replaceFirst(char target, char replacement) {
-        //TODO: method stub
+    public void replaceFirst(char target, char replacement) throws IOException {
+    	requireFileContents();
+        try(BufferedWriter out = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(this)));
+        		Scanner thisFileScanner = new Scanner(this)) {
+        	thisFileScanner.useDelimiter("");  //why isn't this setDelimiter?
+ 		   //scanner y u no have nextChar?
+           while (thisFileScanner.hasNext())
+           {
+        	   char currentChar = thisFileScanner.next().charAt(0);  //always a string length of 1
+        	   if(currentChar == target){out.write(replacement); return;}
+        	   else out.write(currentChar);  //must write old one so that out stream is at correct location
+        	   //because this is single character replacement there is no overlap. read and write don't interfere.
+        	   //TODO: wrong. that statement is only true if target and replacement have the same width in this file's encoding
+           }
+        } catch (FileNotFoundException e){}  //not possible
     }
 
     /**
      * This method replaces the all characters in the file's contents that matches target with the replacement.
      * @see String#replace(char, char)
      */
-    public void replaceAll(char target, char replacement) {
+    public void replaceAll(char target, char replacement) throws IOException {
         //TODO: method stub
     }
 
@@ -549,7 +566,7 @@ public class FileToStringAdapter extends File {
      * Regex replacement is not supported because +* and {} could match across larger sections than can be loaded into a string.
      * @see String#replaceFirst(String, String)
      */
-    public void replaceFirst(CharSequence target, CharSequence replacement) {
+    public void replaceFirst(CharSequence target, CharSequence replacement) throws IOException {
         //TODO: method stub
     }
 
@@ -558,7 +575,7 @@ public class FileToStringAdapter extends File {
      * Regex replacement is not supported because +* and {} could match across larger sections than can be loaded into a string.
      * @see String#replaceAll(String, String)
      */
-    public void replaceAll(CharSequence target, CharSequence replacement) {
+    public void replaceAll(CharSequence target, CharSequence replacement) throws IOException {
         //TODO: method stub
     }
 
@@ -584,7 +601,7 @@ public class FileToStringAdapter extends File {
      * Changes the file contents to be all lower case according to the locale.
      * @see String#toLowerCase(Locale)
      */
-    public void toLowerCase(Locale locale) {
+    public void toLowerCase(Locale locale) throws IOException {
         //TODO: method stub
     }
 
@@ -592,13 +609,13 @@ public class FileToStringAdapter extends File {
      * Changes the file contents to be all lower case according to the default locale.
      * @see String#toLowerCase()
      */
-    public void toLowerCase(){toLowerCase(Locale.getDefault());}
+    public void toLowerCase() throws IOException {toLowerCase(Locale.getDefault());}
 
     /**
      * Changes the file contents to be all upper case according to the locale.
      * @see String#toUpperCase(Locale)
      */
-    public void toUpperCase(Locale locale) {
+    public void toUpperCase(Locale locale) throws IOException {
         //TODO: method stub
     }
 
@@ -606,13 +623,13 @@ public class FileToStringAdapter extends File {
      * Changes the file contents to be all upper case according to the default locale.
      * @see String#toUpperCase()
      */
-    public void toUpperCase(){toUpperCase(Locale.getDefault());}
+    public void toUpperCase() throws IOException {toUpperCase(Locale.getDefault());}
 
     /**
      * Removes all whitespace (including end lines) at the beginning and end of the file contents.
      * @see String#trim()
      */
-    public void trimFileContents() {
+    public void trimFileContents() throws IOException {
         //TODO: method stub
     }
 
@@ -620,7 +637,7 @@ public class FileToStringAdapter extends File {
      * Removes all whitespace (except end lines) at the beginning and end of each line of the file contents.
      * @see String#trim()
      */
-    public void trimEachLine() {
+    public void trimEachLine() throws IOException {
         //TODO: method stub
     }
 
@@ -628,7 +645,7 @@ public class FileToStringAdapter extends File {
      * Removes all whitespace (except end lines) at the end of each line of the file contents.
      * @see String#trim()
      */
-    public void trimLinesTrailing() {
+    public void trimLinesTrailing() throws IOException {
         //TODO: method stub
     }
 
@@ -636,7 +653,7 @@ public class FileToStringAdapter extends File {
      * If there are multiple blank lines in a row in the file contents, all but the first are removed.
      * @see String#trim()
      */
-    public void removeRedundantBlankLines() {
+    public void removeRedundantBlankLines() throws IOException {
         //TODO: method stub
     }
 
@@ -644,7 +661,7 @@ public class FileToStringAdapter extends File {
      * Removes all lines that are empty from the file contents.
      * @see String#trim()
      */
-    public void removeAllBlankLines() {
+    public void removeAllBlankLines() throws IOException {
         //TODO: method stub
     }
 }
