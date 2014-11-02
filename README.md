@@ -4,8 +4,10 @@ This repository is a holder for stand alone files or very small projects.
 
 #Tests
 As expected "src" contains the code and "tests" contain the tests.
-The javascript tests run off of [simple tester.js](https://github.com/SkySpiral7/Humans-and-Heroes/blob/wip/2-secret-origins/javascript/simple%20tester.js) which is in my [Humans & Heroes repository](https://github.com/SkySpiral7/Humans-and-Heroes).
-The java tests run off of junit.
+The javascript tests run off of
+[simple tester.js](https://github.com/SkySpiral7/Humans-and-Heroes/blob/wip/2-secret-origins/javascript/simple%20tester.js)
+which is in my
+[Humans & Heroes repository](https://github.com/SkySpiral7/Humans-and-Heroes).
 
 #Branches
 The master branch contains code that is done and well tested.
