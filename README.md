@@ -10,8 +10,6 @@ The javascript tests run off of
 which is in my
 [Humans & Heroes repository](https://github.com/SkySpiral7/Humans-and-Heroes).
 
-The java tests run off of junit-4.11 with hamcrest-all-1.3.
-
 
 #Branches
 The master branch contains code that is done and well tested.
