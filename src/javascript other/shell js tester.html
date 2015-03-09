@@ -1,0 +1,21 @@
+<html>
+<title>Shell Tester</title>
+<script>
+function main(){document.getElementById("output").value = eval('(function(){'+document.getElementById("inputCode").value+'})();');};
+</script>
+<!--Test section-->
+<!--these would only work locally-->
+<script src="..\..\Humans & Heroes\2-secret-origins\javascript\simple tester.js"></script>
+<script src="advanced rounding.js"></script>
+<script src="..\tests\advanced rounding tests.js"></script>
+<!--/Test section-->
+<a>Code:</a><br />
+<textarea id="inputCode" rows="10" cols="80">Tester.testAll();
+return 0;
+</textarea><br />
+<input type="button" onClick="main();" value="Execute" /><br /><br />
+<a>Return Value:</a><br />
+<textarea id="output" rows="2" cols="20"></textarea><br />
+<a href="javascript:Tester.testAll();">Run all tests</a><br />
+<br /><div id="test results"></div><br /><br />
+</html>

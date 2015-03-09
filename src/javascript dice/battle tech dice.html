@@ -1,0 +1,97 @@
+<html>
+<title>battle tech dice</title>
+<script>
+function attack() {  //called by button
+    clearOut();
+    var holder=document.getElementById("toHit").value;
+    if(holder.length==0){document.getElementById("result").value="Invalid"; return;}
+    if(holder > 12){document.getElementById("result").value="Impossible"; return;}
+    if(roll2d6() < holder){document.getElementById("result").value="Miss"; return;}
+    document.getElementById("result").value="Hit";
+    document.getElementById("location").value=roll2d6()+'';
+    var critCount=0;
+    holder=roll2d6();
+    if(holder==12) critCount=3;  //you lucky
+    else if(holder >= 10) critCount=2;
+    else if(holder >= 8) critCount=1;
+    document.getElementById("critCount").value=critCount;
+    critBoth();
+};
+function critBoth() {
+    var critCount=document.getElementById("critCount").value;
+    document.getElementById("area1").value="";
+    document.getElementById("area2").value="";
+   while (critCount > 0)
+   {
+       holder=coin();
+       if(holder==2) document.getElementById("area1").value+="Upper";
+       else document.getElementById("area1").value+="Lower";
+       document.getElementById("area2").value+=roll1d6()+'';
+       critCount--;
+      if (critCount!=0)  //not final pass
+      {
+          document.getElementById("area1").value+="; ";
+          document.getElementById("area2").value+="; ";
+      }
+   }
+};
+function clearOut() {
+    document.getElementById("result").value="";
+    document.getElementById("location").value="";
+    document.getElementById("critCount").value="";
+    document.getElementById("area1").value="";
+    document.getElementById("area2").value="";
+};
+function critArea() {
+    var critCount=document.getElementById("critCount").value;
+    document.getElementById("area2").value="";
+   while (critCount > 0)
+   {
+       document.getElementById("area2").value+=roll1d6()+'';
+       critCount--;
+      if (critCount!=0)  //not final pass
+      {
+          document.getElementById("area2").value+="; ";
+      }
+   }
+};
+function combatPara() {
+    var a, b, c, best, total;
+    a=roll1d6();
+    b=roll1d6();
+    c=roll1d6();
+    document.getElementById("paraAll").value=a+"; "+b+"; "+c;
+    best=Math.max(a, b, c);  //gets the highest of the 3
+    total=a+b+c;  //add each up
+    total-=best;  //then subtract best for the sum of the 2 worst
+    document.getElementById("paraEq").value=total;
+};
+function coinFlip() {
+    if(coin()==2) document.getElementById("generalcoin").value="Heads";
+    else document.getElementById("generalcoin").value="Tails";
+};
+function roll2d6(){return (Math.ceil(Math.random()*6)+Math.ceil(Math.random()*6));};  //yes I could've: return (roll1d6+roll1d6);
+function roll1d6(){return (Math.ceil(Math.random()*6));};
+function coin(){return (Math.ceil(Math.random()*2));};  //1 or 2
+</script>
+<br />
+<input type="button" onclick='document.getElementById("init").value=roll2d6();' value="Roll Initiative:" /><a>&nbsp;</a><input type="text" size="5" id="init" /><br />
+<input type="button" onclick="combatPara();" value="Roll with Combat Paralysis:" /><a>&nbsp;</a><input type="text" size="5" id="paraAll" /><a> = </a><input type="text" size="5" id="paraEq" />
+<table border="0">
+    <tr><td colspan="2">The number to give below is the number you need to roll at least to hit.</td></tr>
+    <tr><td style="float: right;">How high to hit? </td><td><input type="text" size="5" id="toHit" /></td></tr>
+    <tr><td style="float: right;">Result: </td><td><input type="text" size="10" id="result" /></td></tr>
+    <tr><td style="float: right;">Location: </td><td><input type="text" size="5" id="location" /></td></tr>
+    <tr><td style="float: right;">Critical Count: </td><td><input type="text" size="5" id="critCount" /></td></tr>
+    <tr><td style="float: right;">Critical Upper or Lower: </td><td><input type="text" size="20" id="area1" /></td></tr>
+    <tr><td style="float: right;">Critical Area: </td><td><input type="text" size="5" id="area2" /></td></tr>
+    <tr><td colspan="2">The 2 buttons below will use the number in Critical Count.</td></tr>
+    <tr><td><center><input type="button" onclick="critBoth();" value="Reroll Both Criticals" /></center></td>
+        <td><center><input type="button" onclick="critArea();" value="Reroll Critical Area" /></center></td></tr>
+    <tr><td colspan="2"><center><input type="button" onclick="attack();" value="Let's Attack" /></center></td></tr>
+</table>
+<a>General Use</a><br />
+<input type="button" onclick='document.getElementById("general2d6").value=roll2d6();' value="Roll 2d6:" /><a>&nbsp;</a><input type="text" size="5" id="general2d6" /><br />
+<input type="button" onclick='document.getElementById("general1d6").value=roll1d6();' value="Roll 1d6:" /><a>&nbsp;</a><input type="text" size="5" id="general1d6" /><br />
+<input type="button" onclick="coinFlip();" value="Flip Coin:" /><a>&nbsp;</a><input type="text" size="5" id="generalcoin" /><br />
+</html>
