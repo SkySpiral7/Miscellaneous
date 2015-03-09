@@ -1,5 +1,15 @@
 File descriptions
 =================
+#advanced rounding.js
+The function RoundingMode creates and returns a function that is used to round numbers in any way desired.
+Some examples: RoundingMode({away: Infinity, divisible: 1})(-1.5) returns -2 and RoundingMode({magnitude: 10, towards: 0})(99.9) returns 10.
+
+**Inputs**: RoundingMode takes an object with: away, towards, divisible, magnitude, half, and precision.
+See RoundingMode's jsdoc for details (the block comment above where RoundingMode is defined).
+
+**Outputs**: A function which takes a number and returns a number (which is rounded).
+
+
 #Catch Rate Calculator.html
 A simple program to calculate your chances of catching a pokemon. Based on the Generation 4 formula according to bulbapedia.
 Has many links to bulbapedia in order to look up numbers that are required input. Along with 3 random links for more pokemon calculations.

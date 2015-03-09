@@ -1,4 +1,3 @@
-//TODO: make new github and pull it. move that .git to my git folder. put this project in git folder. push to github
 Tester.errors=function(isFirst)
 {
     TesterUtility.clearResults(isFirst);
