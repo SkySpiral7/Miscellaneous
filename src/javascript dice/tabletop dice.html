@@ -955,9 +955,9 @@ function Coin(firstName, secondname){  //alias
 Spinner = NamedDie;  //alias
 //examples: (short cuts)
 function MagicEightBall(){return new NamedDie("As I see it, yes", "It is certain", "It is decidedly so", "Most likely", "Outlook good", "Signs point to yes", "Without a doubt", "Yes", "Yes - definitely", "You may rely on it", "Reply hazy, try again", "Ask again later", "Better not tell you now", "Cannot predict now", "Concentrate and ask again", "Don't count on it", "My reply is no", "My sources say no", "Outlook not so good", "Very doubtful");};
-function AskMagicEightBall(){writeln(MagicEightBall().roll());};  //TODO: doc this
+function AskMagicEightBall(){writeln(MagicEightBall().roll());};  //shorthand
 function TwisterSpinner(){return new NamedDie("Left Hand Red", "Left Hand Green", "Left Hand Yellow", "Left Hand Blue", "Left Foot Red", "Left Foot Green", "Left Foot Yellow", "Left Foot Blue", "Right Hand Red", "Right Hand Green", "Right Hand Yellow", "Right Hand Blue", "Right Foot Red", "Right Foot Green", "Right Foot Yellow", "Right Foot Blue");};
-function SpinTwisterSpinner(){writeln(TwisterSpinner().roll());};  //TODO: doc this
+function SpinTwisterSpinner(){writeln(TwisterSpinner().spin());};  //shorthand recall: spin == roll
 function DnDAttack(attackBonus, minimumCritical, opposingAC, damageString, criticalMultiplier, areRollsSilent){
     if(typeof(attackBonus)!="number") throw new ErrorWrapper("DnDAttack, attackBonus ("+attackBonus+") the must be a number type.");
     if(typeof(minimumCritical)!="number") throw new ErrorWrapper("DnDAttack, minimumCritical ("+minimumCritical+") the must be a number type.");
@@ -2022,7 +2022,7 @@ Draw.generateDiceCompareTable = function(name1, name2, rollData1, rollData2){
    }
 }
 Draw.generateDiceSumTable = function(rollData, secondColumn){
-    if(rollData.length==0) return;  //nothing to report
+    if(rollData.length==0) return;  //nothing to draw
     if(secondColumn=='=') secondColumn='==';  //heh symmetry. adds an '=' so that eval can read it
     var min, max, count=0, sum=0;
    for (var i=0; i < rollData.length; i++)
@@ -2031,7 +2031,7 @@ Draw.generateDiceSumTable = function(rollData, secondColumn){
        if(min==undefined || rollData[i][0] < min) min = rollData[i][0];
        if(max==undefined || max < rollData[i][0]) max = rollData[i][0];
        count += rollData[i][1];
-       sum += (rollData[i][0] * rollData[i][1]);  //must be wieghted since the ones that occur more often are more likely
+       sum += (rollData[i][0] * rollData[i][1]);  //must be weighted since the ones that occur more often are more likely
    }
     var deviationSquareSum = 0;
     var avg = sum / count;
@@ -2278,6 +2278,36 @@ function everyDieValueWeighted(myDie){
        //results is only sumed to know when to stop, rollData is what is returned
    }
     return rollData;
+}
+
+//http://stats.stackexchange.com/questions/130025/formula-for-dropping-dice-non-brute-force
+function probabilityThat_ZofNIsA(a, diceArray){
+    //assuming: homogenous dice pool (such as 4d10), exactly 1 die is dropped (and it is the lowest), no rerolls or min/max, standard die only
+    //also assuming that a is a possible sum for the pool
+    //var diceArray = poolGiven.getAllDice();
+    var n = diceArray.length;
+    var result = (probabilityThat_XofNisSmallest(?) * probabilityThat_YofNisA(a, diceArray.slice(1)));
+    result += (probabilityThat_XofNisNotSmallest(?) * bigSum(a, diceArray.slice(1), Math.min()));
+}
+
+function bigSum(?){
+}
+
+function probabilityThat_XofNisSmallest(?){
+}
+
+function probabilityThat_XofNisNotSmallest(?){
+}
+
+function probabilityThat_YofNisA(a, diceArray){
+    var n = diceArray.length;
+    var finishedPolys=[];
+    for(var i=0; i < diceArray.length; i++){finishedPolys.push(Polynomial.createDiePolynomial(diceArray[i], 0));}  //0 indicates no explosions yet
+    var rollData=Polynomial.multiplyPolynomials(finishedPolys);
+
+    var totalFreq=0;
+    for(var i=0; i < rollData.length; i++){totalFreq+=rollData[i][1];}
+    for(var i=0; i < rollData.length; i++){if(rollData[i][0] === a) return (rollData[i][1] / totalFreq);}
 }
 
 function explodeSplit(rollData, diceArray){
@@ -2689,8 +2719,10 @@ silentRollDice(holder, nameArray) or silentRollDice(holder, firstName, secondNam
 Spinner = NamedDie;  //alias
 MagicEightBall()  //short cut
     returns a NamedDie with the 20 Magic Eight Ball answers (see above)
+<script>document.write(AskMagicEightBall);</script>  //shorthand
 TwisterSpinner()  //short cut
     returns a NamedDie with the 16 Twister Spinner choices (see above)
+<script>document.write(SpinTwisterSpinner);</script>  //shorthand. note: spin === roll
 ScatterDie(alwaysScatter)
     Scatter Dice have a 1/3 change to be a direct hit and otherwise will scatter in a random direction
     if alwaysScatter is true then the 1/3 change of direct hit is ignored and will always scatter in a random direction
