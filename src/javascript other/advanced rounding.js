@@ -205,7 +205,8 @@ function RoundingMode(options)
        errorMessage+=' must be 0, Infinity, or a ';
 
        if(usesDivisible && (destination % divisible) !== 0) errorMessage += 'number divisible by ' + divisible;
-       else if(usesMagnitude && (Math.logBaseX(Math.abs(destination), magnitude) % 1).ensurePrecision(precision) !== 0) errorMessage += 'power of ' + magnitude;
+       else if(usesMagnitude && (Math.logBaseX(Math.abs(destination), magnitude).ensurePrecision(precision) % 1) !== 0)
+          errorMessage += 'power of ' + magnitude;
        else errorMessage = undefined;
 
        if(errorMessage !== undefined) throw new Error(errorMessage + ' but was ' + destination + ' instead.');
@@ -226,6 +227,7 @@ function RoundingMode(options)
        if(usesMagnitude && (Math.logBaseX(Math.abs(target), magnitude).ensurePrecision(precision) % 1) === 0) return target;  //already rounded
        if(destination === undefined && half === undefined) throw new Error('Assertion failed: The number ' + target + ' is not rounded.');
        var above = findNextUp(target);
+       if(above === target) return target;  //already rounded. this is checked again in case of precision error
        var below = findNextDown(above);
        var halfWayPoint = (((above - below)/2) + below);  //(above - below) is distance, /2 for half way, and +below for it to be in range
           //below+(divisible/2) only works because the distance is always equal to divisible. this isn't true for magnitude
@@ -268,30 +270,33 @@ function RoundingMode(options)
        return below;
 
       /**Starting at target this counts towards +Infinity until the next valid result is found (which might be target).
-      Since it is not feasible (or necessary) to count floating point numbers instead it counts integers
-      which are the multiplier needed to reach a valid result. Therefore 0 < target <= above < Infinity.
-      Or if target is negative: -Infinity < target < result <= 0.*/
+      Since it is not feasible (or necessary) to count floating point numbers instead it counts numbers
+      which are known to be rounded until the nearest is found. The result is 0 < target <= result < Infinity.
+      Or if target is negative: -Infinity < target <= result < 0.*/
       function findNextUp(target)
       {
-          var x = 0;
+          var result = 0;
          if (usesDivisible)
          {
-             while((x * divisible) > target){x--;}  //count down until I am below (or equal)
-             while((x * divisible) < target){x++;}  //count up to reach the lowest number that is above (or equal)
+             while(result > target){result-=divisible;}  //count down until I am below (or equal)
+             while(result < target){result+=divisible;}  //count up to reach the lowest number that is above (or equal)
              //must count up then down to account for both positive and negative
-             return (x * divisible);
+             return result;
              //I can't use Math.ceil(target / divisible); because it fails when divisible is not a whole number
          }
+
+         //usesMagnitude
+          result = 1;
           var absTarget = Math.abs(target);
-          while(Math.pow(magnitude, x) > absTarget){x--;}  //result is counting towards 0 until 0 < result <= absTarget
+          while(result > absTarget){result/=magnitude;}  //result is counting towards 0 until 0 < result <= absTarget
              //target !== 0 because that's the first thing we checked in the calling function
-          while(Math.pow(magnitude, x) < absTarget){x++;}  //result is counting towards Infinity until 0 < absTarget <= result < Infinity
+          while(result < absTarget){result*=magnitude}  //result is counting towards Infinity until 0 < absTarget <= result < Infinity
           //must count up then down to account for both 0 < Math.abs(target) < 1 and 1 < Math.abs(target)
-          if(target > 0) return Math.pow(magnitude, x);  //0 < target <= result < Infinity
-          return -Math.pow(magnitude, (x-1));  //need to subtract 1 because flipping the sign gives:
+          if(target > 0) return result;  //0 < target <= result < Infinity
+          return -(result/magnitude);  //need to go down 1 because flipping the sign gives:
              //-Infinity < result <= target < 0 (entire thing backwards)
-             //example: {magnitude: 10, target: -200} finds x: 3 which is 0 < 200 <= 1000 < Infinity
-             //but when flipped is: -Infinity < -1000 <= -200 < 0. therefore need x-1 to make it be -Infinity < -200 < -10 <= 0 (above is never 0 for magnitude)
+             //example: {magnitude: 10, target: -200} finds result: 10^3 which is 0 < 200 <= 1000 < Infinity
+             //but when flipped is: -Infinity < -1000 <= -200 < 0. therefore need /=magnitude to make it be -Infinity < -200 < -10 <= 0 (above is never 0 for magnitude)
           //I can't use Math.ceil(Math.logBaseX(Math.abs(target), magnitude).ensurePrecision(precision)); because it fails when 0 < Math.abs(target) < 1
       };
 
@@ -300,16 +305,10 @@ function RoundingMode(options)
       function findNextDown(above)
       {
           //if(target === above) return target;  //this isn't possible because it checks to see if target is already rounded before calling findNextUp
-         if (usesDivisible)
-         {
-             var x = (above / divisible);  //now have the multiplier for the lowest number that is above
-             x--;  //subtract 1 to get the highest number that is below
-             return (x * divisible);
-         }
-          var x = Math.logBaseX(Math.abs(above), magnitude).ensurePrecision(0);  //now have the multiplier for the lowest number that is above
-             //precision is always 0 because I know x is a whole number
-          if(above < 0) return -Math.pow(magnitude, (x+1));  //+/- 1 to get the next number down
-          return Math.pow(magnitude, (x-1));
+          if(usesDivisible) return (above - divisible);
+         //usesMagnitude
+          if(above > 0) return (above / magnitude);  //if positive return a number closer to 0
+          return (above * magnitude);  //if negative return a number closer to -Infinity
       };
    };
 };
