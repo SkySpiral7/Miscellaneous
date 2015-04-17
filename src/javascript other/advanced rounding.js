@@ -1,3 +1,5 @@
+var Half_Mode = {Up: {}, Down: {}};
+
 /**precision is the number of decimal places (base 10 after the decimal point) that need to be ensured, any further digits are ignored.
 If necessary this Number is multiplied (this is not changed) by Math.pow(10, precision); then rounded (not truncated) via Half_Down then divided back.
 Therefore ensurePrecision increased accuracy but does not guarantee it.
@@ -9,8 +11,8 @@ This function is similar to Number(num.toFixed(precision)) except this function 
 This function is not similar to Number.prototype.toPrecision (which returns a string of significant figures via Half_Up).*/
 Number.prototype.ensurePrecision = function(precision)
 {
-    if(!isFinite(this)) return this.valueOf();
-    if(typeof(precision) !== 'number' || !isFinite(precision) || isNaN(this)) return NaN;
+    if(!Number.isFinite(this.valueOf())) return this.valueOf();
+    if(typeof(precision) !== 'number' || !Number.isFinite(precision) || Number.isNaN(this.valueOf())) return NaN;
     //Infinity and NaN precision are not allowed (isFinite calls isNaN)
     //I am allowing people to specify negative precision or ones that are not whole numbers. why and what that means is up to the user
     if(this.valueOf() === 0) return 0;  //already perfect
@@ -45,7 +47,7 @@ Note that this function has below average precision: Math.logBaseX(0.1, 10) retu
 Math.logBaseX = function(num, base)
 {
     if(typeof(num) !== 'number' || typeof(base) !== 'number') return NaN;  //type strict
-    if(base === 0 || base === 1 || !isFinite(base)) return NaN;  //log is impossible for these bases
+    if(base === 0 || base === 1 || !Number.isFinite(base)) return NaN;  //log is impossible for these bases
        //these must be handled directly because otherwise it would return 0, Infinity, 0 (for +Infinity) or NaN (for -Infinity and NaN)
     return (Math.log(num) / Math.log(base));  //will return NaN if either parameter is NaN
     //will also return NaN if either parameter is negative.
@@ -59,8 +61,8 @@ Math.logBaseXSum = function(num, base, iterations)
 //I don't have enough math skills (or motivation) to figure out how to make a precise version of Math.logBaseX
 {
     if(typeof(num) !== 'number' || typeof(base) !== 'number') return NaN;  //type strict
-    if(base <= 0 || base === 1 || !isFinite(base)) return NaN;  //log is impossible for these bases
-    if(isNaN(num) || num < 0) return NaN;
+    if(base <= 0 || base === 1 || !Number.isFinite(base)) return NaN;  //log is impossible for these bases
+    if(Number.isNaN(num) || num < 0) return NaN;
     if(num === Infinity || num === -Infinity) return num;
 
     var sum1 = 0, sum2 = 0;  //summations must start at 0
@@ -139,7 +141,7 @@ it is not possible to be half way between whole numbers and also half way betwee
 therefore it rounds to the nearest whole followed by the nearest even
 
 The predefined RoundingModes are common rounding schemes to use. The names (and the name of this function) are based on java.math.RoundingMode.
-Note that Math.floor === RoundingMode.Floor; Math.ceil === RoundingMode.Ceiling; Math.round === RoundingMode.Half_Ceiling
+Note that Math.floor == RoundingMode.Floor; Math.ceil == RoundingMode.Ceiling; Math.round == RoundingMode.Half_Ceiling
     According to the Java API of RoundingMode, Half_Up is the scheme normally taught in school however this is not the same rounding that Math.round uses.
     Half_Up does make more sense because it rounds to edges ensuring that ranges always contain the intended number.
 
@@ -166,12 +168,12 @@ function RoundingMode(options)
 
    {  //used for grouping. there is no block scope in js
     //these are silent changes. invalid values are treated as though they don't exist
-    if(typeof(towards) !== 'number' || isNaN(towards)) towards = undefined;
-    if(typeof(away) !== 'number' || isNaN(away)) away = undefined;
-    if(typeof(divisible) !== 'number' || !isFinite(divisible)) divisible = undefined;
-    if(typeof(magnitude) !== 'number' || !isFinite(magnitude)) magnitude = undefined;
-    if(typeof(precision) !== 'number' || !isFinite(precision)) precision = 14;
-    if(typeof(half) !== 'function') half = undefined;
+    if(typeof(towards) !== 'number' || Number.isNaN(towards)) towards = undefined;
+    if(typeof(away) !== 'number' || Number.isNaN(away)) away = undefined;
+    if(typeof(divisible) !== 'number' || !Number.isFinite(divisible)) divisible = undefined;
+    if(typeof(magnitude) !== 'number' || !Number.isFinite(magnitude)) magnitude = undefined;
+    if(typeof(precision) !== 'number' || !Number.isFinite(precision)) precision = 14;
+    if(typeof(half) !== 'function' && half != Half_Mode.Up && half != Half_Mode.Down) half = undefined;
    }  //all values are now valid
 
     var usesDivisible = (divisible !== undefined);  //short hands for readability
@@ -216,7 +218,7 @@ function RoundingMode(options)
    /**This function has no documentation instead see the doc of RoundingMode which created this function.*/
    return function(target)
    {
-       if(typeof(target) !== 'number' || isNaN(target)) return NaN;
+       if(typeof(target) !== 'number' || Number.isNaN(target)) return NaN;
        if(Math.abs(target) === Infinity) return target;  //done. for the same reason as 0 below
        if(target === 0) return target;  //0 is already rounded because it is divisible by all numbers also I can't %0
           //I see the irony that away: 0 may return 0 but it is mathematically correct to do so
@@ -236,8 +238,8 @@ function RoundingMode(options)
       if (destination === undefined)  //half is defined at this point
       {
           //round away from half if possible
-          if(target > halfWayPoint) return above;
-          if(target < halfWayPoint) return below;
+          if(target > halfWayPoint || half === Half_Mode.Up) return above;
+          if(target < halfWayPoint || half === Half_Mode.Down) return below;
           return half(target);  //if not possible then call half
           //which is hopefully either RoundingMode.Assert_Away_From_Half (assertion failed) or function made from RoundingMode
       }
@@ -325,3 +327,38 @@ RoundingMode.Half_Floor = RoundingMode({divisible: 1, half: RoundingMode.Floor})
 RoundingMode.Half_Up = RoundingMode({divisible: 1, half: RoundingMode.Up});
 RoundingMode.Half_Down = RoundingMode({divisible: 1, half: RoundingMode.Down});
 RoundingMode.Half_Truncate = RoundingMode.Half_Down;  //aka
+
+{  //Fermi block (no block scope)
+//Fermi Estimation is not a formula. It's the idea of rounding wildly to estimate a problem.
+//All of the following are therefore types of fermi estimations.
+
+RoundingMode.Fermi = {};
+//This is the formula used in https://what-if.xkcd.com/84/
+RoundingMode.Fermi.Xkcd = function(x)
+{
+    x = Math.logBaseX(x, 10);
+    x = RoundingMode.Half_Up(x);
+    return Math.pow(10, x);
+    //examples: 3 -> 1, 4 -> 10
+}
+
+//This was used by Enrico Fermi himself.
+RoundingMode.Fermi.One_Significant_Figure = function(x)
+{
+    //such that there is only 1 significant figure
+    var base = RoundingMode.Fermi.Nearest_Magnitude_of_10(x);
+    if(Math.abs(base) > Math.abs(x)) base/=10;
+    x = RoundingMode.Truncate(x / base);
+    return x*base;
+    //examples: 94 -> 90; 4 -> 4; 2,234,568 -> 2,000,000
+    //TODO: allow this to be an option: RoundingMode({significant: 1, away: 0}); significant figures would always be base 10
+}
+
+//A friend told me that this was the definition of a formula called "the Fermi Estimation"
+//Although it is a type of Fermi Estimation it is not THE Fermi Estimation therefore he mislabelled it
+RoundingMode.Fermi.Up_Magnitude_of_10 = RoundingMode({magnitude: 10, away: 0});
+//This is a more useful way to estimate a magnitude of 10
+RoundingMode.Fermi.Nearest_Magnitude_of_10 = RoundingMode({magnitude: 10, half: RoundingMode({away: 0, magnitude: 10})});
+}
+
+//TODO: further define Half_Mode and doc it. test Half_Mode and Fermi
