@@ -99,20 +99,24 @@ if(Math.factorial == undefined){Math.factorial = function(numberGiven){  //do no
 //dropCount's limit and maxStat's limit are also affected but whatever
 
 var Silent=true;
-function ErrorWrapper(messageGiven){this.message = messageGiven;};
 
 function main(){
-    var holder=document.getElementById("inputCode").value;
     document.getElementById("results").value="";
     document.getElementById("graphResults").innerHTML="";
-    try{eval(holder);}
-   catch (error)
+    var didThrow=true;
+    try{
+    eval(document.getElementById("inputCode").value);
+    didThrow=false;
+    }
+   finally
    {
-       //no way to display line number due to eval
-       if(document.getElementById("results").value!='') document.getElementById("results").value+="\n";
-       document.getElementById("results").value+="Error: "+error.message+"\n";  //ErrorWrapper contains .message for this reason
+      if (didThrow)
+      {
+          if(document.getElementById("results").value!='') writeln();
+          writeln("An error has occurred check the console for details.");
+      }
    }
-    //document.getElementById("results").value+="\nEnd of program\n";
+    //writeln("\nEnd of program");
 };
 function write(message){document.getElementById("results").value+=message;};  //avoids race condition
 function writeln(message){if(arguments.length==0) message=''; write(message+"\n");};
@@ -293,10 +297,10 @@ function Die(diceStringGiven, nameArray){
 
        if((/^-/).test(holder)){isNegativeDice=true; holder=holder.substring(1);}  //chop off '-'
        if((/^1/).test(holder)) holder=holder.substring(1);  //chop off 1
-       if((/^0/).test(holder)) throw new ErrorWrapper(diceStringGiven+"\nyou can't make a dice object with 0 dice. That's invalid");
-       if((/^\d+/).test(holder)) throw new ErrorWrapper(diceStringGiven+"\nyou can't make a dice object with more than one die, instead use a dice pool object");
+       if((/^0/).test(holder)) throw new Error(diceStringGiven+"\nyou can't make a dice object with 0 dice. That's invalid");
+       if((/^\d+/).test(holder)) throw new Error(diceStringGiven+"\nyou can't make a dice object with more than one die, instead use a dice pool object");
        if((/^z/).test(holder)) doesUseZero=true;  //event of 3z2 for 3 coins 0 or 1
-       if(!(/^[zd]/).test(holder)) throw new ErrorWrapper(diceStringGiven+"\ndice must use 'd' or 'z' to specify the dice type");
+       if(!(/^[zd]/).test(holder)) throw new Error(diceStringGiven+"\ndice must use 'd' or 'z' to specify the dice type");
        holder=holder.substring(1);  //chop off 'd' or 'z'
        if((/^%/).test(holder)) holder=holder.replace(/%/, "100");  //replace all % with 100
        holder=holder.replace(/%/g, "00");  //replace all other % with 2 more zeroes
@@ -310,15 +314,15 @@ function Die(diceStringGiven, nameArray){
       else
       {
           sideCount=parseInt(holder);  //to capture the next number
-          if(sideCount == 0) throw new ErrorWrapper(diceStringGiven+"\nhas a bad number of sides.");  //avoid bad numbers
+          if(sideCount == 0) throw new Error(diceStringGiven+"\nhas a bad number of sides.");  //avoid bad numbers
           holder=holder.substring(sideCount.toString().length);  //remove sideCount from holder
       }
       while (holder.length > 0)
       {
          if (holder.startsWith('!'))
          {
-             if(sideCount==1) throw new ErrorWrapper(diceStringGiven+"\nInfinite exploding. A single sided die is not allowed to explode because it would be infinite.");
-             if(doesCompoundExplode || doesExplode) throw new ErrorWrapper(diceStringGiven+"\nExplosion defined more than once. This is invalid.");
+             if(sideCount==1) throw new Error(diceStringGiven+"\nInfinite exploding. A single sided die is not allowed to explode because it would be infinite.");
+             if(doesCompoundExplode || doesExplode) throw new Error(diceStringGiven+"\nExplosion defined more than once. This is invalid.");
              holder=holder.substring(1);  //chop off '!'
             if (holder.startsWith('!'))  //if it had "!!"
             {
@@ -335,7 +339,7 @@ function Die(diceStringGiven, nameArray){
          }
          else if ((/^r(?:[<>=]=?|!=)?-?\d+/).test(holder))  //can't do [<>=!]=? since that would allow '!' alone
          {
-             if(rerollCriteria!=undefined) throw new ErrorWrapper(diceStringGiven+"\nMore than one reroll criteria specified. This is not possible.");
+             if(rerollCriteria!=undefined) throw new Error(diceStringGiven+"\nMore than one reroll criteria specified. This is not possible.");
                 //could theoretically be an array of criteria but throw for now
              holder=holder.substring(1);  //chop off 'r'
              if((/^-?\d+/).test(holder)) holder='=='+holder;  //default
@@ -349,8 +353,8 @@ function Die(diceStringGiven, nameArray){
       {
          if ((/^(?:\spenetrat(?:ing|e)|\scompound(?:ing)?)?\sexplo(?:sions?|ding|de)(?:\sdic?e)?/).test(holder))
          {
-             if(sideCount==1) throw new ErrorWrapper(diceStringGiven+"\nInfinite exploding. A single sided die is not allowed to explode because it would be infinite.");
-             if(doesCompoundExplode || doesExplode) throw new ErrorWrapper(diceStringGiven+"\nExplosion defined more than once. This is invalid.");
+             if(sideCount==1) throw new Error(diceStringGiven+"\nInfinite exploding. A single sided die is not allowed to explode because it would be infinite.");
+             if(doesCompoundExplode || doesExplode) throw new Error(diceStringGiven+"\nExplosion defined more than once. This is invalid.");
              holder=holder.replace(/\sexplo(?:sions?|ding|de)(?:\sdic?e)?/, '');  //remove word(s)
             if (holder.startsWith(' compound'))
             {
@@ -367,7 +371,7 @@ function Die(diceStringGiven, nameArray){
          }
          else if ((/^\sreroll\s(?:dic?e\s(?:that\sare\s)?)?(?:(?:greater|less)\sthan(?:\sor\sequal(?:\sto)?)?\s|(?:not\s)?equal(?:\sto)?\s)?-?\d+/).test(holder))
          {
-             if(rerollCriteria!=undefined) throw new ErrorWrapper(diceStringGiven+"\nMore than one reroll criteria specified. This is not possible.");
+             if(rerollCriteria!=undefined) throw new Error(diceStringGiven+"\nMore than one reroll criteria specified. This is not possible.");
                 //could theoretically be an array of criteria but throw for now
              holder=holder.replace(/^\sreroll\s(?:dic?e\s(?:that\sare\s)?)?/, '');  //remove word(s)
              rerollCriteria='';
@@ -421,7 +425,7 @@ function Die(diceStringGiven, nameArray){
           var rerollNumber=Number((/\d+$/).exec(rerollCriteria)[0]);  //always valid due to being at this point in the code (get abs value by ignoring -)
          if (rerollCriteria.startsWith(">"))
          {
-             if(eval(''+minimumPossible+rerollCriteria)) throw new ErrorWrapper(diceStringGiven+"\nInfinite explosions. This means that the die can't be rolled.");
+             if(eval(''+minimumPossible+rerollCriteria)) throw new Error(diceStringGiven+"\nInfinite explosions. This means that the die can't be rolled.");
              canReroll=true;  //due to the maximum being infinite the possibility of rerolling always exists
          }
           else if (rerollCriteria.startsWith("==") && rerollNumber%explodeValue==0){}  //canReroll=false;  //do nothing since already set
@@ -442,9 +446,9 @@ function Die(diceStringGiven, nameArray){
              if(possibleToRoll && canReroll) break;  //found all I need
          }
           if(doesExplode && eval(''+explodeValue+rerollCriteria)){doesExplode=doesPenetrate=false; explodeValue=undefined;}  //exploding is not possible due to reroll. compound on the other hand is still possible
-          if(!possibleToRoll && doesExplode) throw new ErrorWrapper(diceStringGiven+"\nInfinite explosions. This means that the die can't be rolled.");
+          if(!possibleToRoll && doesExplode) throw new Error(diceStringGiven+"\nInfinite explosions. This means that the die can't be rolled.");
           //it can land on the max side but that causes an explosion and always is that same side
-          else if(!possibleToRoll) throw new ErrorWrapper(diceStringGiven+"\nInfinite rerolling. This means that the die can't be rolled.");
+          else if(!possibleToRoll) throw new Error(diceStringGiven+"\nInfinite rerolling. This means that the die can't be rolled.");
       }
 
        //reroll optimising section:
@@ -513,19 +517,19 @@ function Die(diceStringGiven, nameArray){
 
        //final processing:
        isFudgeDie=(isFudgeDie && sideCount==3 && constantModifier==-1 && doesUseZero);  //checks isFudgeDie so that z3-1 is false
-       //if(holder.length > 0) throw new ErrorWrapper(diceStringGiven+"\nhas incorrect syntax. After processing the string remaining was\n"+holder);
-       if(sideCount==1 && doesExplode) throw new ErrorWrapper(diceStringGiven+"\nProgramming error: Infinite explosions due to rerolling optimising.");
+       //if(holder.length > 0) throw new Error(diceStringGiven+"\nhas incorrect syntax. After processing the string remaining was\n"+holder);
+       if(sideCount==1 && doesExplode) throw new Error(diceStringGiven+"\nProgramming error: Infinite explosions due to rerolling optimising.");
        //might've become invalid due to optimising
        return holder;
    };
    function namedConstructor(){  //doesn't need to know this
        //none of these errors should be possible
-       if(isFudgeDie) throw new ErrorWrapper(diceStringGiven+"\nfudge dice can't have named sides");
-       if(isNegativeDice) throw new ErrorWrapper(diceStringGiven+"\nnamed dice can't be negative");
+       if(isFudgeDie) throw new Error(diceStringGiven+"\nfudge dice can't have named sides");
+       if(isNegativeDice) throw new Error(diceStringGiven+"\nnamed dice can't be negative");
        doesUseZero=true;  //always a coin
        sideCount=nameArray.length;  //just ignore the number of sides passed and use the number of names given
-       if(doesExplode || doesCompoundExplode) throw new ErrorWrapper(diceStringGiven+"\nnamed dice can't explode (compound or otherwise).");
-       //if(minMaxValue!=0 || minMaxSwitch!="None") throw new ErrorWrapper(diceStringGiven+"\na named dice can't have a min or max");
+       if(doesExplode || doesCompoundExplode) throw new Error(diceStringGiven+"\nnamed dice can't explode (compound or otherwise).");
+       //if(minMaxValue!=0 || minMaxSwitch!="None") throw new Error(diceStringGiven+"\na named dice can't have a min or max");
        return false;  //all numbers
    };
    //constructor:
@@ -535,7 +539,7 @@ function Die(diceStringGiven, nameArray){
     if(nameArray==undefined || nameArray.length==1) nameArray=[];  //make empty array (not provided or diceStringGiven only)
     else if(nameArray.length==2 && nameArray[0]==undefined) nameArray=[];
     else if(nameArray.length==2 && (nameArray[1] instanceof Array) && nameArray[1].length==0) nameArray=[];  //name passed was an empty array (DicePool does this)
-    if(nameArray.length==0 && typeof(diceStringGiven)!="string") throw new ErrorWrapper("Die("+diceStringGiven+", ~) the first parameter must be a string type");
+    if(nameArray.length==0 && typeof(diceStringGiven)!="string") throw new Error("Die("+diceStringGiven+", ~) the first parameter must be a string type");
     return constructorCalled(this);
     //if this is a named die then diceStringGiven will be ignored (since it is actually the first name or something else)
 };
@@ -608,9 +612,9 @@ function DicePool(diceStringGiven, nameArray){
        if(newDiceStringPassed==undefined) newDiceStringPassed="1d6";  //default
        nameArrayGiven=argumentsToArray(arguments, 1);
        if(nameArrayGiven==undefined) nameArrayGiven=[];  //make empty array (not provided or newDiceStringPassed only)
-       if(nameArrayGiven.length!=0 && typeof(newDiceStringPassed)!="number") throw new ErrorWrapper("DicePool.add("+newDiceStringPassed+", ~) the first parameter of a named die must be a number type which is the number of dice");
+       if(nameArrayGiven.length!=0 && typeof(newDiceStringPassed)!="number") throw new Error("DicePool.add("+newDiceStringPassed+", ~) the first parameter of a named die must be a number type which is the number of dice");
        if(nameArrayGiven.length!=0) newDiceStringPassed+="d6";  //needs to be a string for parsing
-       if(typeof(newDiceStringPassed)!="string") throw new ErrorWrapper("DicePool.add("+newDiceStringPassed+", ~) the first parameter must be a string type");
+       if(typeof(newDiceStringPassed)!="string") throw new Error("DicePool.add("+newDiceStringPassed+", ~) the first parameter must be a string type");
        newDiceStringPassed=newDiceStringPassed.trim();  //last line from constructor (not really this one but yeah)
        var theseDiceAreNegative=false;
        if((/^-/).test(newDiceStringPassed)){theseDiceAreNegative=true; newDiceStringPassed=newDiceStringPassed.substring(1);}
@@ -630,28 +634,28 @@ function DicePool(diceStringGiven, nameArray){
    };
    this.addDie = function(newDieObject){
        rolledValues={};  //clear out results since they are no longer valid
-       if(!(newDieObject instanceof Die) && !(newDieObject instanceof ScatterDie)) throw new ErrorWrapper("DicePool.addDie("+newDieObject+") the parameter must be a Die object (or ScatterDie).");
+       if(!(newDieObject instanceof Die) && !(newDieObject instanceof ScatterDie)) throw new Error("DicePool.addDie("+newDieObject+") the parameter must be a Die object (or ScatterDie).");
        if(diceArray.length==0) allFudge=true;  //so that && allFudge will work below
        diceArray.push(newDieObject);
        allFudge=(newDieObject.isFudge() && allFudge);
    };
    this.addAllDice = function(newDice){
-       if(!(newDice instanceof Array) && !(newDice instanceof DicePool)) throw new ErrorWrapper("DicePool.addAllDice("+newDice+") the parameter must be an array or a DicePool object.");
+       if(!(newDice instanceof Array) && !(newDice instanceof DicePool)) throw new Error("DicePool.addAllDice("+newDice+") the parameter must be an array or a DicePool object.");
        var diceArray=newDice;
        if(newDice instanceof DicePool) diceArray=newDice.getAllDice();
        for(var i=0; i < diceArray.length; i++) this.addDie(diceArray[i]);  //addDie will check each array element
    };
    this.getSize = function(){return diceArray.length;};
    function getSign(number){  //for me for output
-       if(typeof(number)!="number") throw new ErrorWrapper("getSign("+number+") must be a number type");
+       if(typeof(number)!="number") throw new Error("getSign("+number+") must be a number type");
        if(number > 0) return "+";
        if(number < 0) return "-";
        return "0";
    }
    this.generateSumString = function(everyRoll, droppedRolls){  //bad could be empty
        if(droppedRolls==undefined) droppedRolls=[];  //make it empty for .length
-       if(!(everyRoll instanceof Array)) throw new ErrorWrapper("DicePool.generateSumString("+everyRoll+", ~) the first parameter must be an array type.");
-       if(!(droppedRolls instanceof Array)) throw new ErrorWrapper("DicePool.generateSumString(~, "+droppedRolls+") the second parameter must be an array type (or undefined).");
+       if(!(everyRoll instanceof Array)) throw new Error("DicePool.generateSumString("+everyRoll+", ~) the first parameter must be an array type.");
+       if(!(droppedRolls instanceof Array)) throw new Error("DicePool.generateSumString(~, "+droppedRolls+") the second parameter must be an array type (or undefined).");
        var ender="";
        var total=everyRoll.summation();
       for (var i=0; i < everyRoll.length; i++)
@@ -685,7 +689,7 @@ function DicePool(diceStringGiven, nameArray){
    };
    this.opposedRollByBestValue = function(otherDicePoolObject, areRollsSilent){
        if(areRollsSilent!=false) areRollsSilent=true;  //default
-       if(!(otherDicePoolObject instanceof DicePool)) throw new ErrorWrapper("DicePool.opposedRollByBestValue("+otherDicePoolObject+", ~) the first parameter must be a DicePool type.");
+       if(!(otherDicePoolObject instanceof DicePool)) throw new Error("DicePool.opposedRollByBestValue("+otherDicePoolObject+", ~) the first parameter must be a DicePool type.");
        var myEveryRoll=this.roll();  //so that multiple things can be returned
        var bothAllFudge=allFudge;  //true or false
        otherDicePoolObject.roll();
@@ -711,7 +715,7 @@ function DicePool(diceStringGiven, nameArray){
    this.opposedRollByDice = function(otherDicePoolObject, failurePenalty, areRollsSilent){
        if(areRollsSilent!=false) areRollsSilent=true;  //default
        if(failurePenalty!=false) failurePenalty=true;
-       if(!(otherDicePoolObject instanceof DicePool)) throw new ErrorWrapper("DicePool.opposedRollByDice("+otherDicePoolObject+", ~) the first parameter must be a DicePool type.");
+       if(!(otherDicePoolObject instanceof DicePool)) throw new Error("DicePool.opposedRollByDice("+otherDicePoolObject+", ~) the first parameter must be a DicePool type.");
        var myEveryRoll=this.roll();  //so that multiple things can be returned
        var bothAllFudge=allFudge;  //true or false
        otherDicePoolObject.roll();
@@ -749,7 +753,7 @@ function DicePool(diceStringGiven, nameArray){
    };
    this.opposedSumRoll = function(otherDicePoolObject, areRollsSilent){
        if(areRollsSilent!=false) areRollsSilent=true;  //default
-       if(!(otherDicePoolObject instanceof DicePool)) throw new ErrorWrapper("DicePool.opposedSumRoll("+otherDicePoolObject+", ~) the first parameter must be a DicePool type.");
+       if(!(otherDicePoolObject instanceof DicePool)) throw new Error("DicePool.opposedSumRoll("+otherDicePoolObject+", ~) the first parameter must be a DicePool type.");
        var myRoll=this.roll().summation();
        var yourRoll=otherDicePoolObject.roll().summation();
        var output="";
@@ -760,18 +764,18 @@ function DicePool(diceStringGiven, nameArray){
        return output;
    };
    this.countSuccessesRoll = function(successCriteria, failureCriteria, areRollsSilent){
-       if(typeof(successCriteria)!="string") throw new ErrorWrapper("DicePool.countSuccessesRoll("+successCriteria+", ~) the first parameter must be a string type (or undefined).");
+       if(typeof(successCriteria)!="string") throw new Error("DicePool.countSuccessesRoll("+successCriteria+", ~) the first parameter must be a string type (or undefined).");
        if(areRollsSilent!=false) areRollsSilent=true;  //default
       if (failureCriteria != undefined)
       {
-          if(typeof(failureCriteria)!="string") throw new ErrorWrapper("DicePool.countSuccessesRoll(~, "+failureCriteria+", ~) the second parameter must be a string type (or undefined).");
+          if(typeof(failureCriteria)!="string") throw new Error("DicePool.countSuccessesRoll(~, "+failureCriteria+", ~) the second parameter must be a string type (or undefined).");
           failureCriteria=failureCriteria.trim();
-          if(!(/^(?:[<>=]=?\s*)?-?\d+$/).test(failureCriteria)) throw new ErrorWrapper("DicePool.countSuccessesRoll(~, "+failureCriteria+", ~) invalid failureCriteria.");
+          if(!(/^(?:[<>=]=?\s*)?-?\d+$/).test(failureCriteria)) throw new Error("DicePool.countSuccessesRoll(~, "+failureCriteria+", ~) invalid failureCriteria.");
           if(failureCriteria.startsWith("=") && !failureCriteria.startsWith("==")) failureCriteria='='+failureCriteria;  //must be double equal signs for eval
           if((/^\d+$/).test(failureCriteria)) failureCriteria="=="+failureCriteria;  //default
       }
        successCriteria=successCriteria.trim();
-       if(!(/^(?:[<>=]=?\s*)?-?\d+$/).test(successCriteria)) throw new ErrorWrapper("DicePool.countSuccessesRoll("+successCriteria+", ~) invalid successCriteria.");
+       if(!(/^(?:[<>=]=?\s*)?-?\d+$/).test(successCriteria)) throw new Error("DicePool.countSuccessesRoll("+successCriteria+", ~) invalid successCriteria.");
        if(successCriteria.startsWith("=") && !successCriteria.startsWith("==")) successCriteria='='+successCriteria;  //must be double equal signs for eval
        if((/^\d+$/).test(successCriteria)) successCriteria="=="+successCriteria;  //default
        var everyRoll=this.roll();
@@ -855,8 +859,8 @@ function DicePool(diceStringGiven, nameArray){
        holder='';  //prepared for the loop
       while (newDiceArray.length!=0)
       {
-          if(holder.length > 0 && holder!=numberGroup(holder)) throw new ErrorWrapper(diceStringGiven+"\nhas incorrect syntax. Dice Pool modifiers must be at the end after every die.");
-          if(holder.length > 0) throw new ErrorWrapper(diceStringGiven+"\nhas incorrect syntax. After processing the string remaining was\n"+holder);
+          if(holder.length > 0 && holder!=numberGroup(holder)) throw new Error(diceStringGiven+"\nhas incorrect syntax. Dice Pool modifiers must be at the end after every die.");
+          if(holder.length > 0) throw new Error(diceStringGiven+"\nhas incorrect syntax. After processing the string remaining was\n"+holder);
              //if there was any string remaing after previous pass. put here instead of bottom becuase there are multiple bottoms
           holder=newDiceArray.shift()+'';
           if(holder.endsWith('r') && newDiceArray[0]!=undefined && newDiceArray[0].startsWith('-')) holder+=newDiceArray.shift().trim();
@@ -871,7 +875,7 @@ function DicePool(diceStringGiven, nameArray){
              message+=' was found';
              if(newDiceArray.length!=0) message+=' before '+(newDiceArray+'').replace(/,/g, '+');
              message+='. Dice or a numeric constant must follow an addition or subtraction.';
-             throw new ErrorWrapper(message);
+             throw new Error(message);
          }
          if (holder.startsWith("ScatterDie"))
          {
@@ -906,7 +910,7 @@ function DicePool(diceStringGiven, nameArray){
           var remainingString=holder;
           if(newDiceArray.length!=0) remainingString+='+'+(newDiceArray+'').replace(/,/g, '+');
           if(remainingString!='') remainingString='The error was found before '+remainingString+'.\n';
-          if(!(/^[zd]/).test(holder)) throw new ErrorWrapper(diceStringGiven+"\n"+remainingString+"Dice must use 'd' or 'z' to specify the dice type");
+          if(!(/^[zd]/).test(holder)) throw new Error(diceStringGiven+"\n"+remainingString+"Dice must use 'd' or 'z' to specify the dice type");
           var remainder=Die(holder);  //has a return type of all unused text
           holder=holder.substring(0, holder.length-remainder.length);  //everything before remainder
           if(isNegativeDicePool) holder="-"+holder;  //add negative
@@ -916,9 +920,9 @@ function DicePool(diceStringGiven, nameArray){
 
        outsource=new numberGroup(holder);
        holder=numberGroup(holder);  //as a function is returns the remaining text
-       if(holder.trim()!='') throw new ErrorWrapper(diceStringGiven+"\nhas incorrect syntax. After processing the string remaining was\n"+holder);
+       if(holder.trim()!='') throw new Error(diceStringGiven+"\nhas incorrect syntax. After processing the string remaining was\n"+holder);
 
-       if(diceArray.length == 0) throw new ErrorWrapper(diceStringGiven+"\nhas no dice objects which is invalid.");  //avoid bad numbers
+       if(diceArray.length == 0) throw new Error(diceStringGiven+"\nhas no dice objects which is invalid.");  //avoid bad numbers
        //I removed error checking for max number since js will return Infinity on overflow for me which is your problem
        objectGiven.getName();  //generates the pool's default name
        nameArray=undefined;  //clear out since it is no longer valid
@@ -929,11 +933,11 @@ function DicePool(diceStringGiven, nameArray){
     nameArray=argumentsToArray(arguments, 1);
     //TODO: doc: let me count the ways: DicePool(), DicePool("2d6"), DicePool(2, "yes", "no", "maybe"), DicePool(4, ["yes", "no", "maybe"]), DicePool(DicePool), DicePool(Die)
     if(nameArray==undefined) nameArray=[];  //make empty array (not provided or diceStringGiven only)
-    if(nameArray.length!=0 && typeof(diceStringGiven)!="number") throw new ErrorWrapper("DicePool("+diceStringGiven+", ~) the first parameter of a named die must be a number type which is the number of dice");
+    if(nameArray.length!=0 && typeof(diceStringGiven)!="number") throw new Error("DicePool("+diceStringGiven+", ~) the first parameter of a named die must be a number type which is the number of dice");
     if(nameArray.length!=0) diceStringGiven+="d6";  //needs to be a string for parsing
     if(typeof(diceStringGiven)!="string" && !(diceStringGiven instanceof Die) && !(diceStringGiven instanceof ScatterDie) && !(diceStringGiven instanceof DicePool))
-       throw new ErrorWrapper("DicePool("+diceStringGiven+", ~) the first parameter must be a string, Die or DicePool (or ScatterDie).");
-    //if(nameArray.length!=0 && ((diceStringGiven instanceof Die)  || (diceStringGiven instanceof DicePool))) throw new ErrorWrapper("");  //already covered since diceStringGiven isn't a number
+       throw new Error("DicePool("+diceStringGiven+", ~) the first parameter must be a string, Die or DicePool (or ScatterDie).");
+    //if(nameArray.length!=0 && ((diceStringGiven instanceof Die)  || (diceStringGiven instanceof DicePool))) throw new Error("");  //already covered since diceStringGiven isn't a number
     if((diceStringGiven instanceof Die) || (diceStringGiven instanceof ScatterDie)) this.addDie(diceStringGiven);
     else if(diceStringGiven instanceof DicePool) this.addAllDice(diceStringGiven);
     else constructorCalled(this);
@@ -959,12 +963,12 @@ function AskMagicEightBall(){writeln(MagicEightBall().roll());};  //shorthand
 function TwisterSpinner(){return new NamedDie("Left Hand Red", "Left Hand Green", "Left Hand Yellow", "Left Hand Blue", "Left Foot Red", "Left Foot Green", "Left Foot Yellow", "Left Foot Blue", "Right Hand Red", "Right Hand Green", "Right Hand Yellow", "Right Hand Blue", "Right Foot Red", "Right Foot Green", "Right Foot Yellow", "Right Foot Blue");};
 function SpinTwisterSpinner(){writeln(TwisterSpinner().spin());};  //shorthand recall: spin == roll
 function DnDAttack(attackBonus, minimumCritical, opposingAC, damageString, criticalMultiplier, areRollsSilent){
-    if(typeof(attackBonus)!="number") throw new ErrorWrapper("DnDAttack, attackBonus ("+attackBonus+") the must be a number type.");
-    if(typeof(minimumCritical)!="number") throw new ErrorWrapper("DnDAttack, minimumCritical ("+minimumCritical+") the must be a number type.");
+    if(typeof(attackBonus)!="number") throw new Error("DnDAttack, attackBonus ("+attackBonus+") the must be a number type.");
+    if(typeof(minimumCritical)!="number") throw new Error("DnDAttack, minimumCritical ("+minimumCritical+") the must be a number type.");
     if(minimumCritical > 20) minimumCritical=20;  //to turn off citical have criticalMultiplier=1
-    if(typeof(opposingAC)!="number") throw new ErrorWrapper("DnDAttack, opposingAC ("+opposingAC+") the must be a number type.");
-    if(typeof(damageString)!="string") throw new ErrorWrapper("DnDAttack, damageString ("+damageString+") the must be a string type.");
-    if(typeof(criticalMultiplier)!="number") throw new ErrorWrapper("DnDAttack, criticalMultiplier ("+criticalMultiplier+") the must be a number type.");
+    if(typeof(opposingAC)!="number") throw new Error("DnDAttack, opposingAC ("+opposingAC+") the must be a number type.");
+    if(typeof(damageString)!="string") throw new Error("DnDAttack, damageString ("+damageString+") the must be a string type.");
+    if(typeof(criticalMultiplier)!="number") throw new Error("DnDAttack, criticalMultiplier ("+criticalMultiplier+") the must be a number type.");
     if(areRollsSilent!=false) areRollsSilent=true;
 
     var attackRolled=silentRollDice("1d20");
@@ -996,15 +1000,15 @@ function DnDAttack(attackBonus, minimumCritical, opposingAC, damageString, criti
     return output;
 };
 function WarhammerAttackUnit(diceCount, toHitValue, toWoundValue, saveValue, extraSaveValue, areRollsSilent){
-    if(typeof(diceCount)!=="number" || isNaN(diceCount)) throw new ErrorWrapper("WarhammerAttackUnit, diceCount ("+diceCount+") the must be a number type.");
-    if(typeof(toHitValue)!=="number" || isNaN(diceCount)) throw new ErrorWrapper("WarhammerAttackUnit, toHitValue ("+toHitValue+") the must be a number type.");
+    if(typeof(diceCount)!=="number" || isNaN(diceCount)) throw new Error("WarhammerAttackUnit, diceCount ("+diceCount+") the must be a number type.");
+    if(typeof(toHitValue)!=="number" || isNaN(diceCount)) throw new Error("WarhammerAttackUnit, toHitValue ("+toHitValue+") the must be a number type.");
     if(toHitValue > 6) return "Impossible to hit";
-    if(typeof(toWoundValue)!=="number" || isNaN(diceCount)) throw new ErrorWrapper("WarhammerAttackUnit, toWoundValue ("+toWoundValue+") the must be a number type.");
+    if(typeof(toWoundValue)!=="number" || isNaN(diceCount)) throw new Error("WarhammerAttackUnit, toWoundValue ("+toWoundValue+") the must be a number type.");
     if(toWoundValue > 6) return "Impossible to wound";
     if(saveValue===undefined) saveValue=7;  //an impossible number
-    if(typeof(saveValue)!=="number" || isNaN(diceCount)) throw new ErrorWrapper("WarhammerAttackUnit, saveValue ("+saveValue+") the must be a number type.");
+    if(typeof(saveValue)!=="number" || isNaN(diceCount)) throw new Error("WarhammerAttackUnit, saveValue ("+saveValue+") the must be a number type.");
     if(extraSaveValue===undefined) extraSaveValue=7;
-    if(typeof(extraSaveValue)!=="number" || isNaN(diceCount)) throw new ErrorWrapper("WarhammerAttackUnit, extraSaveValue ("+extraSaveValue+") the must be a number type.");
+    if(typeof(extraSaveValue)!=="number" || isNaN(diceCount)) throw new Error("WarhammerAttackUnit, extraSaveValue ("+extraSaveValue+") the must be a number type.");
     if(areRollsSilent!==false) areRollsSilent=true;
 
     var attackRolled=new DicePool(diceCount+"d6").roll();
@@ -1064,11 +1068,11 @@ function WarhammerAttackUnit(diceCount, toHitValue, toWoundValue, saveValue, ext
     return output;
 };
 function L5RRoll(circumstanceBonus, numberOfRaises, targetNumber, diceRolled, diceKept, hasEmphasis, areRollsSilent){  //even silent will say how many void is recovered
-    if(typeof(circumstanceBonus)!="number") throw new ErrorWrapper("L5RRoll, circumstanceBonus ("+circumstanceBonus+") the must be a number type.");
-    if(typeof(numberOfRaises)!="number") throw new ErrorWrapper("L5RRoll, numberOfRaises ("+numberOfRaises+") the must be a number type.");
-    if(typeof(targetNumber)!="number") throw new ErrorWrapper("L5RRoll, targetNumber ("+targetNumber+") the must be a number type.");
-    if(typeof(diceRolled)!="number") throw new ErrorWrapper("L5RRoll, diceRolled ("+diceRolled+") the must be a number type.");
-    if(typeof(diceKept)!="number") throw new ErrorWrapper("L5RRoll, diceKept ("+diceKept+") the must be a number type.");
+    if(typeof(circumstanceBonus)!="number") throw new Error("L5RRoll, circumstanceBonus ("+circumstanceBonus+") the must be a number type.");
+    if(typeof(numberOfRaises)!="number") throw new Error("L5RRoll, numberOfRaises ("+numberOfRaises+") the must be a number type.");
+    if(typeof(targetNumber)!="number") throw new Error("L5RRoll, targetNumber ("+targetNumber+") the must be a number type.");
+    if(typeof(diceRolled)!="number") throw new Error("L5RRoll, diceRolled ("+diceRolled+") the must be a number type.");
+    if(typeof(diceKept)!="number") throw new Error("L5RRoll, diceKept ("+diceKept+") the must be a number type.");
     if(hasEmphasis!=true) hasEmphasis=false;
     if(areRollsSilent!=false) areRollsSilent=true;
 
@@ -1109,8 +1113,8 @@ function L5RRoll(circumstanceBonus, numberOfRaises, targetNumber, diceRolled, di
     return output;
 };
 function IronClawDamage(damageDicePool, defenderDicePool, areRollsSilent){
-    if(!(damageDicePool instanceof DicePool)) throw new ErrorWrapper("IronClawDamage("+damageDicePool+", ~) the first parameter must be a DicePool type.");
-    if(!(defenderDicePool instanceof DicePool)) throw new ErrorWrapper("IronClawDamage(~, "+defenderDicePool+", ~) the second parameter must be a DicePool type.");
+    if(!(damageDicePool instanceof DicePool)) throw new Error("IronClawDamage("+damageDicePool+", ~) the first parameter must be a DicePool type.");
+    if(!(defenderDicePool instanceof DicePool)) throw new Error("IronClawDamage(~, "+defenderDicePool+", ~) the second parameter must be a DicePool type.");
     if(areRollsSilent!=false) areRollsSilent=true;  //silent default
 
     var damageEveryRoll=damageDicePool.roll();
@@ -1139,8 +1143,8 @@ function IronClawDamage(damageDicePool, defenderDicePool, areRollsSilent){
     return output;
 };
 function IronClawOpposedRoll(attackerDicePool, defenderDicePool, areRollsSilent){
-    if(!(attackerDicePool instanceof DicePool)) throw new ErrorWrapper("IronClawOpposedRoll("+attackerDicePool+", ~) the first parameter must be a DicePool type.");
-    if(!(defenderDicePool instanceof DicePool)) throw new ErrorWrapper("IronClawOpposedRoll(~, "+defenderDicePool+", ~) the second parameter must be a DicePool type.");
+    if(!(attackerDicePool instanceof DicePool)) throw new Error("IronClawOpposedRoll("+attackerDicePool+", ~) the first parameter must be a DicePool type.");
+    if(!(defenderDicePool instanceof DicePool)) throw new Error("IronClawOpposedRoll(~, "+defenderDicePool+", ~) the second parameter must be a DicePool type.");
     if(areRollsSilent!=false) areRollsSilent=true;  //default
 
     var myEveryRoll=attackerDicePool.roll();
@@ -1177,10 +1181,10 @@ function IronClawOpposedRoll(attackerDicePool, defenderDicePool, areRollsSilent)
     return (output+"You tied");
 };
 function BattleTechAttackMech(targetNumber, attackType, sideOfRobot, areRollsSilent){
-    if(typeof(targetNumber)!="number") throw new ErrorWrapper("BattleTechAttackMech, targetNumber ("+targetNumber+") must be a number type.");
-    if(typeof(attackType)!="string") throw new ErrorWrapper("BattleTechAttackMech, attackType ("+attackType+") must be a string type.");
+    if(typeof(targetNumber)!="number") throw new Error("BattleTechAttackMech, targetNumber ("+targetNumber+") must be a number type.");
+    if(typeof(attackType)!="string") throw new Error("BattleTechAttackMech, attackType ("+attackType+") must be a string type.");
     attackType=attackType.trim();
-    if(typeof(sideOfRobot)!="string") throw new ErrorWrapper("BattleTechAttackMech, sideOfRobot ("+sideOfRobot+") must be a string type.");
+    if(typeof(sideOfRobot)!="string") throw new Error("BattleTechAttackMech, sideOfRobot ("+sideOfRobot+") must be a string type.");
     sideOfRobot=sideOfRobot.trim();
     if(areRollsSilent!=false) areRollsSilent=true;  //silent default
 
@@ -1192,15 +1196,15 @@ function BattleTechAttackMech(targetNumber, attackType, sideOfRobot, areRollsSil
 
     var autoCrit=false;
     var hitSection="";
-    if(sideOfRobot!="Left" && sideOfRobot!="Right" && sideOfRobot!="Center") throw new ErrorWrapper("BattleTechAttackMech. sideOfRobot syntax error. The choices are: \"Left\", \"Right\", or \"Center\".");
+    if(sideOfRobot!="Left" && sideOfRobot!="Right" && sideOfRobot!="Center") throw new Error("BattleTechAttackMech. sideOfRobot syntax error. The choices are: \"Left\", \"Right\", or \"Center\".");
    if (attackType.startsWith("Missiles: "))
    {
-       if(!(/^Missiles: \d+$/).test(attackType)) throw new ErrorWrapper("BattleTechAttackMech. attackType syntax error. Missiles must be in the form of \"Missiles: x\" where x is the number of missiles fired.");
+       if(!(/^Missiles: \d+$/).test(attackType)) throw new Error("BattleTechAttackMech. attackType syntax error. Missiles must be in the form of \"Missiles: x\" where x is the number of missiles fired.");
        var misslesFired=Number((/\d+$/).exec(attackType)[0]);
        tempRoll=silentRollDice("2d6");
        if(!areRollsSilent) output+="Missiles Hit Roll: "+tempRoll+". ";
        var numberOfMisslesHit=BattleTechTables.missileArray[misslesFired][tempRoll];
-       if(numberOfMisslesHit==undefined) throw new ErrorWrapper("BattleTechAttackMech. attackType has been given an invalid number of missiles that have been fired.");
+       if(numberOfMisslesHit==undefined) throw new Error("BattleTechAttackMech. attackType has been given an invalid number of missiles that have been fired.");
        attackType="Weapon";  //use the standard weapon hit locations
        output+=numberOfMisslesHit+" Missiles hit, ";
    }
@@ -1224,7 +1228,7 @@ function BattleTechAttackMech(targetNumber, attackType, sideOfRobot, areRollsSil
        else output+=sideOfRobot;
        output+=" Leg";
    }
-    else throw new ErrorWrapper("BattleTechAttackMech. attackType syntax error. The choices are: \"Missiles: x\" where x is the number of missiles fired, \"Punch\", \"Kick\", or \"Weapon\".");
+    else throw new Error("BattleTechAttackMech. attackType syntax error. The choices are: \"Missiles: x\" where x is the number of missiles fired, \"Punch\", \"Kick\", or \"Weapon\".");
     if(!output.contains("Head")) hitSection=(/^.*?(?:Left|Right|Center) (\w+)$/).exec(output)[1];  //if not head get word after side
     else hitSection="Head";
 
@@ -1241,7 +1245,7 @@ function BattleTechAttackMech(targetNumber, attackType, sideOfRobot, areRollsSil
     return output;
 };
 function BattleTechMechCriticals(numberOfCriticalHits){
-    if(typeof(numberOfCriticalHits)!="number") throw new ErrorWrapper("BattleTechMechCriticals, numberOfCriticalHits ("+numberOfCriticalHits+") must be a number type.");
+    if(typeof(numberOfCriticalHits)!="number") throw new Error("BattleTechMechCriticals, numberOfCriticalHits ("+numberOfCriticalHits+") must be a number type.");
     if(numberOfCriticalHits <= 0) return "No critical hit locations were rolled";
     if(numberOfCriticalHits >= 24) return "All of them";  //to prevent getting stuck in the loop
     var hitArray=[];
@@ -1300,7 +1304,7 @@ http://www.sarna.net/wiki/CBT_Tables
 */
 function OneRollEngine(numberOfDice){  //TODO: more dice: Expert, hard, wiggle, Awesome, trump
     //http://en.wikipedia.org/wiki/One-Roll_Engine for details on other dice types
-    if(typeof(numberOfDice)!="number") throw new ErrorWrapper("OneRollEngine("+numberOfDice+") parameter must be a number type");
+    if(typeof(numberOfDice)!="number") throw new Error("OneRollEngine("+numberOfDice+") parameter must be a number type");
     var diceResults=new DicePool(numberOfDice+"d10sa").roll();  //sorted ascending
     var engineResults=[];
    for (var i=0; i < diceResults.length;)  //incrementing done in nested loop
@@ -1364,7 +1368,7 @@ function ScatterDie(alwaysScatter){
 function isBotch(numberArray, botchValue){
     if(botchValue==undefined) botchValue=1;  //this means that the botch value can't be undefined
     if(typeof(numberArray)=="number") return (numberArray==botchValue);
-    if(!(numberArray instanceof Array)) throw new ErrorWrapper("isBotch("+numberArray+", ~) the first parameter must be an array or a number");
+    if(!(numberArray instanceof Array)) throw new Error("isBotch("+numberArray+", ~) the first parameter must be an array or a number");
    for (var i=0; i < numberArray.length; i++)
    {
        if(numberArray[i]!=botchValue) return false;
@@ -1387,8 +1391,8 @@ function argumentsToArray(argumentsGiven, fromIndex){
     return returnArray;
 };
 function IronClawEvenRolls(numberArray1, numberArray2){
-    if(!(numberArray1 instanceof Array)) throw new ErrorWrapper("IronClawEvenRolls("+numberArray1+", ~) the first parameter must be an array type.");
-    if(!(numberArray2 instanceof Array)) throw new ErrorWrapper("IronClawEvenRolls(~, "+numberArray2+") the second parameter must be an array type.");
+    if(!(numberArray1 instanceof Array)) throw new Error("IronClawEvenRolls("+numberArray1+", ~) the first parameter must be an array type.");
+    if(!(numberArray2 instanceof Array)) throw new Error("IronClawEvenRolls(~, "+numberArray2+") the second parameter must be an array type.");
 
     numberArray1.sort(alphaNumDescending);  //sort array. descending
     numberArray2.sort(alphaNumDescending);
@@ -1410,7 +1414,7 @@ function groupParser(groupString){  //TODO tons of testing. and make a loud opti
    while (groupString.contains("{"))
    {
        var parseArray=findFirstCompleteCurlyBrackets(groupString);
-       if(parseArray == null) throw new ErrorWrapper('{} wasn\'t paired');  //TODO: wrong bracket order
+       if(parseArray == null) throw new Error('{} wasn\'t paired');  //TODO: wrong bracket order
        var sendArray=parseInner(parseArray[1]);  //array of sums
        var outsource=new numberGroup(parseArray[2]);  //modifiers end at [,+{}]
        outsource.dropDoing(sendArray);  //sendArray is changed
@@ -1425,7 +1429,7 @@ function groupParser(groupString){  //TODO tons of testing. and make a loud opti
          if (stringGiven.charAt(0)=='[')
          {
              var arrayReturnValue=getArray(stringGiven);
-             if(arrayReturnValue[1]==undefined) throw new ErrorWrapper('[] wasn\'t paired');  //TODO
+             if(arrayReturnValue[1]==undefined) throw new Error('[] wasn\'t paired');  //TODO
              result.push(arrayReturnValue[1].summation());
              stringGiven=arrayReturnValue[0];
          }
@@ -1474,7 +1478,7 @@ function numberGroup(diceStringGiven){  //TODO: rename. maybe add successes late
        return returnObject;
    };
    function minMaxCounting(holder){  //doesn't need to know this
-       if(minMaxSwitch!="None") throw new ErrorWrapper("More than one min/max criteria specified. This is not possible.");
+       if(minMaxSwitch!="None") throw new Error("More than one min/max criteria specified. This is not possible.");
       if (combineRegex(DicePool.minMaxRegexStart, /-?\d+/).test(holder))
       {
           if((/max/).test(holder)) minMaxSwitch="Max";  //contains the word max
@@ -1493,7 +1497,7 @@ function numberGroup(diceStringGiven){  //TODO: rename. maybe add successes late
    };
    function dropCounting(holder, maxDrop){  //doesn't need to know this
        //first replace shorthand
-       if(dropKeepValue!=0) throw new ErrorWrapper("More than one drop/keep criteria specified. This is not possible, instead add the numbers for a single criteria.");
+       if(dropKeepValue!=0) throw new Error("More than one drop/keep criteria specified. This is not possible, instead add the numbers for a single criteria.");
       if (DicePool.dropKeepRegexShortHand.test(holder))
       {
           var replaceString=" ";
@@ -1538,7 +1542,7 @@ function numberGroup(diceStringGiven){  //TODO: rename. maybe add successes late
        var effectiveDropCount=dropKeepValue;
        if(dropKeepSwitch=='Keep') effectiveDropCount=numberedDiceRolled.length-dropKeepValue;
        if(effectiveDropCount <= 0) return droppedOnes;  //save time. only possible if keeping too many. droppedOnes is empty
-       if(effectiveDropCount > numberedDiceRolled.length) throw new ErrorWrapper("Number of values to ignore ("+dropKeepValue+") exceeds the number of values:\n"+numberedDiceRolled);
+       if(effectiveDropCount > numberedDiceRolled.length) throw new Error("Number of values to ignore ("+dropKeepValue+") exceeds the number of values:\n"+numberedDiceRolled);
           //not enough values to drop
 
        var dropKeepDirection='Down';  //default sort descending
@@ -1560,7 +1564,7 @@ function numberGroup(diceStringGiven){  //TODO: rename. maybe add successes late
           if(DicePool.dropKeepRegexShortHand.test(holder)) holder=dropCounting(holder);
          else if ((/^s[ad]?/).test(holder))
          {
-             if(sortDirection!="None") throw new ErrorWrapper("More than one sort direction specified. This is not possible.");
+             if(sortDirection!="None") throw new Error("More than one sort direction specified. This is not possible.");
              holder=holder.substring(1);  //chop off 's'
              if((/^[ad]/).test(holder)){sortDirection=holder.charAt(0); holder=holder.substring(1);}  //store then chop off 'd' or 'a'
              else sortDirection="a";  //default
@@ -1574,7 +1578,7 @@ function numberGroup(diceStringGiven){  //TODO: rename. maybe add successes late
           else if(combineRegex(DicePool.minMaxRegexStart, /-?\d+/).test(holder)) holder=minMaxCounting(holder);
          else if ((/^\ssort(?:(?:\sthe)?\sdice)?(?:\s(?:a|de)scending)?(?:\sorder)?/).test(holder) || (/^\ssort(?:(?:\sthe)?\sdice)?\sin(?:\s(?:a|de)scending)?\sorder/).test(holder))
          {
-             if(sortDirection!="None") throw new ErrorWrapper("More than one sort direction specified. This is not possible.");
+             if(sortDirection!="None") throw new Error("More than one sort direction specified. This is not possible.");
              if((/(?:a|de)scending/).test(holder)) holder=holder.replace(/^\ssort(?:(?:\sthe)?\sdice)?(?:\sin)?\s(?:a|de)scending(?:\sorder)?/, (/(a|de)scending/).exec(holder)[1]);
              else holder=holder.replace(/^\ssort(?:(?:\sthe)?\sdice)?(?:\sin)?(?:\sorder)?/, '');  //remove the text
              if(holder.startsWith('de')){sortDirection='d'; holder=holder.substring(2);}  //store then chop off 'de'
@@ -1588,7 +1592,7 @@ function numberGroup(diceStringGiven){  //TODO: rename. maybe add successes late
    }
     if(arguments.length==0 || diceStringGiven==undefined) return;
     //TODO validity check string and number
-    if(typeof(diceStringGiven)!='string') throw new ErrorWrapper("numberGroup("+diceStringGiven+") the parameter must be a string type");
+    if(typeof(diceStringGiven)!='string') throw new Error("numberGroup("+diceStringGiven+") the parameter must be a string type");
     return constructorCalled(diceStringGiven);
 }
 function findFirstCompleteCurlyBrackets(totalString){
@@ -1671,7 +1675,7 @@ Draw.diceBellCurve = function(poolGiven, secondColumn, binom){
     if(binom!=undefined) out+=' each '+binom;
     out+='<br />';
 
-    if(!(poolGiven instanceof DicePool)) throw new ErrorWrapper('?? must be dice pool');
+    if(!(poolGiven instanceof DicePool)) throw new Error('?? must be dice pool');
     if(poolGiven.getAllDice().length==0){resultsDiv.innerHTML += out + 'No Data'; return;}
 
     var rollData;
@@ -1697,7 +1701,7 @@ Draw.diceBellCurve = function(poolGiven, secondColumn, binom){
       {
           if((/^\d+/).test(''+binom)) binom='=='+binom;
           if(binom.startsWith("=") && !binom.startsWith("==")) binom='='+binom;  //must be double equal signs for eval
-          if(poolGiven.getStats().outsource.getStats().dropKeepValue!=0) throw new ErrorWrapper('?? binom can\'t have drop count');  //TODO: make error
+          if(poolGiven.getStats().outsource.getStats().dropKeepValue!=0) throw new Error('?? binom can\'t have drop count');  //TODO: make error
 
           var finishedPolys=[];
          for (var diceIndex=0; diceIndex < diceArray.length; diceIndex++)
@@ -1812,8 +1816,8 @@ Draw.compareDiceBellCurve = function(firstPoolGiven, secondPoolGiven){  //TODO: 
     var out = '<br />Right minus left<br />\n<b>Roll:</b> ' + firstPoolGiven.getName() + ' vs ' + secondPoolGiven.getName();
     out+='<br />';
 
-    if(!(firstPoolGiven instanceof DicePool)) throw new ErrorWrapper('?? must be dice pool');
-    if(!(secondPoolGiven instanceof DicePool)) throw new ErrorWrapper('?? must be dice pool');
+    if(!(firstPoolGiven instanceof DicePool)) throw new Error('?? must be dice pool');
+    if(!(secondPoolGiven instanceof DicePool)) throw new Error('?? must be dice pool');
     if(firstPoolGiven.getAllDice().length==0 || secondPoolGiven.getAllDice().length==0){resultsDiv.innerHTML += out + 'Not enough Data'; return;}
 
     var rollData1, rollData2;
@@ -2121,7 +2125,7 @@ Polynomial.createDiePolynomial = function(dieObject, explodeCount){
           if(dieObject.doesUseZero) die--;
           //if(dieObject.isFudgeDie) die--;  //uses constantModifier below
           if(dieObject.doesPenetrate && explodeIndex > 0) die--;
-          if(dieObject.nameArray.length!=0) die=nameArray[die];  //named dice are always coins and never negative
+          if(dieObject.nameArray.length!=0) die=dieObject.nameArray[die];  //named dice are always coins and never negative
           if(!isNaN(die)) die+=dieObject.constantModifier;
           if(dieObject.isNegativeDice) die*=-1;
           if(explodeIndex > 0 && dieObject.doesCompoundExplode) die+=(dieMax*explodeIndex);  //modified here for rerolling reasons. sum for compound
@@ -2281,16 +2285,18 @@ function everyDieValueWeighted(myDie){
 }
 
 //http://stats.stackexchange.com/questions/130025/formula-for-dropping-dice-non-brute-force
+/**
 function probabilityThat_ZofNIsA(a, diceArray){
     //assuming: homogenous dice pool (such as 4d10), exactly 1 die is dropped (and it is the lowest), no rerolls or min/max, standard die only
     //also assuming that a is a possible sum for the pool
     //var diceArray = poolGiven.getAllDice();
     var n = diceArray.length;
     var result = (probabilityThat_XofNisSmallest(?) * probabilityThat_YofNisA(a, diceArray.slice(1)));
-    result += (probabilityThat_XofNisNotSmallest(?) * bigSum(a, diceArray.slice(1), Math.min()));
+    result += (probabilityThat_XofNisNotSmallest(?) * bigSum(a, diceArray.slice(1)));
 }
 
-function bigSum(?){
+function bigSum(a, diceArray){
+    var n = diceArray.length;
 }
 
 function probabilityThat_XofNisSmallest(?){
@@ -2298,6 +2304,7 @@ function probabilityThat_XofNisSmallest(?){
 
 function probabilityThat_XofNisNotSmallest(?){
 }
+/**/
 
 function probabilityThat_YofNisA(a, diceArray){
     var n = diceArray.length;
@@ -2320,8 +2327,8 @@ function explodeSplit(rollData, diceArray){
           var explodeValue = diceArray[diceIndex].getStats().explodeValue;  //is undefined if !doesExplode
          if (diceArray[diceIndex].getStats().doesExplode && rollData[sumIndex][diceIndex][0] >= explodeValue)  //reg and pen but not compound
          {
-             if(diceArray[diceIndex].getMinValue() < 1) throw new ErrorWrapper("explodeSplit can't handle dice with a minimum value less than 1.");
-             if(diceArray[diceIndex].hasNames()) throw new ErrorWrapper("explodeSplit can't handle named dice.");
+             if(diceArray[diceIndex].getMinValue() < 1) throw new Error("explodeSplit can't handle dice with a minimum value less than 1.");
+             if(diceArray[diceIndex].hasNames()) throw new Error("explodeSplit can't handle named dice.");
              var doesPenetrate = diceArray[diceIndex].getStats().doesPenetrate;
             if (doesPenetrate)
             {
@@ -2629,7 +2636,6 @@ Array.prototype.containsExact(obj)  //uses === (3) which also matches types
 </pre>
 <h3>Predefined function list</h3>
 <pre>
-<script>document.write(ErrorWrapper);</script>  //so that you can throw your own errors
 main()
     called by the Execute button. simply calls eval() of the code box and catches errors
 
