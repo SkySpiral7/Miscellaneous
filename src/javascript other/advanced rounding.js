@@ -12,7 +12,7 @@ This function is not similar to Number.prototype.toPrecision (which returns a st
 Number.prototype.ensurePrecision = function(precision)
 {
     if(!Number.isFinite(this.valueOf())) return this.valueOf();
-    if(typeof(precision) !== 'number' || !Number.isFinite(precision) || Number.isNaN(this.valueOf())) return NaN;
+    if(typeof(precision) !== 'number' || !Number.isFinite(precision)) return NaN;
     //Infinity and NaN precision are not allowed (isFinite calls isNaN)
     //I am allowing people to specify negative precision or ones that are not whole numbers. why and what that means is up to the user
     if(this.valueOf() === 0) return 0;  //already perfect
@@ -292,7 +292,7 @@ function RoundingMode(options)
           var absTarget = Math.abs(target);
           while(result > absTarget){result/=magnitude;}  //result is counting towards 0 until 0 < result <= absTarget
              //target !== 0 because that's the first thing we checked in the calling function
-          while(result < absTarget){result*=magnitude}  //result is counting towards Infinity until 0 < absTarget <= result < Infinity
+          while(result < absTarget){result*=magnitude;}  //result is counting towards Infinity until 0 < absTarget <= result < Infinity
           //must count up then down to account for both 0 < Math.abs(target) < 1 and 1 < Math.abs(target)
           if(target > 0) return result;  //0 < target <= result < Infinity
           return -(result/magnitude);  //need to go down 1 because flipping the sign gives:
