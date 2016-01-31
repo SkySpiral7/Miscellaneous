@@ -48,7 +48,7 @@ A javascript dice rolling library. The html around it has full functional docume
 that are finished) except for Draw.compareDiceBellCurve which works fine. The html also has a textarea
 for eval. For example you can program: if(rollDice("2d6") === 12){}. Or create a Die or DicePool object etc.
 
-This is also ment to be the one dice roller to rule them all. And you might've heard that claim before
+This is also meant to be the one dice roller to rule them all. And you might've heard that claim before
 but **seriously**, excluding performance and visuals of dice, I only know of **one** thing it's missing:
 an arbitrary grouping of dice syntax such as (1d6)d4. Which I thought [Roll20](https://wiki.roll20.net/Dice_Reference)
 had at one point... I was at one point working on this functionality in the function groupParser.
@@ -66,9 +66,8 @@ and WarhammerAttackUnit (open file for documentation).
 A simple web interface for drawing a distribution curve of the dice for the game Warhammer 40k. And
 for rolling random values using the inputs to know the results of an attack.
 
-Copied from an older version of "tabletop dice.html". Later tabletop was updated and given another
-200 lines or so. Only testing can confirm that warhammer is a subset of tabletop (or a file compare
-but there were a lot of differences).
+Based on "tabletop dice.html". The user form has been greatly simplified and only supports Warhammer.
+A few changes to the javascript were also needed to support the new interface.
 
 **Inputs**: Number of Dice, Number of Wounds Possible, To Hit Value, To Wound Value, To Save Value, Reanimation or Feel No Pain, (and Custom Column)
 
