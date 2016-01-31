@@ -967,7 +967,7 @@ function WarhammerAttackUnit(diceCount, toHitValue, toWoundValue, saveValue, ext
 
     var attackRolled=new DicePool(diceCount+"d6").roll();
     var successCount=0;
-    var output=[];
+    var output=[];  //TODO: change for warhammer. needs to return an array. (can hard code silent)
    for (var i=0; i < attackRolled.length; i++)
    {
        if(attackRolled[i] >= toHitValue) successCount++;
@@ -1548,6 +1548,7 @@ function findFirstCompleteCurlyBrackets(totalString){
 var Draw={};
 Draw.WarhammerBellCurve = function(diceCount, toHitValue, toWoundValue, toSaveValue, extraSave, secondColumn){
     if(secondColumn==undefined) secondColumn='>=';
+    //TODO: change for warhammer
     var out = '';
 
     var rollData=[];
@@ -1765,6 +1766,7 @@ Draw.generateBinomialTable = function(rollData, secondColumn){
 Draw.generateDiceSumTable = function(rollData, secondColumn){
     if(rollData.length==0) return;  //nothing to report
     if(secondColumn=='=') secondColumn='==';  //heh symmetry. adds an '=' so that eval can read it
+    {  //TODO: change for warhammer
     var maxWounds=Number(document.getElementById('woundMax').value);
     document.getElementById('woundMax').value=maxWounds;
     if(maxWounds < 1) throw new ErrorWrapper('The maximum number of wounds must be at least 1');
@@ -1774,6 +1776,7 @@ Draw.generateDiceSumTable = function(rollData, secondColumn){
        rollData[rollData.length-2][1]+=rollData[rollData.length-1][1];  //add the 2 freq
        rollData.pop();  //then remove the top
    }
+    }
     var min, max, count=0, sum=0;
    for (var i=0; i < rollData.length; i++)
    {
@@ -1794,6 +1797,7 @@ Draw.generateDiceSumTable = function(rollData, secondColumn){
    }
     var standardDeviation = Math.sqrt(deviationSquareSum / count);
 
+    //TODO: change for warhammer
     minResult.textContent=min;
     maxResult.textContent=max;
     avgResult.textContent=avg.toFixed(2);
@@ -2102,6 +2106,7 @@ function alphaNumDescending(a, b){
     return 0;
 }
 function sumAscending(a,b){return a[0]-b[0];}
+//TODO: change for warhammer
 function attack(){
     var diceCount=Number(document.getElementById("diceCount").value);
     document.getElementById("diceCount").value=diceCount;

@@ -451,10 +451,10 @@ function Die(diceStringGiven, nameArray){
           else if(!possibleToRoll) throw new Error(diceStringGiven+"\nInfinite rerolling. This means that the die can't be rolled.");
       }
 
-       //TODO: optimise: -3df === 3df; 1d6+1d6 === 2d6
-       //reroll optimising section:
+       //TODO: optimize: -3df === 3df; 1d6+1d6 === 2d6
+       //reroll optimizing section:
        if(!canReroll) rerollCriteria=undefined;  //it isn't possible to reroll so just remove the overhead
-      else if (rerollCriteria.startsWith("!="))  //optimised so that it doesn't have to roll until it can keep it
+      else if (rerollCriteria.startsWith("!="))  //optimized so that it doesn't have to roll until it can keep it
       {
           isFudgeDie=false;
           sideCount=1;
@@ -482,10 +482,10 @@ function Die(diceStringGiven, nameArray){
           //isFudgeDie=false;  //checked later
           newSideCount-=constantModifier;  //thus shows what would need to be rolled before constantModifier for the highest possible
           sideCount=newSideCount;
-          //constantModifier+=Number((/\d+$/).exec(rerollCriteria)[0]);  //unchanged except by doesUseZero optimised later
+          //constantModifier+=Number((/\d+$/).exec(rerollCriteria)[0]);  //unchanged except by doesUseZero optimized later
           rerollCriteria=undefined;  //no longer possible to reroll
       }
-       //doesCompoundExplode is immune since the extra dies rolled need to be unchanged
+       //doesCompoundExplode is handled differently since the extra dies rolled need to be unchanged
       else if (rerollCriteria.startsWith("<") && doesCompoundExplode)  //else if < reduce the sideCount, increase constantModifier and remove the reroll
       {
           if(rerollNumber==undefined) var rerollNumber=Number((/\d+$/).exec(rerollCriteria)[0]);  //should already exist
@@ -502,7 +502,7 @@ function Die(diceStringGiven, nameArray){
           constantModifier+=rerollCount;
           rerollCriteria=undefined;
       }
-       else if(doesCompoundExplode){}  //do nothing. compound can't be optimised in any way
+       else if(doesCompoundExplode){}  //do nothing. compound can't be optimized in any other way
       else if (!doesUseZero)  //rerollCriteria.startsWith("==")
       {
           if(rerollCriteria == "==1"){sideCount--; constantModifier++; rerollCriteria=undefined;}  //bump up so that the random range is smaller
@@ -519,8 +519,8 @@ function Die(diceStringGiven, nameArray){
        //final processing:
        isFudgeDie=(isFudgeDie && sideCount==3 && constantModifier==-1 && doesUseZero);  //checks isFudgeDie so that z3-1 is false
        //if(holder.length > 0) throw new Error(diceStringGiven+"\nhas incorrect syntax. After processing the string remaining was\n"+holder);
-       if(sideCount==1 && doesExplode) throw new Error(diceStringGiven+"\nProgramming error: Infinite explosions due to rerolling optimising.");
-       //might've become invalid due to optimising
+       if(sideCount==1 && doesExplode) throw new Error(diceStringGiven+"\nProgramming error: Infinite explosions due to rerolling optimizing.");
+       //might've become invalid due to optimizing
        return holder;
    };
    function namedConstructor(){  //doesn't need to know this
@@ -1002,14 +1002,14 @@ function DnDAttack(attackBonus, minimumCritical, opposingAC, damageString, criti
 };
 function WarhammerAttackUnit(diceCount, toHitValue, toWoundValue, saveValue, extraSaveValue, areRollsSilent){
     if(typeof(diceCount)!=="number" || isNaN(diceCount)) throw new Error("WarhammerAttackUnit, diceCount ("+diceCount+") the must be a number type.");
-    if(typeof(toHitValue)!=="number" || isNaN(diceCount)) throw new Error("WarhammerAttackUnit, toHitValue ("+toHitValue+") the must be a number type.");
+    if(typeof(toHitValue)!=="number" || isNaN(toHitValue)) throw new Error("WarhammerAttackUnit, toHitValue ("+toHitValue+") the must be a number type.");
     if(toHitValue > 6) return "Impossible to hit";
-    if(typeof(toWoundValue)!=="number" || isNaN(diceCount)) throw new Error("WarhammerAttackUnit, toWoundValue ("+toWoundValue+") the must be a number type.");
+    if(typeof(toWoundValue)!=="number" || isNaN(toWoundValue)) throw new Error("WarhammerAttackUnit, toWoundValue ("+toWoundValue+") the must be a number type.");
     if(toWoundValue > 6) return "Impossible to wound";
     if(saveValue===undefined) saveValue=7;  //an impossible number
-    if(typeof(saveValue)!=="number" || isNaN(diceCount)) throw new Error("WarhammerAttackUnit, saveValue ("+saveValue+") the must be a number type.");
+    if(typeof(saveValue)!=="number" || isNaN(saveValue)) throw new Error("WarhammerAttackUnit, saveValue ("+saveValue+") the must be a number type.");
     if(extraSaveValue===undefined) extraSaveValue=7;
-    if(typeof(extraSaveValue)!=="number" || isNaN(diceCount)) throw new Error("WarhammerAttackUnit, extraSaveValue ("+extraSaveValue+") the must be a number type.");
+    if(typeof(extraSaveValue)!=="number" || isNaN(extraSaveValue)) throw new Error("WarhammerAttackUnit, extraSaveValue ("+extraSaveValue+") the must be a number type.");
     if(areRollsSilent!==false) areRollsSilent=true;
 
     var attackRolled=new DicePool(diceCount+"d6").roll();
@@ -2060,7 +2060,8 @@ Draw.generateDiceSumTable = function(rollData, secondColumn){
     return out+genTable(rollData, secondColumn);
    function genTable(rollData, secondColumn){
        if(rollData.length == 0) return '';
-       var usesFreq=(Number(rollData[0][1].toFixed(6)) >= 1);  //prevent machine episilon
+       //TODO: wait what about machine epsilon? Why can't I just say >= 1?
+       var usesFreq=(Number(rollData[0][1].toFixed(6)) >= 1);  //toFixed etc prevents machine epsilon
        var max = 0;
        var totalFreq = 0;
        var out = '';
@@ -2074,6 +2075,7 @@ Draw.generateDiceSumTable = function(rollData, secondColumn){
          for (var j=0; j < rollData.length; j++) {
              if(eval(''+rollData[j][0]+secondColumn+rollData[i][0])) secondSum+=rollData[j][1];
          }
+          //TODO: why if(!usesFreq)?
           if(!usesFreq && secondSum > 1) secondSum=1;  //rounding error: can't have more than 100%
           secondValues.push(secondSum);
       }
@@ -2088,8 +2090,8 @@ Draw.generateDiceSumTable = function(rollData, secondColumn){
       for (var i=0; i < rollData.length; i++) {
           if(rollData[i][1]==0) continue;  //roll isn't possible
           out += '<tr><td align="center" width="1%">' + rollData[i][0];  //roll
-          if(usesFreq && rollData[i][1] > 1e7) out += '</td><td align="center" width="1%">' + rollData[i][1].toPrecision(5);  //freq
-          else if(usesFreq) out += '</td><td align="center" width="1%">' + Number(rollData[i][1].toPrecision(5));  //freq
+          if(usesFreq && rollData[i][1] > 1e7) out += '</td><td align="center" width="1%">' + rollData[i][1].toPrecision(5);
+          else if(usesFreq) out += '</td><td align="center" width="1%">' + Number(rollData[i][1].toPrecision(5));  //TODO: why not always use this one?
           out += '</td><td align="right" width="1%">';
           out += (100 * rollData[i][1] / totalFreq).toFixed(3);  //non-freq is weighted but might not be the probability
           out += '%</td><td align="right" width="1%">';
@@ -2282,7 +2284,7 @@ function everyDieValueWeighted(myDie){
           Polynomial.addPolynomials(results, sum, chance);
       }
        results=results.sort(sumAscending);  //sort by sum ascending
-       //results is only sumed to know when to stop, rollData is what is returned
+       //results is only summed to know when to stop, rollData is what is returned
    }
     return rollData;
 }
@@ -2290,7 +2292,7 @@ function everyDieValueWeighted(myDie){
 //http://stats.stackexchange.com/questions/130025/formula-for-dropping-dice-non-brute-force
 /**
 function probabilityThat_ZofNIsA(a, diceArray){
-    //assuming: homogenous dice pool (such as 4d10), exactly 1 die is dropped (and it is the lowest), no rerolls or min/max, standard die only
+    //assuming: homogeneous dice pool (such as 4d10), exactly 1 die is dropped (and it is the lowest), no rerolls or min/max, standard die only
     //also assuming that a is a possible sum for the pool
     //var diceArray = poolGiven.getAllDice();
     var n = diceArray.length;
@@ -2342,7 +2344,7 @@ function explodeSplit(rollData, diceArray){
              if(doesPenetrate) timesExploded++;  //1 explosion has already happened
              var remainderValue = rollData[sumIndex][diceIndex][0]%explodeValue;
              if(remainderValue==0 && !doesPenetrate) remainderValue=explodeValue;  //if pen it can't roll max but can roll 0
-             //TODO: some dice have 0 (z) and then there's fudge and modifiers... which are impossible to seperate
+             //TODO: some dice have 0 (z) and then there's fudge and modifiers... which are impossible to separate
              var newChance=Math.pow(rollData[sumIndex][diceIndex][1], (1/(timesExploded+1)));  //each die is the same exploded or not
              thisSum.push([remainderValue, newChance]);
              for(var i=0; i < timesExploded; i++) thisSum.push([explodeValue, newChance]);
@@ -2417,6 +2419,9 @@ Draw.diceBellCurve(new DicePool(myDiceString));
 <div id="graphResults"></div>
 <!--
 various notes:
+rewrite everything
+finish stack exchange
+then look into new functionality
 
 http://anydice.com/
 not sure whether local or server. it's fast and has js but that's just for the tabs and forms etc
@@ -2449,10 +2454,11 @@ they have reroll (although not user friendly)
 
 only a sim: http://rpggeek.com/filepage/64586/l5r-roller
 
-stuff link 2 has:
+stuff link 2 has: https://wiki.roll20.net/Dice_Reference
 the syntax for count successes is different (due to using shorthand instead of a function)
 allows for multiple reroll criteria
 Grouping Rolls. which will be very difficult: {4d6+3d8}kh1 means keep highest 1 of that pool but can also {4d6+3d8, {4d2+2d4}}kh1
+    https://wiki.roll20.net/Dice_Reference#Grouped_Rolls
 
 stuff link 1 has:
 using x to mean * there's also (division sign) for / but there's no keyboard for that so it's harder to detect
@@ -2469,9 +2475,9 @@ could Look up combinatorics and generating functions for drop/keep
 make sure all of these are in the function doc:
     <a>Drop/keep and min/max only apply to dice pools. A dice pool will take the number of dice given and create a number of dice of that type.</a><br />
     <a>Both kinds of exploding and % are passed down from pool to individual dice.</a><br />
-    <a>It is possible to have dice which haved sides with custom values known as a Named dice. For example silentRollDice("1z2", "Heads", "Tails") will return either "Heads" or "Tails" instead of 0 or 1.</a><br />
+    <a>It is possible to have dice which have sides with custom values known as a Named dice. For example silentRollDice("1z2", "Heads", "Tails") will return either "Heads" or "Tails" instead of 0 or 1.</a><br />
     ScatterDie in dice pool
-reroll opimising has alota errors
+reroll optimizing has alota errors
 error checking. minor error checking in private functions
 have Draw ignore ScatterDie/Named Die instead of crashing
 (at least here)
@@ -2482,25 +2488,25 @@ finish groupParser (this is a lot of time)
 more OneRollEngine
     and stats for it? somehow
 stats: binom: re1 (use at least 1)
-(now we're in buisness since I am now better than all except rare weird stats)
+(now we're in business since I am now better than all except rare weird stats)
 everything else
 -->
 <!--TODO: list
 see Draw.compareDiceBellCurve above
-   have a Draw.compareCurves() which will convert the 2 arrays into 2D then will convert the wieghts to probability.
+   have a Draw.compareCurves() which will convert the 2 arrays into 2D then will convert the weights to probability.
        then subtract probability for the result. if(-#) first curve if(#) second. have 3 columns: #, first curve, second (do not have the prob or '>=')
        the # will be as is, the first curve will be right aligned and red, the second left aligned and blue. the sum would be 0
    stats: add "vs" functionality to compare 2 different bell curves
        have the bell curves return their (2D) array with a wrapper that draws it
        so that I can sent bell arrays to a compare function which returns array (also with draw wrapper)
 both: doc constants and stuff: there's also full 4+ function (+-*/% and ^&|~ but the last is unary...)
-make a sample draw that draws ScatterPool with balastic. which is like "-5+2d6 min 0" except with 1/3 direct hit included in 0
+make a sample draw that draws ScatterPool with basaltic. which is like "-5+2d6 min 0" except with 1/3 direct hit included in 0
 make dice and dicepool's toString return the code needed to create them: 'new Dice("2d6")'
 
 few other things below (grouping)
 currently explosions must be before reroll (put in functions)
 allow both a min and max but validate it like reroll
-1d5..10 for a named die from 5 to 10. optimised as 1d5+5. longhand: 1d5 to 10
+1d5..10 for a named die from 5 to 10. optimized as 1d5+5. longhand: 1d5 to 10
 maybe make a NumberPool so that "2d6 drop lowest, 1d% min of 3" will be allowed, have a parser function so that grouping "{{}, {}}" will be parsed
     and replaced with objects. although loud will be a pain I'm sure
 validity doesn't check array contents but maybe it should (during loop)
@@ -2522,7 +2528,7 @@ impossible: user input for any choices etc
 <a>The function rollDice expects the dice string to be in the form of XdY where X is the number of dice, d is the dice type, and Y is the number of sides each die has.</a><br />
 <a>Each die in the pool is added together. A leading negative ('-') may be used for each die to be negative.</a><br />
 <a>The string given to rollDice is not case sensitive but everything else is case sensitive. The string given to rollDice converts all whitespace into spaces.</a><br />
-<a>Some replacements are done before any other processing: XkY translates into Xd10!! keep highest Y. Keep reading for an explaination.</a><br />
+<a>Some replacements are done before any other processing: XkY translates into Xd10!! keep highest Y. Keep reading for an explanation.</a><br />
 <a>If the number of sides starts with a % (Xd%) it is replaced with 100 (Xd100). then all remaining % are replaced with '00'. For example 2d2% becomes 2d200 and 1d%% becomes 1d10000</a><br />
 <a>The dice type can be either 'd' or 'z'. In XdY the sides of d (die) are numbered from 1 to Y and z (zero) are from 0 to Y-1.</a><br />
 <a>Fudge dice (aka Fate dice) are supported. To use them say XdF (or XzF). Fudge die have 3 sides which are labeled -1, 0, and +1.</a><br />
@@ -2560,7 +2566,7 @@ impossible: user input for any choices etc
 <a>All values are broken up into numbers and others with the numbers coming before everything else.</a><br />
 <a>The sort is either ascending or descending with the numbers being sorted numerically and the others alphabetically. Ascending is default.</a><br />
 <br />
-<a>All dice options have sorthand notation. An exception is that for the dice themselves there is no longhand for number of sides and number of dice.</a><br />
+<a>All dice options have shorthand notation. An exception is that for the dice themselves there is no longhand for number of sides and number of dice.</a><br />
 <a>All plus and minus must also be symbolic (such as '+') instead of using words. Constants must remain the same. There is no shorthand for minimum and maximum.</a><br />
 <a>All shorthand follows the dice without a space such as: "2d6!dL". The shorthand may be in any order following the dice.</a><br />
 <a>Drop/Keep shorthand format is: XdY(d|k)[h|L][#]. where 'd' is for 'drop' and 'k' for 'keep'. 'L' for 'Lowest' or 'h' for highest.</a><br />
@@ -2685,9 +2691,9 @@ Combination(numberDesired, trials)
 cartesianProduct(array1Given, array2Given)
     returns a 2D array which has every possible combination of the elements of the 2 arrays given
     the result has a minimum of 2D. It will have 2 dimensions only if each array given is 1D
-    see the exmaple following nextCartesianProduct
+    see the example following nextCartesianProduct
 nextCartesianProduct(array1Given, array2Given)
-    this functions just like cartesianProduct except that array1Given is the result of either cartesian product function
+    this functions just like cartesianProduct except that array1Given is the result of either Cartesian product function
     this takes the each element of array1Given as an array and appends to it every possible element of array2Given
     the inputs array1Given and array2Given are not changed. the returned array is of the same format as cartesianProduct
     if sending 2 arrays to cartesianProduct would result in this: [[[a, 1], red], [[a, 1], green]]
@@ -2701,10 +2707,10 @@ example code for cartesianProduct and nextCartesianProduct:
     writeln(nextCartesianProduct(array1, ['red', 'green', 'blue']).toSource());
     //the output is: [[a, 1, red], [a, 1, green], [a, 1, blue], [a, 2, red], [a, 2, green], [a, 2, blue], [a, 3, red], [a, 3, green], [a, 3, blue], [b, 1, red]...
 alphaNumAscending(a, b), alphaNumDescending(a, b) and sumAscending(a,b)
-    these are sorting functions in that they are ment to be sent to Array.sort
+    these are sorting functions in that they are meant to be sent to Array.sort
     these are the functions used for sorting internally with alphaNumAscending being ascending and alphaNumDescending being descending
     alphaNumAscending and alphaNumDescending are used for some DicePool functions and for numberGroup sorting. sumAscending is used for drawing functions
-    Array.sort(alphaNumAscending).reverse()!=Array.sort(alphaNumDescending) which is why there are seperate functions. although sumAscending can be reversed correctly
+    Array.sort(alphaNumAscending).reverse()!=Array.sort(alphaNumDescending) which is why there are separate functions. although sumAscending can be reversed correctly
     <script>document.write(sumAscending);</script>  //entire code. [0] is the sum and [1] is the freq/chance. see Polynomial.createDiePolynomial for details
     alphaNumAscending and alphaNumDescending split the array into 2 sections as described in the basic description sorting section
     the numbers are always first (in either ascending or descending order) which is why one is not the reverse of the other
@@ -2823,7 +2829,7 @@ BattleTechAttackMech(targetNumber, attackType, sideOfRobot, areRollsSilent)
     nothing is written to the output. the information is in a string which is returned
     first it determines if you hit. if areRollsSilent is false it records the attack rolled
     if you miss then that is returned and it stops there
-    if the attackType was missiles it determines how mant missiles hit, if rolls are not silent it records the rolled number
+    if the attackType was missiles it determines how many missiles hit, if rolls are not silent it records the rolled number
     then based on attackType (missiles hit the same locations as weapons) it determines where you hit the mech, if not silent it records the rolled number
     see BattleTechTables.robotHitLocations and BattleTechTables.robotPunchLocations below for information on hit locations
     then 2d6 is rolled to see how many critical hits would be landed assuming you hit internal armor, if not silent it records the rolled number
@@ -2843,12 +2849,12 @@ WarhammerAttackUnit(diceCount, toHitValue, toWoundValue, saveValue, areRollsSile
     then with the number that succeeded it rolls more 6 sided dice seeing if each are less than saveValue
     the number of wounds is indicated in the string returned
     the returned string may instead have a message such as 'None wounded'
-    if areRollsSilent is false moer information is recorded: each die's value is displayed for each roll
+    if areRollsSilent is false more information is recorded: each die's value is displayed for each roll
 OneRollEngine(numberOfDice)
     numberOfDice is the number of 10 sided dice that will be rolled
     nothing is written to the output. the information is in a string which is returned
     the returned string will have the results sorted by Height ascending
-    and be in the form of: AxB, CxD. where A-D are numbers and x is litteral
+    and be in the form of: AxB, CxD. where A-D are numbers and x is literal
 BattleTechMechCriticals(numberOfCriticalHits)
     returns a string in the form of: (Upper | Lower) x; (Upper | Lower) y; ...
     where x and y etc are the number(s) rolled on 2d6 for hit location.
@@ -2920,7 +2926,7 @@ Draw.generateDiceSumTable(rollData, secondColumn)
     the green bar of the table is the most likely. there might be more than one green bar
     rounding may cause 2 numbers to be the same but only 1 of them is green which means that without rounding the green one is slightly greater
     the table will not contain rows that have freq/chance of exactly 0. if you want the row to display as 0 then make
-    rollData[i][1]=0.000001 (so that it rounds to 0% but isn't 0) this only works for chances and there is no freq equivelent
+    rollData[i][1]=0.000001 (so that it rounds to 0% but isn't 0) this only works for chances and there is no freq equivalent
     above the table there are also some statistics: Min (Minimum Sum), Max (Maximum Sum), Avg (Average Sum), Std Dev (Standard Deviation)
 Draw.generateBinomialTable(rollData, secondColumn)
     secondColumn does not have a default (it must be provided) and if secondColumn is '=' it will become '==' instead
@@ -2967,11 +2973,11 @@ findFirstCompleteCurlyBrackets(totalString)
     a utility used for groupParser. it is done and works fine
     it finds the first '}' then the closest '{' that comes before it
     the return value is [beforeText, innerText, afterText] where each are strings
-    with peices of totalString either before, after, or inside those braces
+    with pieces of totalString either before, after, or inside those braces
     the innerText does not have {} any more
 numberGroup(diceStringGiven)
     if numberGroup is called as a function it will return the diceStringGiven that remains after the constructor (diceStringGiven doesn't change)
-    see the object documentaion below for details
+    see the object documentation below for details
 </pre>
 <h3>Predefined objects and the functions they contain</h3>
 <pre>
@@ -2994,11 +3000,11 @@ Die(diceStringGiven, nameArray)
     equals(otherDie)
        returns true if each of the stats (see getStats) of this is the same as otherDie
        the exception is that the die's name (see setName) is not considered
-       if the dice are named dice each element of nameArray is conpared
+       if the dice are named dice each element of nameArray is compared
     getStats()
        returns an object that has a copy of every attribute of this die
        the object returned is not a die object and only has copies of the values so that these values can't be changed
-       keep in mind that rerolling is optimised which may make some of the following attributes different than expected
+       keep in mind that rerolling is optimized which may make some of the following attributes different than expected
        the attributes of die (that are returned by getStats) are as follows:
        nameArray: (a copy is made) empty by default. this contains the values of each of the die's sides if it is a named die
        isNegativeDice: false by default. this indicates if the die is positive or negative. if negative the result rolled will be negative
@@ -3010,21 +3016,21 @@ Die(diceStringGiven, nameArray)
        doesPenetrate: false by default. when true, 1 is subtracted from each die added due to explosions
        doesCompoundExplode: false by default. when true, the explosions are considered a single die value. mutually exclusive with doesExplode
        dieName: undefined by default. has no meaning and is only set by setName
-       rerollCriteria: undefined by default. reroll optimising may cause this value to be different than expected
+       rerollCriteria: undefined by default. reroll optimizing may cause this value to be different than expected
           undefined indicates that there are no values that are rerolled otherwise it is a string with a logical numerical comparison followed by a number
-          so that eval(''+valueRolled+rerollCriteria) is true. it is copied from the contructor directly following the 'r'
-       explodeValue: undefined by default. reroll optimising may cause this value to be different than expected
+          so that eval(''+valueRolled+rerollCriteria) is true. it is copied from the constructor directly following the 'r'
+       explodeValue: undefined by default. reroll optimizing may cause this value to be different than expected
           this is the value that will cause an explosion. because of this is can't be the final result of a roll
-       constantModifier: 0 by default. reroll optimising may cause this value to be different than expected
+       constantModifier: 0 by default. reroll optimizing may cause this value to be different than expected
           this is a constant modifier that is added to each value rolled before reroll but after explosions are determined
     isFudge()
        returns true if the die is a fudge die
     getMaxValue()
        returns the value which is on the last side of the die which is also the maximum possible value unless it is a named die
-       if it is a named die is just returns the name of the last side reguardless of whether or not it is the maximum value
+       if it is a named die is just returns the name of the last side regardless of whether or not it is the maximum value
     getMinValue()
        returns the value which is on the first side of the die which is also the minimum possible value unless it is a named die
-       if it is a named die is just returns the name of the first side reguardless of whether or not it is the minimum value
+       if it is a named die is just returns the name of the first side regardless of whether or not it is the minimum value
     getSides()
        returns the number sides the die has
     flip() or spin()
@@ -3085,8 +3091,8 @@ DicePool(diceStringGiven, nameArray)
        everyRoll and droppedRolls must be arrays of numbers although droppedRolls is optional
        the string will be a list of everyRoll values with + separating them
        it will display the total after min/max, the removed values and the previous total before min/max
-       if all the dice are fudge the sign will be diplayed without seperation such as: "+-0+ = 1"
-       named dice will be seperated by comma in the dice list and not be counted for the total
+       if all the dice are fudge the sign will be displayed without separation such as: "+-0+ = 1"
+       named dice will be separated by comma in the dice list and not be counted for the total
     add(newDiceStringPassed, nameArray)
        used to add dice to the dice pool. called by the constructor but may also be called elsewhere
        newDiceStringPassed must have correct syntax for a Die object (diceStringGiven) except that
@@ -3104,7 +3110,7 @@ DicePool(diceStringGiven, nameArray)
     roll()
        rolls every die in the pool and returns an array of those values
        all forms of exploding have already been accounted for and so has drop/keep
-       this outputs nothing and does not find the total hense min/max is not performed
+       this outputs nothing and does not find the total hence min/max is not performed
     sumRoll(isSilent)
        returns roll().summation() with min/max accounted for
        isSilent is true by default but if it is false then this will call writeln(generateSumString(everyRoll, droppedRolls));
@@ -3117,7 +3123,7 @@ DicePool(diceStringGiven, nameArray)
        a number must be given. if a number is given but no comparison operated then "==" is used by default
        if "=" is the comparison operated then it will be changed to "==" to meat the javascript standards
        the returned string says the number of net successes or failures or if it come up even
-       if areRollsSilent is false then it will also display every roll followed by each value's comparisions
+       if areRollsSilent is false then it will also display every roll followed by each value's comparisons
        then the total Successes, total Failures then the net total
     opposedRollByDice(otherDicePoolObject, failurePenalty, areRollsSilent)
        this rolls both dice pools counting the number of dice that have higher or lower values
