@@ -98,7 +98,7 @@ if(Math.factorial == undefined){Math.factorial = function(numberGiven){  //do no
 //meaning Math.pow(2,16)-1 for each other one (multi and numb) since highest case: multiply them. although that leaves total's max much lower than Math.pow(2,32)-1
 //dropCount's limit and maxStat's limit are also affected but whatever
 
-var Silent=true;
+const Silent = true;
 
 function main(){
     document.getElementById("results").value="";
@@ -302,7 +302,7 @@ function Die(diceStringGiven, nameArray){
        if((/^z/).test(holder)) doesUseZero=true;  //event of 3z2 for 3 coins 0 or 1
        if(!(/^[zd]/).test(holder)) throw new Error(diceStringGiven+"\ndice must use 'd' or 'z' to specify the dice type");
        holder=holder.substring(1);  //chop off 'd' or 'z'
-       if((/^%/).test(holder)) holder=holder.replace(/%/, "100");  //replace all % with 100
+       if((/^%/).test(holder)) holder=holder.replace(/%/, "100");  //replace first % with 100
        holder=holder.replace(/%/g, "00");  //replace all other % with 2 more zeroes
       if (holder.startsWith("f"))  //already converted to lower case
       {
@@ -451,6 +451,7 @@ function Die(diceStringGiven, nameArray){
           else if(!possibleToRoll) throw new Error(diceStringGiven+"\nInfinite rerolling. This means that the die can't be rolled.");
       }
 
+       //TODO: optimise: -3df === 3df; 1d6+1d6 === 2d6
        //reroll optimising section:
        if(!canReroll) rerollCriteria=undefined;  //it isn't possible to reroll so just remove the overhead
       else if (rerollCriteria.startsWith("!="))  //optimised so that it doesn't have to roll until it can keep it
@@ -1315,7 +1316,7 @@ function OneRollEngine(numberOfDice){  //TODO: more dice: Expert, hard, wiggle, 
    }
     return engineResults;
 }
-var AlwaysScatter=true;  //for below
+const AlwaysScatter = true;  //for below
 function ScatterPool(alwaysScatter){
     if(alwaysScatter!=true) alwaysScatter=false;
     var myPool=new DicePool("2d6");  //each created only once
@@ -1997,12 +1998,14 @@ Draw.generateDiceCompareTable = function(name1, name2, rollData1, rollData2){
     out += "\n";
 
    for (var i=0; i < diffData.length; i++) {
-       //if(diffData[i][1]==0) continue;  //diff 0 are shown
        out += '<tr><td align="center">' + diffData[i][0];  //roll
        out += '</td><td align="right">';
        out += (100 * diffData[i][1]).toFixed(3);  //non-freq is weighted but might not be the probability
-       out += '%</td><td valign="center" align="right">';
-      if (diffData[i][1] > 0)
+       out += '%</td>';
+       if(diffData[i][1]!==0) out += '<td valign="center" align="right">';  //for both positive and negative
+
+       if(diffData[i][1]===0) out += '<td colspan="2" align="center">Same';
+      else if (diffData[i][1] > 0)
       {
           out += '</td><td valign="center">';
           out += '<div style="background-color: blue; width:' + Math.abs(100 * diffData[i][1] / abMax).toFixed(3)+'%; height: 0.8em">&nbsp;</div>';
@@ -2503,7 +2506,7 @@ maybe make a NumberPool so that "2d6 drop lowest, 1d% min of 3" will be allowed,
 validity doesn't check array contents but maybe it should (during loop)
 review and clean up code
 
-impossible: user unput for any choices etc
+impossible: user input for any choices etc
 -->
 <br /><br /><a style="text-decoration: underline; font-weight: bold;">Basic Description:</a><br />
 <a>The dice notation used most closely resembles </a><a href="https://wiki.roll20.net/Dice_Reference">Roll20.net</a><a> which uses syntax well known as demonstrated by </a><a href="http://en.wikipedia.org/wiki/Dice_notation">Wikipedia</a><a>.</a><br />
@@ -2763,14 +2766,15 @@ ScatterPool(alwaysScatter)
        if the scatter die is direct hit or if balisticSkill &gt;= the 2d6 roll then "Direct Hit" is returned
        otherwise a string is returned which contains the scatter die's direction and the distance in inches based on balisticSkill
     it does not contain roll() so that it will not be confused with DicePool objects
-var AlwaysScatter=true;
+const AlwaysScatter = true;
     this is a defined global so that you may say ScatterDie(AlwaysScatter) or (!AlwaysScatter) instead of true or false
     this is simply more easy to read (!AlwaysScatter means "not AlwaysScatter" which is the value false)
-var Silent=true;
+const Silent = true;
     this is a defined global so that you may say DnDAttack(0, 20, 15, "1d10", 2, Silent) or !Silent) instead of true or false
     this is simply more easy to read (!Silent means "not Silent" which is the value false)
 
 DnDAttack(attackBonus, minimumCritical, opposingAC, damageString, criticalMultiplier, areRollsSilent)
+    This is for Dungeons and Dragons 3rd Edition (along with 3.5 and pathfinder).
     does what you'd expect: attackBonus is added to the attack roll when comparing against the opposingAC
     if the natural roll was &gt;= minimumCritical then it auto-hits and roll 1d20 vs opposingAC for a critical
     if critical damage rolled * criticalMultiplier. to turn off critical hits make criticalMultiplier = 1
