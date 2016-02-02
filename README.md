@@ -16,17 +16,12 @@ which is in my
 
 
 #Works in progress
-None (although "tabletop dice.html" is virtually never finished)
+None
 
 #Finished but Untested
-1. battle tech dice.html
-2. Catch Rate Calculator.html
-3. generate password.html
-4. L5R dice.html
-5. L5R stats.html
-6. old json.js
-7. tabletop dice.html
-8. warhammer dice.html
+1. Catch Rate Calculator.html
+2. generate password.html
+3. old json.js
 
 #Finished and Tested
 1. advanced rounding.js
