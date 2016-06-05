@@ -1,15 +1,15 @@
 //Note that throughout this file the word 'suite' is like naive set theory: a suite it can contain any number of test cases and suites.
     //TODO: see if I can replace 'suite' with something more clear
 //TODO: test itself
-//TODO: add: 2 links for first unmade and first unfinished (if neither then don't have links)
-//TODO: add: link for bottom of suite and top of suite
+//TODO: reduce and simplify
+//TODO: change output to write to a text area instead of generating DOM
 
 //this is optional. feel free to remove it.
 /**Provided as a default way to compare objects.
 It simply enumerates over all properties and makes sure they match.
 Note that it enumerates up the prototype chain in case one of them overrides a parent property so they don't match.
 It is type safe and also makes sure they have the same number of enumerable properties.*/
-Object.prototype.equals = function(obj)
+Object.prototype.equals_hidden = function(obj)
 {
     if(!(obj instanceof Object)) return false;
     if(obj === this) return true;
@@ -25,36 +25,6 @@ Object.prototype.equals = function(obj)
    }
     return true;
 };
-//also optional but helpful for comparing errors
-/**Provided as a default way to compare errors.
-It does the same thing as Object.prototype.equals then compares name and message but ignores stack etc.*/
-Error.prototype.equals=function(err)
-{
-    if(!(err instanceof Error)) return false;
-    if(err === this) return true;
-    if(Object.keys(err).length !== Object.keys(this).length) return false;
-   for (var i in err)
-   {
-       //if(!err.hasOwnProperty(i)) continue;  //intentionally not used: all enumerated properties must match
-       if(err[i] instanceof Object && typeof(err[i].equals) === 'function')
-       {
-          if(!err[i].equals(this[i])) return false;
-       }
-       else if(err[i] !== this[i]) return false;  //this[i] could be undefined
-   }
-    //all Errors have these and they are not enumerated
-    if(err.name !== this.name) return false;  //defined in Function
-    if(err.message !== this.message) return false;  //defined in Error
-    if(err.description !== this.description) return false;  //for IE users. same as message
-    //if(err.stack !== this.stack) return false;  //ignore the stack value
-       //also ignore: fileName, lineNumber, columnNumber
-    return true;
-};
-//TODO: consider: using jasmine or QUnit:
-//http://jasmine.github.io/2.4/introduction.html
-//http://qunitjs.com/
-//both stand alone. jasmine has support for custom equality
-//QUnit has better test result output
 
 const TesterUtility={};
 /*If all of the requirements pass then return true otherwise add the failures to the testResults and return false
@@ -250,48 +220,82 @@ TesterUtility.testAll=function(testSuite, isFirst)
 If Expected and Actual are both (non-null) objects and Expected.equals is a function then it will return the result of Expected.equals(Actual).
 If Expected and Actual are both numbers then testResult.Delta can also be specified (it must be a number).
 Delta is the maximum number that numbers are allowed to differ by to be considered equal (eg 1 and 2 are equal if delta is 1).
-If Delta is not specified it will default to Tester.data.defaultDelta.*/
+If Delta is not specified it will default to Tester.data.defaultDelta.
+Delta also applies to Dates which is useful if you'd like to ignore seconds for example.*/
 TesterUtility.testPassed=function(testResult)
 {
    if(undefined !== testResult.Error) return false;
-   if(typeof(testResult.Expected) !== typeof(testResult.Actual)) return false;  //testing is type strict
 
-   if(null === testResult.Expected) return (null === testResult.Actual);  //typeof(null) === 'object' this is to avoid that mess
-   if(null === testResult.Actual) return false;
-   if('object' === typeof(testResult.Expected) && testResult.Expected.constructor !== testResult.Actual.constructor) return false;
+   var delta = testResult.Delta;
+   if(undefined === delta) delta = Tester.data.defaultDelta;
+   if(typeof(delta) !== 'number' || !isFinite(delta)) throw new Error('Test error: illegal delta: ' + delta);
 
-   if (TesterUtility.useValueOf(testResult.Expected))
+   var remainingKeys = [];
+   do
    {
-      //unboxing intentionally: mutates the values and is after the type check (in case of box and primitive)
-      testResult.Expected = testResult.Expected.valueOf();
-      testResult.Actual = testResult.Actual.valueOf();
+      var shallowResult = TesterUtility._shallowEquality(testResult.Expected, testResult.Actual, delta);
+      if(undefined !== shallowResult) return shallowResult;
+      //TODO: go deep (see previous Object.equals)
+   } while(remainingKeys.length > 0);
+
+   return false;
+};
+/**Used internally by TesterUtility.testPassed. Don't call directly (delta isn't validated).
+@returns true or false based on a shallow equality check or undefined if a deep equality is required.*/
+TesterUtility._shallowEquality=function(expected, actual, delta)
+{
+   if(typeof(expected) !== typeof(actual)) return false;  //testing is type strict
+
+   if(null === expected) return (null === actual);  //typeof(null) === 'object' this is to avoid that mess
+   if(null === actual) return false;
+   if('object' === typeof(expected) && expected.constructor !== actual.constructor) return false;
+
+   if (TesterUtility.useValueOf(expected))
+   {
+      //unboxing is intentionally after the type check (in case of box and primitive)
+      expected = expected.valueOf();
+      actual = actual.valueOf();
    }
 
    //undefined has it's own type so it will return true here or false above
-   if(testResult.Expected === testResult.Actual) return true;  //base case. if this is true no need to get more advanced
-   if (TesterUtility.isPrimitive(testResult.Expected))
+   if(expected === actual) return true;  //base case. if this is true no need to get more advanced
+   if (TesterUtility.isPrimitive(expected))
    {
-      if(typeof(testResult.Expected) !== 'number') return false;  //equality was denied at base case
-      if(isNaN(testResult.Expected) && isNaN(testResult.Actual)) return true;
+      if(typeof(expected) !== 'number') return false;  //equality was denied at base case
+      //dates will be a number after unboxing so that they can also use delta
+      if(isNaN(expected) && isNaN(actual)) return true;
          //NaN is a jerk: NaN === NaN erroneously returns false (x === x is a tautology. the reason the standard returns false no longer applies)
 
-      var delta = testResult.Delta;
-      if(undefined === delta) delta = Tester.data.defaultDelta;
-      if(typeof(delta) !== 'number' || !isFinite(delta)) throw new Error('Test error: illegal delta: ' + delta);
-
-      return Math.abs(testResult.Expected - testResult.Actual) <= delta;
+      return Math.abs(expected - actual) <= delta;
          //numbers are immutable. they are kept the same for the sake of display. TODO: change the display. somehow?
    }
 
-   if(testResult.Expected instanceof Object && typeof(testResult.Expected.equals) === 'function') return testResult.Expected.equals(testResult.Actual);
-   //TODO: go deep
-   return false;
+   if(expected instanceof Object && typeof(expected.equals) === 'function') return expected.equals(actual);
+
+   if (expected instanceof Error)
+   {
+      //constructor has already been compared
+      //the assertions are for simplicity since you should never do them anyway
+      if(typeof(expected.message) !== 'string' && typeof(expected.message) !== 'undefined')
+         throw new Error('Assertion Error: expected.message is ' + expected.message);
+      if(typeof(expected.description) !== 'string' && typeof(expected.description) !== 'undefined')
+         throw new Error('Assertion Error: expected.description is ' + expected.description);
+
+      if(expected.message !== actual.message) return false;  //defined in Error
+      if(expected.description !== actual.description) return false;  //for IE. same as message
+      //ignore these: stack, fileName, lineNumber, columnNumber
+      return true;
+   }
+
+   return undefined;
 };
+/**@returns true if the input should be compared via .valueOf when determining equality*/
 TesterUtility.useValueOf=function(input)
 {
       return (input instanceof Boolean || input instanceof Number || input instanceof String
       || input instanceof Date || input instanceof Function);
 };
+/**@returns true if the input should be compared via === when determining equality*/
 TesterUtility.isPrimitive=function(input)
 {
    var inputType = typeof(input);
