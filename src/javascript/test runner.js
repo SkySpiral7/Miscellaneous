@@ -50,32 +50,6 @@ Error.prototype.equals=function(err)
        //also ignore: fileName, lineNumber, columnNumber
     return true;
 };
-Number.prototype.equals = function(obj)
-{
-    if(!(obj instanceof Number) && typeof(obj) !== 'number') return false;
-    if(Number.isNaN(this.valueOf()) && Number.isNaN(obj.valueOf())) return true;
-    return (this.valueOf() === obj.valueOf());
-};
-Boolean.prototype.equals = function(obj)
-{
-    if(!(obj instanceof Boolean) && typeof(obj) !== 'boolean') return false;
-    return (this.valueOf() === obj.valueOf());
-};
-String.prototype.equals = function(obj)
-{
-    if(!(obj instanceof String) && typeof(obj) !== 'string') return false;
-    return (this.valueOf() === obj.valueOf());
-};
-Function.prototype.equals = function(obj)
-{
-    if(!(obj instanceof Function) && typeof(obj) !== 'function') return false;
-    return (this.valueOf() === obj.valueOf());
-};
-Date.prototype.equals = function(obj)
-{
-    if(!(obj instanceof Date)) return false;
-    return (this.valueOf() === obj.valueOf());
-};
 //TODO: consider: using jasmine or QUnit:
 //http://jasmine.github.io/2.4/introduction.html
 //http://qunitjs.com/
@@ -281,20 +255,49 @@ TesterUtility.testPassed=function(testResult)
 {
    if(undefined !== testResult.Error) return false;
    if(typeof(testResult.Expected) !== typeof(testResult.Actual)) return false;  //testing is type strict
+
+   if(null === testResult.Expected) return (null === testResult.Actual);  //typeof(null) === 'object' this is to avoid that mess
+   if(null === testResult.Actual) return false;
+   if('object' === typeof(testResult.Expected) && testResult.Expected.constructor !== testResult.Actual.constructor) return false;
+
+   if (TesterUtility.useValueOf(testResult.Expected))
+   {
+      //unboxing intentionally: mutates the values and is after the type check (in case of box and primitive)
+      testResult.Expected = testResult.Expected.valueOf();
+      testResult.Actual = testResult.Actual.valueOf();
+   }
+
+   //undefined has it's own type so it will return true here or false above
    if(testResult.Expected === testResult.Actual) return true;  //base case. if this is true no need to get more advanced
+   if (TesterUtility.isPrimitive(testResult.Expected))
+   {
+      if(typeof(testResult.Expected) !== 'number') return false;  //equality was denied at base case
+      if(isNaN(testResult.Expected) && isNaN(testResult.Actual)) return true;
+         //NaN is a jerk: NaN === NaN erroneously returns false (x === x is a tautology. the reason the standard returns false no longer applies)
+
+      var delta = testResult.Delta;
+      if(undefined === delta) delta = Tester.data.defaultDelta;
+      if(typeof(delta) !== 'number' || !isFinite(delta)) throw new Error('Test error: illegal delta: ' + delta);
+
+      return Math.abs(testResult.Expected - testResult.Actual) <= delta;
+         //numbers are immutable. they are kept the same for the sake of display. TODO: change the display. somehow?
+   }
 
    if(testResult.Expected instanceof Object && typeof(testResult.Expected.equals) === 'function') return testResult.Expected.equals(testResult.Actual);
-
-   if(typeof(testResult.Expected) !== 'number') return false;  //equality was denied at base case
-   if(isNaN(testResult.Expected) && isNaN(testResult.Actual)) return true;
-      //NaN is a jerk: NaN === NaN erroneously returns false (x === x is a tautology. the reason the standard returns false no longer applies)
-
-   var delta = testResult.Delta;
-   if(undefined === delta) delta = Tester.data.defaultDelta;
-   if(typeof(delta) !== 'number' || !isFinite(delta)) throw new Error('Test error: illegal delta: ' + delta);
-
-   return Math.abs(testResult.Expected - testResult.Actual) <= delta;
-      //numbers are immutable. they are kept the same for the sake of display. TODO: change the display. somehow?
+   //TODO: go deep
+   return false;
+};
+TesterUtility.useValueOf=function(input)
+{
+      return (input instanceof Boolean || input instanceof Number || input instanceof String
+      || input instanceof Date || input instanceof Function);
+};
+TesterUtility.isPrimitive=function(input)
+{
+   var inputType = typeof(input);
+   return ('boolean' === inputType || 'number' === inputType || 'string' === inputType
+      || 'function' === inputType || 'symbol' === inputType || undefined === input || null === input);
+   //TesterUtility.testPassed doesn't reach the undefined and null cases
 };
 /**This is a simple way to mark unfinished test suites. This makes them easy to find because they show up in testAll.
 Unfinished can be in the middle of a test suite but must return afterwards without any more tests. Or can be at the end of a suite.
