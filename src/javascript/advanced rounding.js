@@ -11,6 +11,7 @@ This function is similar to Number(num.toFixed(precision)) except this function 
 This function is not similar to Number.prototype.toPrecision (which returns a string of significant figures via Half_Up).*/
 Number.prototype.ensurePrecision = function(precision)
 {
+    //TODO: replace with a delta check
     if(!Number.isFinite(this.valueOf())) return this.valueOf();
     if(typeof(precision) !== 'number' || !Number.isFinite(precision)) return NaN;
     //Infinity and NaN precision are not allowed (isFinite calls isNaN)
@@ -329,8 +330,9 @@ RoundingMode.Half_Down = RoundingMode({divisible: 1, half: RoundingMode.Down});
 RoundingMode.Half_Truncate = RoundingMode.Half_Down;  //aka
 
 {  //Fermi block (no block scope)
-//Fermi Estimation is not a formula. It's the idea of rounding wildly to estimate a problem.
+//Fermi Estimation is not a formula. It's the idea of rounding wildly to estimate a problem (doesn't need to be base 10).
 //All of the following are therefore types of fermi estimations.
+//TODO: estimation != rounding. Remove Fermi block
 
 RoundingMode.Fermi = {};
 //This is the formula used in https://what-if.xkcd.com/84/

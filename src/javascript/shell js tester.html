@@ -3,20 +3,21 @@
 <script>
 function main()
 {
-var output = document.getElementById("output");
+var output = document.getElementById('output');
 output.value = 'An error occurred.';  //will be overwritten if doesn't throw
-output.value = eval('(function(){'+document.getElementById("inputCode").value+'})();');
-//doesn't catch so that the stack trace is unchanged
+output.value = eval('(function(){' + document.getElementById('inputCode').value + '})();');
+//do not catch
 };
 </script>
 <!--Test section-->
 <!--these would only work locally-->
 <script src="advanced rounding.js"></script><!--the code to test-->
-<script src="..\..\..\Humans & Heroes\2-secret-origins\javascript\simple tester.js"></script><!--this runs the tests-->
-<script src="..\..\tests\javascript other\advanced rounding tests.js"></script><!--these are the tests (must come after simple tester)-->
+<script src="test runner.js"></script><!--this runs the tests-->
+<script src="..\..\tests\javascript\advanced rounding tests.js"></script><!--these are the tests (must come after test runner)-->
 <!--/Test section-->
 <a>Code:</a><br />
-<textarea id="inputCode" rows="10" cols="80">Tester.testAll();
+<textarea id="inputCode" rows="10" cols="80">
+Tester.testAll();
 return 0;
 </textarea><br />
 <input type="button" onClick="main();" value="Execute" /><br /><br />
@@ -24,4 +25,5 @@ return 0;
 <textarea id="output" rows="2" cols="20"></textarea><br />
 <a href="javascript:Tester.testAll();">Run all tests</a><br />
 <br /><div id="test results"></div><br /><br />
+<script>document.getElementById('inputCode').focus();</script>
 </html>
