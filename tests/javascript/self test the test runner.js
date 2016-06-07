@@ -45,6 +45,32 @@ Tester.TesterUtility.testPassed=function(isFirst)
    testResults.push({Expected: true, Actual: actual, Description: 'Using custom delta'});
    } catch(e){testResults.push({Error: e, Description: 'Using custom delta'});}
 
+   try{
+   actual = TesterUtility.testPassed({Expected: [1,2], Actual: [1,2]});
+   testResults.push({Expected: true, Actual: actual, Description: 'Least deep equal'});
+   } catch(e){testResults.push({Error: e, Description: 'Least deep equal'});}
+
+   try{
+   actual = TesterUtility.testPassed({Expected: {a: 1}, Actual: {a: 2}});
+   testResults.push({Expected: false, Actual: actual, Description: 'Least deep not equal'});
+   } catch(e){testResults.push({Error: e, Description: 'Least deep not equal'});}
+
+   try{
+   actual = TesterUtility.testPassed({Expected: [1.2, 2.5], Actual: [1.4, 2.55], Delta: 0.2});
+   testResults.push({Expected: true, Actual: actual, Description: 'Delta is global'});
+   } catch(e){testResults.push({Error: e, Description: 'Delta is global'});}
+
+   try{
+   actual = TesterUtility.testPassed({Expected: [{}, {a: 1}], Actual: [{}, {a: 1, b: 5}]});
+   testResults.push({Expected: false, Actual: actual, Description: 'Deep with unequal keys'});
+   } catch(e){testResults.push({Error: e, Description: 'Deep with unequal keys'});}
+
+   try{
+   actual = TesterUtility.testPassed({Expected: {a: undefined}, Actual: {b: 1}});
+   //Actual.b exists so that there are the same number of keys (thus edge case)
+   testResults.push({Expected: false, Actual: actual, Description: 'Edge case: undefined vs not exist'});
+   } catch(e){testResults.push({Error: e, Description: 'Edge case: undefined vs not exist'});}
+
    TesterUtility.displayResults('meta: TesterUtility.testPassed', testResults, isFirst);
 };
 Tester.TesterUtility._shallowEquality=function(isFirst)

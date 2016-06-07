@@ -4,28 +4,6 @@
 //TODO: reduce and simplify
 //TODO: change output to write to a text area instead of generating DOM
 
-//this is optional. feel free to remove it.
-/**Provided as a default way to compare objects.
-It simply enumerates over all properties and makes sure they match.
-Note that it enumerates up the prototype chain in case one of them overrides a parent property so they don't match.
-It is type safe and also makes sure they have the same number of enumerable properties.*/
-Object.prototype.equals_hidden = function(obj)
-{
-    if(!(obj instanceof Object)) return false;
-    if(obj === this) return true;
-    if(Object.keys(obj).length !== Object.keys(this).length) return false;
-   for (var i in obj)
-   {
-       //if(!obj.hasOwnProperty(i)) continue;  //intentionally not used: all enumerated properties must match
-       if(obj[i] instanceof Object && typeof(obj[i].equals) === 'function')
-       {
-          if(!obj[i].equals(this[i])) return false;
-       }
-       else if(obj[i] !== this[i]) return false;  //either could be undefined
-   }
-    return true;
-};
-
 const TesterUtility={};
 /*If all of the requirements pass then return true otherwise add the failures to the testResults and return false
 Use this if the test output gets too huge*/
@@ -230,17 +208,30 @@ TesterUtility.testPassed=function(testResult)
    if(undefined === delta) delta = Tester.data.defaultDelta;
    if(typeof(delta) !== 'number' || !isFinite(delta)) throw new Error('Test error: illegal delta: ' + delta);
 
-   var remainingKeys = [];
-   do
+   var remainingComparisons = [{Expected: testResult.Expected, Actual: testResult.Actual}];
+   while (remainingComparisons.length > 0)
    {
-      var shallowResult = TesterUtility._shallowEquality(testResult.Expected, testResult.Actual, delta);
-      if(undefined !== shallowResult) return shallowResult;
-      //TODO: go deep (see previous Object.equals)
-   } while(remainingKeys.length > 0);
+      var thisComparison = remainingComparisons.pop();  //order doesn't matter
+      var shallowResult = TesterUtility._shallowEquality(thisComparison.Expected, thisComparison.Actual, delta);
+      if(false === shallowResult) return false;
+      if (undefined === shallowResult)
+      {
+         //in addition to being a fast path, checking the key count makes sure Actual doesn't have more keys
+         if(Object.keys(thisComparison.Expected).length !== Object.keys(thisComparison.Actual).length) return false;
+         for (var key in thisComparison.Expected)
+         {
+             //if(!thisComparison.Expected.hasOwnProperty(key)) continue;  //intentionally not used: all enumerated properties must match
+             if(!(key in thisComparison.Actual)) return false;  //prevents edge case (see test) of key existing undefined vs not existing
+             remainingComparisons.push({Expected: thisComparison.Expected[key], Actual: thisComparison.Actual[key]});
+         }
+      }
+      //else (shallowResult === true): ignore it
+   }
 
-   return false;
+   //all leaves have a shallow equality of true to reach this point
+   return true;
 };
-/**Used internally by TesterUtility.testPassed. Don't call directly (delta isn't validated).
+/**Used internally by TesterUtility.testPassed. Don't call this directly (delta isn't validated).
 @returns true or false based on a shallow equality check or undefined if a deep equality is required.*/
 TesterUtility._shallowEquality=function(expected, actual, delta)
 {
