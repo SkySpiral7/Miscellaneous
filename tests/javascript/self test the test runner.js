@@ -219,5 +219,103 @@ Tester.TesterUtility._shallowEquality=function(isFirst)
    testResults.push({Expected: false, Actual: actual, Description: 'Error description'});
    } catch(e){testResults.push({Error: e, Description: 'Error description'});}
 
+   try{
+   actual = TesterUtility.testPassed({Expected: /a/, Actual: /b/});
+   testResults.push({Expected: false, Actual: actual, Description: 'RegExp'});
+   } catch(e){testResults.push({Error: e, Description: 'RegExp'});}
+
    TesterUtility.displayResults('meta: TesterUtility._shallowEquality', testResults, isFirst);
+};
+Tester.TesterUtility.generateResultTable=function(isFirst)
+{
+   TesterUtility.clearResults(isFirst);
+
+   var testResults = [], actual, input, inputRow, expected;
+
+   try{
+   input = [{tableName: 'Table name'}];
+   input[0].testResults = [{Expected: true, Actual: true, Description: 'Test name'}];
+   expected  = '1/1: Table name\n';
+   expected += '   Pass: Test name\n';
+   expected += '\n';
+   expected += 'Grand total: 1/1\n';
+   actual = TesterUtility.generateResultTable(input, false);
+   testResults.push({Expected: expected, Actual: actual, Description: 'Happy path: 1 pass no hide'});
+   } catch(e){testResults.push({Error: e, Description: 'Happy path: 1 pass no hide'});}
+
+   try{
+   input = [{tableName: 'Table name'}];
+   input[0].testResults = [{Expected: true, Actual: true, Description: 'Test name'}];
+   actual = TesterUtility.generateResultTable(input, true);
+   testResults.push({Expected: 'Grand total: 1/1\n', Actual: actual, Description: 'Hidden all pass'});
+   } catch(e){testResults.push({Error: e, Description: 'Hidden all pass'});}
+
+   try{
+   input = [{tableName: 'Table name',
+      testResults: [
+         {Expected: true, Actual: true, Description: 'Test name 1'},
+         {Expected: /d/, Actual: /f/, Description: 'Test name 2'}
+   ]}];
+   expected  = '1/2: Table name\n';
+   expected += '   Fail: Test name 2\n';
+   expected += '      Expected: /d/\n';
+   expected += '      Actual: /f/\n';
+   expected += '\n';
+   expected += 'Grand total: 1/2\n';
+   actual = TesterUtility.generateResultTable(input, true);
+   testResults.push({Expected: expected, Actual: actual, Description: 'Hidden some pass'});
+   } catch(e){testResults.push({Error: e, Description: 'Hidden some pass'});}
+
+   try{
+   input = [
+      {
+         tableName: 'Fancy table name',
+         testResults: [
+            {Expected: true, Actual: true, Description: 'Test name 1'},
+            {Expected: /2/, Actual: /2.1/, Description: 'Test name 2'},
+            {Expected: {a: 1}, Actual: {a: 2}, Description: 'Test name 3'},
+            {Expected: false, Actual: false, Description: 'Test name 4'}
+         ]
+      },
+      {
+         tableName: 'Dull table name',
+         testResults: [{Expected: true, Actual: true, Description: 'Lone test'}]
+      }
+   ];
+   expected  = '2/4: Fancy table name\n';
+   expected += '   Pass: Test name 1\n';
+   expected += '   Fail: Test name 2\n';
+   expected += '      Expected: /2/\n';
+   expected += '      Actual: /2.1/\n';
+   expected += '   Fail: Test name 3\n';
+   expected += '      Expected: [object Object]\n';
+   expected += '      Actual: [object Object]\n';
+   expected += '   Pass: Test name 4\n';
+   expected += '1/1: Dull table name\n';
+   expected += '   Pass: Lone test\n';
+   expected += '\n';
+   expected += 'Grand total: 3/5\n';
+   actual = TesterUtility.generateResultTable(input, false);
+   testResults.push({Expected: expected, Actual: actual, Description: 'Complex'});
+   } catch(e){testResults.push({Error: e, Description: 'Complex'});}
+
+   try{
+   input = [{tableName: 'Table name',
+      testResults: [{Error: new TypeError('something bad happened'), Description: 'Test name'}]
+   }];
+   expected  = '0/1: Table name\n';
+   expected += '   Fail: Test name\n';
+   expected += '      Error: TypeError: something bad happened\n';
+   expected += '\n';
+   expected += 'Grand total: 0/1\n';
+   actual = TesterUtility.generateResultTable(input, false);
+   testResults.push({Expected: expected, Actual: actual, Description: 'Error'});
+   } catch(e){testResults.push({Error: e, Description: 'Error'});}
+
+   try{
+   actual = TesterUtility.generateResultTable([], false);
+   testResults.push({Expected: 'Grand total: 0/0\n', Actual: actual, Description: 'No tests'});
+   } catch(e){testResults.push({Error: e, Description: 'No tests'});}
+
+   TesterUtility.displayResults('meta: TesterUtility.generateResultTable', testResults, isFirst);
 };

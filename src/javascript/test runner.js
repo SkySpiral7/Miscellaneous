@@ -7,7 +7,7 @@
 const TesterUtility={};
 /*If all of the requirements pass then return true otherwise add the failures to the testResults and return false
 Use this if the test output gets too huge*/
-TesterUtility.assert=function(testResults, requiredArray)
+TesterUtility.assert=function(testResults, requiredArray)  //TODO: am I using this? Should it exist?
 {
     var shouldContinue = true;
    for (var i=0; i < requiredArray.length; i++)
@@ -79,6 +79,44 @@ TesterUtility.displayGrandTotal=function(isFirst)
        document.getElementById('test results').innerHTML+='<a href="#First Failed Suite">Go to containing suite</a>\n';
    }
     window.location.hash = '#test results grand totals';  //scroll to the grand totals
+};
+TesterUtility.generateResultTable=function(suiteResults, hidePassed)
+{
+   var output = '';
+   var suitePassCount = 0;
+   var suiteTotalCount = 0;
+   for (var tableIndex = 0; tableIndex < suiteResults.length; ++tableIndex)
+   {
+      var tablePassCount = 0;
+      var tableBody = '';
+      var testResults = suiteResults[tableIndex].testResults;
+      for (var testIndex = 0; testIndex < testResults.length; ++testIndex)
+      {
+         if (TesterUtility.testPassed(testResults[testIndex]))
+         {
+            ++tablePassCount;
+            if(!hidePassed) tableBody += '   Pass: ' + testResults[testIndex].Description + '\n';
+         }
+         else
+         {
+            tableBody += '   Fail: ' + testResults[testIndex].Description + '\n';
+            if(undefined !== testResults[testIndex].Error) tableBody += '      Error: ' +
+               testResults[testIndex].Error + '\n';
+            else tableBody += '      Expected: ' + testResults[testIndex].Expected + '\n' +
+               '      Actual: ' + testResults[testIndex].Actual + '\n';
+         }
+      }
+      if (!hidePassed || testResults.length !== tablePassCount)
+      {
+         var tableHeader = '' + tablePassCount + '/' + testResults.length + ': ' + suiteResults[tableIndex].tableName + '\n';
+         output += tableHeader + tableBody;
+      }
+      suitePassCount += tablePassCount;
+      suiteTotalCount += testResults.length;
+   }
+   if('' !== output) output += '\n';
+   output += 'Grand total: ' + suitePassCount + '/' +  suiteTotalCount + '\n';
+   return output;
 };
 /**This function creates the table used to display the test results of a section.
 Pass, fail, and error counts are counted and added to the grand total.
@@ -199,7 +237,8 @@ If Expected and Actual are both (non-null) objects and Expected.equals is a func
 If Expected and Actual are both numbers then testResult.Delta can also be specified (it must be a number).
 Delta is the maximum number that numbers are allowed to differ by to be considered equal (eg 1 and 2 are equal if delta is 1).
 If Delta is not specified it will default to Tester.data.defaultDelta.
-Delta also applies to Dates which is useful if you'd like to ignore seconds for example.*/
+Delta also applies to Dates which is useful if you'd like to ignore seconds for example.
+@returns {boolean}*/
 TesterUtility.testPassed=function(testResult)
 {
    if(undefined !== testResult.Error) return false;
@@ -250,7 +289,8 @@ TesterUtility._shallowEquality=function(expected, actual, delta)
 
    //undefined has it's own type so it will return true here or false above
    if(expected === actual) return true;  //base case. if this is true no need to get more advanced
-   if (TesterUtility.isPrimitive(expected))
+
+   if (TesterUtility.isPrimitive(expected))  //Date objects are considered primitive
    {
       if(typeof(expected) !== 'number') return false;  //equality was denied at base case
       //dates will be a number after unboxing so that they can also use delta
@@ -278,7 +318,15 @@ TesterUtility._shallowEquality=function(expected, actual, delta)
       return true;
    }
 
-   return undefined;
+   if (expected instanceof RegExp)
+   {
+      //constructor has already been compared. and already null-safe
+      return (expected.toString() === actual.toString());
+      //toSting accounts for both source and flags
+      //ignore: lastIndex
+   }
+
+   return undefined;  //it comes here for arrays and all custom objects
 };
 /**@returns true if the input should be compared via .valueOf when determining equality*/
 TesterUtility.useValueOf=function(input)
@@ -318,6 +366,7 @@ TesterUtility.failedToThrow=function(testsSoFar, description)
 };
 Object.freeze(TesterUtility);
 
+//TODO: rewrite: Tests, TestConfig, TesterUtility -> TestRunner?
 const Tester = {};
 Tester.testAll=function(){TesterUtility.testAll(this, true);};  //true is the default for isFirst but it is explicit in this case
 Tester.data = {beforeAll: function(){}, afterAll: function(){}, defaultDelta: 0};
