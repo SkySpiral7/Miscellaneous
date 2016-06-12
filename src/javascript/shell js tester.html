@@ -13,17 +13,21 @@ output.value = eval('(function(){' + document.getElementById('inputCode').value 
 <!--these would only work locally-->
 <script src="advanced rounding.js"></script><!--the code to test-->
 <script src="test runner.js"></script><!--this runs the tests-->
-<script src="..\..\tests\javascript\advanced rounding tests.js"></script><!--these are the tests (must come after test runner)-->
+<script src="../../tests/javascript/advanced rounding tests.js"></script><!--these are the tests (must come after test runner)-->
 <!--/Test section-->
 <a>Code:</a><br />
 <textarea id="inputCode" rows="10" cols="80">
 Tester.testAll();
 return 0;
 </textarea><br />
-<input type="button" onClick="main();" value="Execute" /><br /><br />
+<input type="button" onClick="main();" value="Execute" /><br />
+<a href="javascript:TesterUtility.testAll();">Run all tests</a><br />
+<br />
 <a>Return Value:</a><br />
 <textarea id="output" rows="2" cols="20"></textarea><br />
-<a href="javascript:Tester.testAll();">Run all tests</a><br />
-<br /><div id="test results"></div><br /><br />
+<br />
+<a>Test Results:</a><br />
+<textarea id="test results" rows="20" cols="100"></textarea>
+<br /><br />
 <script>document.getElementById('inputCode').focus();</script>
 </html>

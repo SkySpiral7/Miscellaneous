@@ -1,13 +1,11 @@
 //Note that throughout this file the word 'suite' is like naive set theory: a suite it can contain any number of test cases and suites.
     //TODO: see if I can replace 'suite' with something more clear
 //TODO: test itself
-//TODO: reduce and simplify
-//TODO: change output to write to a text area instead of generating DOM
 
 const TesterUtility={};
 /*If all of the requirements pass then return true otherwise add the failures to the testResults and return false
 Use this if the test output gets too huge*/
-TesterUtility.assert=function(testResults, requiredArray)  //TODO: am I using this? Should it exist?
+TesterUtility.assert=function(testResults, requiredArray)  //TODO: unused. Should it exist?
 {
     var shouldContinue = true;
    for (var i=0; i < requiredArray.length; i++)
@@ -21,64 +19,25 @@ TesterUtility.assert=function(testResults, requiredArray)  //TODO: am I using th
     return shouldContinue;
 };
 /**Given the DOM's id this function sets the value property equal to valueToSet then calls onchange.
-No validation is done so if the id is not found it will throw an error.*/
+No validation is done so if the id is not found it will throw an error.
+It will also throw if there is no onchange defined (instead just set .value directly).*/
 TesterUtility.changeValue=function(elementID, valueToSet)
 {
-    var element = document.getElementById(elementID);
-    element.value = valueToSet;
-    element.onchange();
+   var element = document.getElementById(elementID);
+   element.value = valueToSet;
+   element.onchange();
 };
 /**Will do nothing if isFirst is not either undefined or true (strict).
 but if(isFirst) this function will reset the grand totals and testing area and call Tester.data.beforeAll.
 Note that this function will clear out window.location.hash.*/
 TesterUtility.clearResults=function(isFirst)
 {
-    if(isFirst === undefined) isFirst = true;
-    if(isFirst !== true) return;
-    Tester.data.startTime = new Date();
-    //no support for previous version:
-    if(undefined !== Tester.data.defaultPrecision && 15 !== Tester.data.defaultPrecision) throw new Error('Must update tests');
-    window.location.hash = '';  //this is needed so that it will scroll to the grand totals when finished
-    Tester.data.endTime = undefined;
-    document.getElementById('test results').innerHTML = '';
-    Tester.data.passCount = 0;
-    Tester.data.failCount = 0;
-    Tester.data.errorCount = 0;
-    Tester.data.isFirstFailedSuite = true;
-    Tester.data.isFirstFailedTest = true;
-    Tester.data.beforeAll();
-};
-/**Will do nothing if isFirst is not either undefined or true (strict).
-but if(isFirst) this function will call Tester.data.afterAll then display the grand totals and scroll to the bottom.
-The percent will be green if 100% and red if 0%.*/
-//TODO: doc the format and colors
-TesterUtility.displayGrandTotal=function(isFirst)
-{
-    if(isFirst === undefined) isFirst = true;
-    if(isFirst !== true) return;
-    Tester.data.afterAll();
-    var grandFormat = TesterUtility.formatPassFail(Tester.data.passCount, Tester.data.failCount, Tester.data.errorCount).split('\n');
-    document.getElementById('test results').innerHTML+='<a id="test results grand totals"></a>Grand Totals. ' + grandFormat[0] + '\n';
-    if(Tester.data.passCount === 0) document.getElementById('test results').innerHTML+='<span style="background-color: red;">'+grandFormat[1] + '</span>\n';
-    else if((Tester.data.failCount+Tester.data.errorCount) === 0) document.getElementById('test results').innerHTML+='<span style="background-color: #53E753;">'+grandFormat[1] + '</span>\n';
-    else document.getElementById('test results').innerHTML+=grandFormat[1] + '\n';
-    Tester.data.endTime = new Date();
-    var milliseconds = (Tester.data.endTime - Tester.data.startTime);
-    var seconds = Math.floor(milliseconds/1000);
-    milliseconds-=(seconds*1000);
-    var minutes = Math.floor(seconds/60);
-    seconds-=(minutes*60);
-    //tests should not take hours so the units stop at minutes
-    document.getElementById('test results').innerHTML+='<br />Time taken: ' + minutes + ' minutes, ' + seconds +' seconds, and ' + milliseconds + ' milliseconds\n';
-    //yes I know that it would display "1 seconds" etc so change it if you care so much
-    document.getElementById('test results').innerHTML+='<br /><a href="#test results">Go to top of tests</a>\n';
-   if ((Tester.data.failCount+Tester.data.errorCount) !== 0)
-   {
-       //only show these links if there are any failures
-       document.getElementById('test results').innerHTML+='<br /><a href="#First Failed Test">Go to first failed test</a> ';
-       document.getElementById('test results').innerHTML+='<a href="#First Failed Suite">Go to containing suite</a>\n';
-   }
-    window.location.hash = '#test results grand totals';  //scroll to the grand totals
+   if(undefined === isFirst) isFirst = true;
+   else if(true !== isFirst) return;
+   //no support for previous version (only shown if first):
+   if(undefined !== Tester.data.defaultPrecision && 15 !== Tester.data.defaultPrecision) throw new Error('Must update tests');
+      //this must get it from Tester.data since that's the only thing the previous version supported
+   document.getElementById('test results').value = '';
 };
 TesterUtility.generateResultTable=function(suiteResults, hidePassed)
 {
@@ -100,10 +59,18 @@ TesterUtility.generateResultTable=function(suiteResults, hidePassed)
          else
          {
             tableBody += '   Fail: ' + testResults[testIndex].Description + '\n';
-            if(undefined !== testResults[testIndex].Error) tableBody += '      Error: ' +
-               testResults[testIndex].Error + '\n';
-            else tableBody += '      Expected: ' + testResults[testIndex].Expected + '\n' +
-               '      Actual: ' + testResults[testIndex].Actual + '\n';
+            if (undefined !== testResults[testIndex].Error)
+            {
+               console.log(testResults[testIndex].Description, testResults[testIndex].Error);
+               tableBody += '      Error: ' + testResults[testIndex].Error + '\n';
+            }
+            else
+            {
+               console.log(testResults[testIndex].Description, 'expected:', testResults[testIndex].Expected,
+                  'actual:', testResults[testIndex].Actual);
+               tableBody += '      Expected: ' + testResults[testIndex].Expected + '\n' +
+                  '      Actual: ' + testResults[testIndex].Actual + '\n';
+            }
          }
       }
       if (!hidePassed || testResults.length !== tablePassCount)
@@ -123,80 +90,14 @@ Pass, fail, and error counts are counted and added to the grand total.
 The table is added to the test result section.*/
 TesterUtility.displayResults=function(tableName, testResults, isFirst)
 {
-    var passCount = 0;
-    var failCount = 0;
-    var errorCount = 0;
-    var output = '<table border="1">\n';
-    output+='<tr><td colspan="4" style="text-align:center">'+tableName+'</td></tr>\n<tr>\n';
-    //max table width is about 1036 px. the columns are set to auto width
-    output+='<td style="text-align: center;">Description of test</td>\n';
-    output+='<td style="text-align: center;">Expected</td>\n';
-    output+='<td style="text-align: center;">Actual</td>\n';
-    output+='<td style="text-align: center;">Result</td>\n</tr>\n';
-   for (var i=0; i < testResults.length; i++)
+   if(isFirst !== false) isFirst = true;
+   var input = {tableName: tableName, testResults: testResults};
+   if (isFirst)
    {
-       output+='<tr';
-       var testPassed = TesterUtility.testPassed(testResults[i]);
-       //TODO: this is a patch to allow action for now:
-       if(testResults[i].Action !== undefined) testResults[i].Description = '' + testResults[i].Action + ': ' + testResults[i].Description;
-       if(Tester.data.isFirstFailedTest && (testResults[i].Error !== undefined || !testPassed)){output+=' id="First Failed Test"'; Tester.data.isFirstFailedTest = false;}
-      if (testResults[i].Error !== undefined)
-      {
-          output+=' style="background-color: red;"';
-          output+='>\n<td>'+testResults[i].Description+'</td>\n<td colspan="2">'+testResults[i].Error+'</td>\n<td>Error</td>\n</tr>\n';
-          errorCount++;
-          continue;
-      }
-       //TODO: redo the entire drawing so minimize output (show nothing of the passed ones and remove result % column)
-       if(!testPassed){ output+=' style="background-color: red;"';
-       //else: default white
-       output+='>\n<td>'+testResults[i].Description+'</td>\n<td style="text-align: right;">';
-
-       //TODO: redo the display of expected/actual. and nothing it too long
-       //TODO: console log the failures
-       function display(arg){
-       return '' + arg + '<br/>' + JSON.stringify(arg);
-     }
-
-       output+=display(testResults[i].Expected);
-
-       output+='</td>\n<td>\n';
-       output+=display(testResults[i].Actual);  //if Actual is an html object it will not be embedded into the table
-       //however if the toString is valid html it can be embedded
-
-       output+='</td>\n<td>\n';
-       if(testPassed){output+='Pass'; passCount++;}
-       else{output+='Failure'; console.log(testResults[i].Expected, testResults[i].Actual); failCount++;}
-       output+='</td>\n</tr>\n';}
-       else passCount++;
+      TesterUtility.clearResults(isFirst);
+      document.getElementById('test results').value += TesterUtility.generateResultTable([input], false);  //TODO: add checkbox for hide pass
    }
-    output+='<tr';
-    if(errorCount !== 0) output+=' style="background-color: red;"';
-    else if(failCount === 0) output+=' style="background-color: #53E753;"';
-    output+='><td colspan="3">Section Totals. '+TesterUtility.formatPassFail(passCount, failCount, errorCount).replace('<br />\n', '</td><td>')+'</td></tr>\n';
-    output+='</table>\n<br />\n';
-   if (Tester.data.isFirstFailedSuite && (failCount + errorCount) > 0)
-   {
-       output = ('<table border="1" id="First Failed Suite">' + output.substring(output.indexOf('\n')));
-       Tester.data.isFirstFailedSuite = false;
-   }
-    Tester.data.passCount+=passCount;
-    Tester.data.failCount+=failCount;
-    Tester.data.errorCount+=errorCount;
-
-    document.getElementById('test results').innerHTML+=output;
-    TesterUtility.displayGrandTotal(isFirst);
-};
-/**Given the pass, fail, and error counts this function returns a formatted string to display the results.*/
-TesterUtility.formatPassFail=function(passCount, failCount, errorCount)
-{
-    var output = 'Pass: '+passCount+', Fail: '+failCount;
-    if(errorCount !== 0) output+=', Error: '+errorCount;
-    output+='<br />\n';
-    var totalTestCount = passCount + failCount + errorCount;
-    output+='('+passCount+'/'+totalTestCount+')';
-    output+=' is '+(passCount/totalTestCount*100).toFixed(2)+'%';  //if totalTestCount is 0 then it will show NaN%
-    return output;
+   return input;
 };
 /**Used by every test suite in order to run each of their tests.
 This function will call TesterUtility.clearResults before running the tests and TesterUtility.displayGrandTotal afterwards.
@@ -204,33 +105,44 @@ The main loop enumerates over the object given and calls each function that isn'
 The loop is deep and all properties that are objects and not named "data" will also be enumerated over.
 It will call testSuite.data.setUp (if it is defined) before each test. The setUp called will be for that suite not the top most.
 If the called test function throws TesterUtility.testAll will catch it and display the list of errors when finished (and will also send the stack to console.error).*/
-TesterUtility.testAll=function(testSuite, isFirst)
+TesterUtility.testAll=function(testSuite, testConfig)
 {
-    TesterUtility.clearResults(isFirst);
+    var startTime = Date.now();
     if(testSuite === undefined) testSuite = Tester;
-    var suiteCollection = [testSuite], setUp, errorTests = [];
+    if(testConfig === undefined) testConfig = Tester.data;
+    TesterUtility.clearResults(true);
+    var suiteCollection = [testSuite], errorTests = [], resultingList = [];
+    var betweenEach = testConfig.betweenEach;
+    if(undefined === betweenEach) betweenEach = function(){};
    while (suiteCollection.length !== 0)
    {
-       testSuite = suiteCollection[0];
-       if(testSuite.data !== undefined) setUp = testSuite.data.setUp;
-       if(setUp === undefined) setUp = function(){};  //does nothing
+       testSuite = suiteCollection.shift();
       for (var i in testSuite)
       {
-          if(!testSuite.hasOwnProperty(i)) continue;  //"for in" loops are always risky and therefore require sanitizing
-          if(typeof(testSuite[i]) === 'object' && testSuite[i] !== null && i !== 'data') suiteCollection.push(testSuite[i]);
+          if(!testSuite.hasOwnProperty(i) || i === 'data') continue;  //"for in" loops are always risky and therefore require sanitizing
+          if(typeof(testSuite[i]) === 'object' && testSuite[i] !== null) suiteCollection.push(testSuite[i]);
              //null is a jerk: typeof erroneously returns 'object' (null isn't an object because it doesn't inherit Object.prototype)
-         else if(typeof(testSuite[i]) === 'function' && i !== 'testAll')
+         else if(typeof(testSuite[i]) === 'function' && i !== 'testAll')  //TODO: testAll is legacy so is data
          {
-             setUp();
-             try{testSuite[i](false);}
-             catch(e){console.error(e.stack); errorTests.push({Error: e, Description: i});}
+             if(resultingList.length !== 0 || errorTests.length !== 0) betweenEach();
+             try{resultingList.push(testSuite[i](false));}
+             catch(e){console.error(e); errorTests.push({Error: e, Description: i});}
          }
       }
-       suiteCollection.shift();
-       setUp = undefined;
    }
-    if(errorTests.length !== 0) TesterUtility.displayResults('TesterUtility.testAll', errorTests, false);
-    TesterUtility.displayGrandTotal(isFirst);
+    if(errorTests.length !== 0) resultingList.push(TesterUtility.displayResults('TesterUtility.testAll', errorTests, false));
+    document.getElementById('test results').value += TesterUtility.generateResultTable(resultingList, true);
+
+    var endTime = Date.now();
+    var milliseconds = (endTime - startTime);
+    var seconds = Math.floor(milliseconds / 1000);
+    milliseconds -= (seconds * 1000);
+    var minutes = Math.floor(seconds / 60);
+    seconds -= (minutes * 60);
+    //tests can't take an hour and shouldn't take minutes so the units stop at minutes
+
+    document.getElementById('test results').value += 'Time taken: ' + minutes + ' minutes, ' + seconds +' seconds, and ' + milliseconds + ' milliseconds\n';
+    //yes I know that it would display "1 seconds" etc. so change it if you care so much
 };
 /**Returns true if testResult.Expected === testResult.Actual, however this also returns true if both are equal to NaN.
 If Expected and Actual are both (non-null) objects and Expected.equals is a function then it will return the result of Expected.equals(Actual).
@@ -331,8 +243,10 @@ TesterUtility._shallowEquality=function(expected, actual, delta)
 /**@returns true if the input should be compared via .valueOf when determining equality*/
 TesterUtility.useValueOf=function(input)
 {
-      return (input instanceof Boolean || input instanceof Number || input instanceof String
-      || input instanceof Date || input instanceof Function);
+   return (input instanceof Boolean || input instanceof Number || input instanceof String
+      || input instanceof Date);
+      //although RegExp has a valueOf it returns an object so it is pointless to call
+      //typeof(new Function()) === 'function' and any subclass would need to have equals
 };
 /**@returns true if the input should be compared via === when determining equality*/
 TesterUtility.isPrimitive=function(input)
@@ -342,23 +256,6 @@ TesterUtility.isPrimitive=function(input)
       || 'function' === inputType || 'symbol' === inputType || undefined === input || null === input);
    //TesterUtility.testPassed doesn't reach the undefined and null cases
 };
-/**This is a simple way to mark unfinished test suites. This makes them easy to find because they show up in testAll.
-Unfinished can be in the middle of a test suite but must return afterwards without any more tests. Or can be at the end of a suite.
-This will add a test with Error: 'Not finished.' to testsSoFar then call TesterUtility.displayResults with each parameter.
-Unlike unmade, unfinished takes isFirst which allows that suite to be called directly.
-name: the name of the test suite that will be displayed as the name of the table.*/
-TesterUtility.unfinished=function(name, testsSoFar, isFirst)
-{
-    testsSoFar.push({Error: 'Not finished.', Description: 'TesterUtility.unfinished'});
-    TesterUtility.displayResults(name, testsSoFar, isFirst);
-};
-/**This is a simple way to mark test suites that have not not been made. This makes them easy to find because they show up in testAll.
-This will call TesterUtility.displayResults with a single test with Error: 'Not yet implemented.'.
-name: the name of the test suite that will be displayed as the name of the table.*/
-TesterUtility.unmade=function(name)
-{
-    TesterUtility.displayResults(name, [{Error: 'Not yet implemented.', Description: 'TesterUtility.unmade'}], false);
-};
 /**This is a simple way to fail when a test was expected to throw but didn't.*/
 TesterUtility.failedToThrow=function(testsSoFar, description)
 {
@@ -367,9 +264,8 @@ TesterUtility.failedToThrow=function(testsSoFar, description)
 Object.freeze(TesterUtility);
 
 //TODO: rewrite: Tests, TestConfig, TesterUtility -> TestRunner?
-const Tester = {};
-Tester.testAll=function(){TesterUtility.testAll(this, true);};  //true is the default for isFirst but it is explicit in this case
-Tester.data = {beforeAll: function(){}, afterAll: function(){}, defaultDelta: 0};
+var Tester = {};
+Tester.data = {defaultDelta: 0};
 //note that setUp is only called from TesterUtility.testAll. If an individual test is called directly setUp will not run (but beforeAll and afterAll will).
 //be careful not to override the other properties of Tester.data. beforeAll and afterAll should be the only ones overridden
     //do not modify the following properties of Tester.data: startTime, endTime, passCount, failCount, errorCount, isFirstFailedSuite, isFirstFailedTest

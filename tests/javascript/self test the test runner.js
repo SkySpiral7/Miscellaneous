@@ -71,7 +71,7 @@ Tester.TesterUtility.testPassed=function(isFirst)
    testResults.push({Expected: false, Actual: actual, Description: 'Edge case: undefined vs not exist'});
    } catch(e){testResults.push({Error: e, Description: 'Edge case: undefined vs not exist'});}
 
-   TesterUtility.displayResults('meta: TesterUtility.testPassed', testResults, isFirst);
+   return TesterUtility.displayResults('meta: TesterUtility.testPassed', testResults, isFirst);
 };
 Tester.TesterUtility._shallowEquality=function(isFirst)
 {
@@ -224,7 +224,7 @@ Tester.TesterUtility._shallowEquality=function(isFirst)
    testResults.push({Expected: false, Actual: actual, Description: 'RegExp'});
    } catch(e){testResults.push({Error: e, Description: 'RegExp'});}
 
-   TesterUtility.displayResults('meta: TesterUtility._shallowEquality', testResults, isFirst);
+   return TesterUtility.displayResults('meta: TesterUtility._shallowEquality', testResults, isFirst);
 };
 Tester.TesterUtility.generateResultTable=function(isFirst)
 {
@@ -317,5 +317,203 @@ Tester.TesterUtility.generateResultTable=function(isFirst)
    testResults.push({Expected: 'Grand total: 0/0\n', Actual: actual, Description: 'No tests'});
    } catch(e){testResults.push({Error: e, Description: 'No tests'});}
 
-   TesterUtility.displayResults('meta: TesterUtility.generateResultTable', testResults, isFirst);
+   return TesterUtility.displayResults('meta: TesterUtility.generateResultTable', testResults, isFirst);
+};
+Tester.TesterUtility.clearResults=function(isFirst)
+{
+   TesterUtility.clearResults(isFirst);
+
+   var testResults = [], actual, input;
+
+   var resultBox = document.getElementById('test results');
+   //this test can only be run in a place where tests can be run...
+   //yeah so it's not an assumption to require test results to exist
+
+   try{
+   resultBox.value = 'Test';
+   TesterUtility.clearResults(false);
+   actual = resultBox.value;
+   testResults.push({Expected: 'Test', Actual: actual, Description: 'No clear with false'});
+   } catch(e){testResults.push({Error: e, Description: 'No clear with false'});}
+
+   try{
+   resultBox.value = 'Test';
+   TesterUtility.clearResults();
+   actual = resultBox.value;
+   testResults.push({Expected: '', Actual: actual, Description: 'Clear with no arg'});
+   } catch(e){testResults.push({Error: e, Description: 'Clear with no arg'});}
+
+   try{
+   Tester.data.defaultPrecision = 5;
+   TesterUtility.clearResults();
+   TesterUtility.failedToThrow(testResults, 'Reject defaultPrecision');
+   }
+   catch(e)
+   {
+      testResults.push({Expected: new Error('Must update tests'), Actual: e, Description: 'Reject defaultPrecision'});
+   }
+   delete Tester.data.defaultPrecision;
+
+   try{
+   Tester.data.defaultPrecision = 15;
+   TesterUtility.clearResults();
+   //15 isn't rejected because that was the default value
+   testResults.push({Expected: true, Actual: true, Description: 'Don\'t reject defaultPrecision: 15'});
+   } catch(e){testResults.push({Error: e, Description: 'Don\'t reject defaultPrecision: 15'});}
+   delete Tester.data.defaultPrecision;
+
+   try{
+   resultBox.value = 'Test';
+   TesterUtility.clearResults(true);
+   actual = resultBox.value;
+   testResults.push({Expected: '', Actual: actual, Description: 'Cleared with true'});
+   } catch(e){testResults.push({Error: e, Description: 'Cleared with true'});}
+
+   resultBox.value = '';
+   //these changes to resultBox will be overwritten by the actual results
+   //although this specific test also clears out pre-existing text
+
+   return TesterUtility.displayResults('meta: TesterUtility.clearResults', testResults, isFirst);
+};
+Tester.TesterUtility.useValueOf=function(isFirst)
+{
+   TesterUtility.clearResults(isFirst);
+
+   var testResults = [], actual, input;
+
+   try{
+   input = new Boolean(false);
+   testResults.push({Expected: 'object', Actual: typeof(input), Description: 'Is object: Boolean'});
+   actual = TesterUtility.useValueOf(input);
+   testResults.push({Expected: true, Actual: actual, Description: 'useValueOf: Boolean'});
+   } catch(e){testResults.push({Error: e, Description: 'useValueOf: Boolean'});}
+
+   try{
+   input = new Number(5);
+   testResults.push({Expected: 'object', Actual: typeof(input), Description: 'Is object: Number'});
+   actual = TesterUtility.useValueOf(input);
+   testResults.push({Expected: true, Actual: actual, Description: 'useValueOf: Number'});
+   } catch(e){testResults.push({Error: e, Description: 'useValueOf: Number'});}
+
+   try{
+   input = new String('test');
+   testResults.push({Expected: 'object', Actual: typeof(input), Description: 'Is object: String'});
+   actual = TesterUtility.useValueOf(input);
+   testResults.push({Expected: true, Actual: actual, Description: 'useValueOf: String'});
+   } catch(e){testResults.push({Error: e, Description: 'useValueOf: String'});}
+
+   try{
+   input = new Date(1465695450227);
+   testResults.push({Expected: 'object', Actual: typeof(input), Description: 'Is object: Date'});
+   actual = TesterUtility.useValueOf(input);
+   testResults.push({Expected: true, Actual: actual, Description: 'useValueOf: Date'});
+   } catch(e){testResults.push({Error: e, Description: 'useValueOf: Date'});}
+
+   try{
+   actual = TesterUtility.useValueOf(Math.floor);
+   testResults.push({Expected: false, Actual: actual, Description: 'useValueOf: function'});
+   } catch(e){testResults.push({Error: e, Description: 'useValueOf: function'});}
+
+   try{
+   actual = TesterUtility.useValueOf(/a/);
+   testResults.push({Expected: false, Actual: actual, Description: 'useValueOf: RegExp'});
+   } catch(e){testResults.push({Error: e, Description: 'useValueOf: RegExp'});}
+
+   return TesterUtility.displayResults('meta: TesterUtility.useValueOf', testResults, isFirst);
+};
+Tester.TesterUtility.isPrimitive=function(isFirst)
+{
+   TesterUtility.clearResults(isFirst);
+
+   var testResults = [], actual, input;
+
+   try{
+   actual = TesterUtility.isPrimitive(true);
+   testResults.push({Expected: true, Actual: actual, Description: 'boolean'});
+   } catch(e){testResults.push({Error: e, Description: 'boolean'});}
+
+   try{
+   actual = TesterUtility.isPrimitive(5);
+   testResults.push({Expected: true, Actual: actual, Description: 'number'});
+   } catch(e){testResults.push({Error: e, Description: 'number'});}
+
+   try{
+   actual = TesterUtility.isPrimitive('test');
+   testResults.push({Expected: true, Actual: actual, Description: 'string'});
+   } catch(e){testResults.push({Error: e, Description: 'string'});}
+
+   try{
+   actual = TesterUtility.isPrimitive(new Date(0));
+   testResults.push({Expected: false, Actual: actual, Description: 'Date'});
+   } catch(e){testResults.push({Error: e, Description: 'Date'});}
+
+   try{
+   actual = TesterUtility.isPrimitive(Math.floor);
+   testResults.push({Expected: true, Actual: actual, Description: 'function'});
+   } catch(e){testResults.push({Error: e, Description: 'function'});}
+
+   try{
+   actual = TesterUtility.isPrimitive(Symbol());
+   testResults.push({Expected: true, Actual: actual, Description: 'symbol'});
+   } catch(e){testResults.push({Error: e, Description: 'symbol'});}
+
+   try{
+   actual = TesterUtility.isPrimitive();
+   testResults.push({Expected: true, Actual: actual, Description: 'undefined'});
+   } catch(e){testResults.push({Error: e, Description: 'undefined'});}
+
+   try{
+   actual = TesterUtility.isPrimitive(null);
+   testResults.push({Expected: true, Actual: actual, Description: 'null'});
+   } catch(e){testResults.push({Error: e, Description: 'null'});}
+
+   try{
+   actual = TesterUtility.isPrimitive(/a/);
+   testResults.push({Expected: false, Actual: actual, Description: 'RegExp'});
+   } catch(e){testResults.push({Error: e, Description: 'RegExp'});}
+
+   return TesterUtility.displayResults('meta: TesterUtility.isPrimitive', testResults, isFirst);
+};
+Tester.TesterUtility.changeValue=function(isFirst)
+{
+   TesterUtility.clearResults(isFirst);
+
+   var testResults = [], actual, input;
+   var resultBox = document.getElementById('test results');
+
+   try{
+   resultBox.value = '';
+   actual = false;
+   resultBox.onchange = function(){actual = true;};
+   TesterUtility.changeValue('test results', 'new value');
+   testResults.push({Expected: true, Actual: actual, Description: 'Happy path: called'});
+   testResults.push({Expected: 'new value', Actual: resultBox.value, Description: 'Happy path: value'});
+   } catch(e){testResults.push({Error: e, Description: 'Happy path'});}
+
+   try{
+   TesterUtility.changeValue('Dana', 'only Zuul');  //assuming there is no Dana
+   TesterUtility.failedToThrow(testResults, 'Element doesn\'t exist');
+   }
+   catch(e)
+   {
+      testResults.push({Expected: true, Actual: true, Description: 'Element doesn\'t exist'});
+      //ignore exact error because it is browser specific
+   }
+
+   try{
+   resultBox.onchange = null;
+   TesterUtility.changeValue('test results', 'new value');
+   TesterUtility.failedToThrow(testResults, 'No onchange');
+   }
+   catch(e)
+   {
+      testResults.push({Expected: true, Actual: true, Description: 'No onchange'});
+      //ignore exact error because it is browser specific
+   }
+
+   resultBox.value = '';
+   //these changes to resultBox will be overwritten by the actual results
+   //although this specific test also clears out pre-existing text
+
+   return TesterUtility.displayResults('meta: TesterUtility.changeValue', testResults, isFirst);
 };
