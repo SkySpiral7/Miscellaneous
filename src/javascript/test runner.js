@@ -28,8 +28,7 @@ TesterUtility.changeValue=function(elementID, valueToSet)
    element.onchange();
 };
 /**Will do nothing if isFirst is not either undefined or true (strict).
-but if(isFirst) this function will reset the grand totals and testing area and call Tester.data.beforeAll.
-Note that this function will clear out window.location.hash.*/
+but if(isFirst) this function will clear the testing area.*/
 TesterUtility.clearResults=function(isFirst)
 {
    if(undefined === isFirst) isFirst = true;
@@ -39,6 +38,30 @@ TesterUtility.clearResults=function(isFirst)
       //this must get it from Tester.data since that's the only thing the previous version supported
    document.getElementById('test results').value = '';
 };
+/**if(isFirst) This function clears out then writes the test results to the "test results" text area.
+else it does nothing
+Either way time taken is not displayed.
+@returns {object} that can be used by TesterUtility.generateResultTable. It is always returned so that TesterUtility.testAll
+can gather all it needs.*/
+TesterUtility.displayResults=function(tableName, testResults, isFirst)
+{
+   if(isFirst !== false) isFirst = true;
+   var input = {tableName: tableName, testResults: testResults};
+   if (isFirst)
+   {
+      TesterUtility.clearResults(isFirst);
+      document.getElementById('test results').value += TesterUtility.generateResultTable([input], false);  //TODO: add checkbox for hide pass
+   }
+   return input;
+};
+/**This is a simple way to fail when a test was expected to throw but didn't.*/
+TesterUtility.failedToThrow=function(testsSoFar, description)
+{
+    testsSoFar.push({Expected: 'throw', Actual: 'return', Description: description});
+};
+/**This function creates the (text) table used to display the test results of a suite.
+Pass and fail counts are counted and added to the grand total and displayed.
+@returns {string} the result*/
 TesterUtility.generateResultTable=function(suiteResults, hidePassed)
 {
    var output = '';
@@ -85,26 +108,22 @@ TesterUtility.generateResultTable=function(suiteResults, hidePassed)
    output += 'Grand total: ' + suitePassCount + '/' +  suiteTotalCount + '\n';
    return output;
 };
-/**This function creates the table used to display the test results of a section.
-Pass, fail, and error counts are counted and added to the grand total.
-The table is added to the test result section.*/
-TesterUtility.displayResults=function(tableName, testResults, isFirst)
+/**@returns true if the input should be compared via === when determining equality*/
+TesterUtility.isPrimitive=function(input)
 {
-   if(isFirst !== false) isFirst = true;
-   var input = {tableName: tableName, testResults: testResults};
-   if (isFirst)
-   {
-      TesterUtility.clearResults(isFirst);
-      document.getElementById('test results').value += TesterUtility.generateResultTable([input], false);  //TODO: add checkbox for hide pass
-   }
-   return input;
+   var inputType = typeof(input);
+   return ('boolean' === inputType || 'number' === inputType || 'string' === inputType
+      || 'function' === inputType || 'symbol' === inputType || undefined === input || null === input);
+   //TesterUtility.testPassed doesn't reach the undefined and null cases
 };
-/**Used by every test suite in order to run each of their tests.
-This function will call TesterUtility.clearResults before running the tests and TesterUtility.displayGrandTotal afterwards.
-The main loop enumerates over the object given and calls each function that isn't named "testAll".
+/**Used to run every test in a suite. This function is assumed to run alone.
+This function calls TesterUtility.clearResults and TesterUtility.generateResultTable.
+The main loop enumerates over the testSuite object given and calls each function that isn't named "testAll".
 The loop is deep and all properties that are objects and not named "data" will also be enumerated over.
-It will call testSuite.data.setUp (if it is defined) before each test. The setUp called will be for that suite not the top most.
-If the called test function throws TesterUtility.testAll will catch it and display the list of errors when finished (and will also send the stack to console.error).*/
+It will call testConfig.data.betweenEach (if it is defined) between each test.
+If the called test function throws, TesterUtility.testAll will catch it and display the list of errors when finished
+(and will also send the stack to console.error).
+Lastly the total time taken is displayed.*/
 TesterUtility.testAll=function(testSuite, testConfig)
 {
     var startTime = Date.now();
@@ -146,6 +165,8 @@ TesterUtility.testAll=function(testSuite, testConfig)
 };
 /**Returns true if testResult.Expected === testResult.Actual, however this also returns true if both are equal to NaN.
 If Expected and Actual are both (non-null) objects and Expected.equals is a function then it will return the result of Expected.equals(Actual).
+Functions must be the same object for equality in this case, if you want to compare the sources call toString.
+
 If Expected and Actual are both numbers then testResult.Delta can also be specified (it must be a number).
 Delta is the maximum number that numbers are allowed to differ by to be considered equal (eg 1 and 2 are equal if delta is 1).
 If Delta is not specified it will default to Tester.data.defaultDelta.
@@ -181,6 +202,14 @@ TesterUtility.testPassed=function(testResult)
 
    //all leaves have a shallow equality of true to reach this point
    return true;
+};
+/**@returns true if the input should be compared via .valueOf when determining equality*/
+TesterUtility.useValueOf=function(input)
+{
+   return (input instanceof Boolean || input instanceof Number || input instanceof String
+      || input instanceof Date);
+      //although RegExp has a valueOf it returns an object so it is pointless to call
+      //typeof(new Function()) === 'function' and any subclass would need to have equals
 };
 /**Used internally by TesterUtility.testPassed. Don't call this directly (delta isn't validated).
 @returns true or false based on a shallow equality check or undefined if a deep equality is required.*/
@@ -240,52 +269,24 @@ TesterUtility._shallowEquality=function(expected, actual, delta)
 
    return undefined;  //it comes here for arrays and all custom objects
 };
-/**@returns true if the input should be compared via .valueOf when determining equality*/
-TesterUtility.useValueOf=function(input)
-{
-   return (input instanceof Boolean || input instanceof Number || input instanceof String
-      || input instanceof Date);
-      //although RegExp has a valueOf it returns an object so it is pointless to call
-      //typeof(new Function()) === 'function' and any subclass would need to have equals
-};
-/**@returns true if the input should be compared via === when determining equality*/
-TesterUtility.isPrimitive=function(input)
-{
-   var inputType = typeof(input);
-   return ('boolean' === inputType || 'number' === inputType || 'string' === inputType
-      || 'function' === inputType || 'symbol' === inputType || undefined === input || null === input);
-   //TesterUtility.testPassed doesn't reach the undefined and null cases
-};
-/**This is a simple way to fail when a test was expected to throw but didn't.*/
-TesterUtility.failedToThrow=function(testsSoFar, description)
-{
-    testsSoFar.push({Expected: 'throw', Actual: 'return', Description: description});
-};
 Object.freeze(TesterUtility);
 
 //TODO: rewrite: Tests, TestConfig, TesterUtility -> TestRunner?
 var Tester = {};
 Tester.data = {defaultDelta: 0};
-//note that setUp is only called from TesterUtility.testAll. If an individual test is called directly setUp will not run (but beforeAll and afterAll will).
-//be careful not to override the other properties of Tester.data. beforeAll and afterAll should be the only ones overridden
-    //do not modify the following properties of Tester.data: startTime, endTime, passCount, failCount, errorCount, isFirstFailedSuite, isFirstFailedTest
-//although feel free to add new properties to Tester.data to act as global storage for testing data
+//feel free to add new properties to Tester.data to act as global storage for testing data
 
 /*example:
 Tester.abilityList = {};
 Tester.abilityList.testAll=function(isFirst){TesterUtility.testAll(this, isFirst);};
   //this is shorthand so that Tester.abilityList.testAll() may be called instead of TesterUtility.testAll(Tester.abilityList);
-//data does not need to be defined nor does data.setUp
+//data does not need to be defined nor does data.betweenEach
 Tester.abilityList.calculateValues=function(isFirst)
 {
     //be sure to copy the name of the function here:
-    TesterUtility.unmade('Tester.abilityList.calculateValues'); return;  //remove this line when actual tests exist. ADD TESTS
     TesterUtility.clearResults(isFirst);
 
     var testResults=[];
-    var catchFailed = function(description){return {Expected: 'throw', Actual: 'return', Description: description};};
-    var catchPass = function(error, description){return {Expected: error, Actual: error, Description: description};};
-    //catchFailed and catchPass are shorthand if you are expecting an error to be thrown
     testResults.push({Expected: true, Actual: Main.advantageSection.getRow(0).isBlank(), Description: 'Equipment Row is not created'});
     try{
     SelectUtil.changeText('powerChoices0', 'Feature'); TesterUtility.changeValue('equipmentRank0', 5);
@@ -294,19 +295,15 @@ Tester.abilityList.calculateValues=function(isFirst)
 
     try{
     validator.validate(null);
-    testResults.push(catchFailed('Validator did not throw given an invalid value/ state.'));
+    TesterUtility.failedToThrow(testResults, 'Validator did not throw given an invalid value/ state.');
     }
    catch(e)
    {
-       testResults.push(catchPass(e, 'Validator threw when null was passed in.'));
-       testResults.push({Expected: 'Invalid state: object can\'t be null.', Actual: e.message, Description: 'Validator threw the correct error message.'});
-       testResults.push({Expected: 'TypeError', Actual: e.name, Description: 'Validator threw the correct error type.'});
-       testResults.push({Expected: new TypeError('Invalid state: object can\'t be null.'), Actual: e, Description: 'Validator threw the correct type and message.'});
-          //this last one is only possible if Error.prototype.equals is defined to ignore the stack etc
+       testResults.push({Expected: new TypeError('Invalid state: object can\'t be null.'), Actual: e,
+         Description: 'Validator threw the correct type and message.'});
    }
 
     //be sure to copy the name of the function here:
-    TesterUtility.displayResults('Tester.abilityList.calculateValues', testResults, isFirst);
+    return TesterUtility.displayResults('Tester.abilityList.calculateValues', testResults, isFirst);
 };
-Tester.abilityList.setAll=function(isFirst){TesterUtility.unmade('Tester.abilityList.setAll');};
 */
