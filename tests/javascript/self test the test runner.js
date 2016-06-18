@@ -98,6 +98,32 @@ Tester.TesterUtility.clearResults=function(isFirst)
 
    return TesterUtility.displayResults('meta: TesterUtility.clearResults', testResults, isFirst);
 };
+Tester.TesterUtility.formatTestTime=function(isFirst)
+{
+   TesterUtility.clearResults(isFirst);
+
+   var testResults = [], actual, expected;
+
+   try{
+   expected  = '0 minutes, 0 seconds, and 100 milliseconds';
+   actual = TesterUtility.formatTestTime(20, 120);
+   testResults.push({Expected: expected, Actual: actual, Description: 'milliseconds only'});
+   } catch(e){testResults.push({Error: e, Description: 'milliseconds only'});}
+
+   try{
+   expected  = '2 minutes, 3 seconds, and 123 milliseconds';
+   actual = TesterUtility.formatTestTime(0, 123123);
+   testResults.push({Expected: expected, Actual: actual, Description: 'each'});
+   } catch(e){testResults.push({Error: e, Description: 'each'});}
+
+   try{
+   expected  = '61 minutes, 0 seconds, and 1 milliseconds';
+   actual = TesterUtility.formatTestTime(0, 3660001);
+   testResults.push({Expected: expected, Actual: actual, Description: 'no hours'});
+   } catch(e){testResults.push({Error: e, Description: 'no hours'});}
+
+   return TesterUtility.displayResults('meta: TesterUtility.formatTestTime', testResults, isFirst);
+};
 Tester.TesterUtility.generateResultTable=function(isFirst)
 {
    TesterUtility.clearResults(isFirst);

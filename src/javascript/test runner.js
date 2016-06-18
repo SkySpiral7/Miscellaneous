@@ -59,6 +59,24 @@ TesterUtility.failedToThrow=function(testsSoFar, description)
 {
     testsSoFar.push({Expected: 'throw', Actual: 'return', Description: description});
 };
+/*
+@param {number or Date} startTime date in milliseconds
+@param {number or Date} endTime date in milliseconds
+@returns {string} a string stating the number of minutes, seconds, and milliseconds.
+*/
+TesterUtility.formatTestTime=function(startTime, endTime)
+{
+   //I could use new Date(diff).getUTCMilliseconds etc but that wouldn't give me everything above minutes as minutes
+   var milliseconds = (endTime - startTime);
+   var seconds = Math.floor(milliseconds / 1000);
+   milliseconds -= (seconds * 1000);
+   var minutes = Math.floor(seconds / 60);
+   seconds -= (minutes * 60);
+   //tests can't take an hour and shouldn't take minutes so the units stop at minutes
+
+   return '' + minutes + ' minutes, ' + seconds +' seconds, and ' + milliseconds + ' milliseconds';
+   //yes I know that it would display "1 seconds" etc. so change it if you care so much
+};
 /**This function creates the (text) table used to display the test results of a suite.
 Pass and fail counts are counted and added to the grand total and displayed.
 @returns {string} the result*/
@@ -126,42 +144,37 @@ If the called test function throws, TesterUtility.testAll will catch it and disp
 Lastly the total time taken is displayed.*/
 TesterUtility.testAll=function(testSuite, testConfig)
 {
-    var startTime = Date.now();
-    if(testSuite === undefined) testSuite = Tester;
-    if(testConfig === undefined) testConfig = Tester.data;
-    TesterUtility.clearResults(true);
-    var suiteCollection = [testSuite], errorTests = [], resultingList = [];
-    var betweenEach = testConfig.betweenEach;
-    if(undefined === betweenEach) betweenEach = function(){};
-   while (suiteCollection.length !== 0)
+   //TODO: I could test testAll if I tried
+   var startTime = Date.now();
+   TesterUtility.clearResults(true);
+
+   if(undefined === testSuite) testSuite = Tester;
+   if(undefined === testConfig) testConfig = Tester.data;
+   var betweenEach = testConfig.betweenEach;
+   if(undefined === betweenEach) betweenEach = function(){};
+
+   var suiteCollection = [testSuite], errorTests = [], resultingList = [];
+   while (0 !== suiteCollection.length)
    {
-       testSuite = suiteCollection.shift();
-      for (var i in testSuite)
+      testSuite = suiteCollection.shift();
+      for (var key in testSuite)
       {
-          if(!testSuite.hasOwnProperty(i) || i === 'data') continue;  //"for in" loops are always risky and therefore require sanitizing
-          if(typeof(testSuite[i]) === 'object' && testSuite[i] !== null) suiteCollection.push(testSuite[i]);
-             //null is a jerk: typeof erroneously returns 'object' (null isn't an object because it doesn't inherit Object.prototype)
-         else if(typeof(testSuite[i]) === 'function' && i !== 'testAll')  //TODO: testAll is legacy so is data
+         if(!testSuite.hasOwnProperty(key) || 'data' === key) continue;  //"for in" loops are always risky and therefore require sanitizing
+         else if('object' === typeof(testSuite[key]) && null !== testSuite[key]) suiteCollection.push(testSuite[key]);
+            //null is a jerk: typeof erroneously returns 'object' (null isn't an object because it doesn't inherit Object.prototype)
+         else if ('function' === typeof(testSuite[key]) && 'testAll' !== key)  //TODO: testAll is legacy so is data
          {
-             if(resultingList.length !== 0 || errorTests.length !== 0) betweenEach();
-             try{resultingList.push(testSuite[i](false));}
-             catch(e){console.error(e); errorTests.push({Error: e, Description: i});}
+            if(0 !== resultingList.length || 0 !== errorTests.length) betweenEach();
+            try{resultingList.push(testSuite[key](false));}
+            catch(e){console.error(e); errorTests.push({Error: e, Description: key});}
          }
       }
    }
-    if(errorTests.length !== 0) resultingList.push(TesterUtility.displayResults('TesterUtility.testAll', errorTests, false));
-    document.getElementById('test results').value += TesterUtility.generateResultTable(resultingList, true);
+   if(0 !== errorTests.length) resultingList.push(TesterUtility.displayResults('TesterUtility.testAll', errorTests, false));
+   document.getElementById('test results').value += TesterUtility.generateResultTable(resultingList, true);
 
-    var endTime = Date.now();
-    var milliseconds = (endTime - startTime);
-    var seconds = Math.floor(milliseconds / 1000);
-    milliseconds -= (seconds * 1000);
-    var minutes = Math.floor(seconds / 60);
-    seconds -= (minutes * 60);
-    //tests can't take an hour and shouldn't take minutes so the units stop at minutes
-
-    document.getElementById('test results').value += 'Time taken: ' + minutes + ' minutes, ' + seconds +' seconds, and ' + milliseconds + ' milliseconds\n';
-    //yes I know that it would display "1 seconds" etc. so change it if you care so much
+   var endTime = Date.now();
+   document.getElementById('test results').value += 'Time taken: ' + TesterUtility.formatTestTime(startTime, endTime) + '\n';
 };
 /**Returns true if testResult.Expected === testResult.Actual, however this also returns true if both are equal to NaN.
 If Expected and Actual are both (non-null) objects and Expected.equals is a function then it will return the result of Expected.equals(Actual).
