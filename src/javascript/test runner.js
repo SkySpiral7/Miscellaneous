@@ -1,6 +1,4 @@
-//Note that throughout this file the word 'suite' is like naive set theory: a suite it can contain any number of test cases and suites.
-    //TODO: see if I can replace 'suite' with something more clear
-//TODO: test itself
+//Note that throughout this file the word 'suite' means an object that contains any number of test cases and suites
 
 const TesterUtility={};
 /*If all of the requirements pass then return true otherwise add the failures to the testResults and return false
@@ -141,15 +139,18 @@ The loop is deep and all properties that are objects and not named "data" will a
 It will call testConfig.data.betweenEach (if it is defined) between each test.
 If the called test function throws, TesterUtility.testAll will catch it and display the list of errors when finished
 (and will also send the stack to console.error).
-Lastly the total time taken is displayed.*/
+Lastly the total time taken is displayed (everything is written to "test results" text area).
+@param {object} an object that contains every test to be run. defaults to Tester
+@param {object} an object that contains betweenEach and defaultDelta. defaults to Tester.data
+*/
 TesterUtility.testAll=function(testSuite, testConfig)
 {
-   //TODO: I could test testAll if I tried
+   TesterUtility.clearResults(true);  //TODO: remove later since the only thing it's doing is rejecting the old version
    var startTime = Date.now();
-   TesterUtility.clearResults(true);
 
+   //testSuite and testConfig defaults can't be self tested
    if(undefined === testSuite) testSuite = Tester;
-   if(undefined === testConfig) testConfig = Tester.data;
+   if(undefined === testConfig) testConfig = Tester.data;  //TODO: replace testConfig with 2 args if possible
    var betweenEach = testConfig.betweenEach;
    if(undefined === betweenEach) betweenEach = function(){};
 
@@ -167,14 +168,18 @@ TesterUtility.testAll=function(testSuite, testConfig)
             if(0 !== resultingList.length || 0 !== errorTests.length) betweenEach();
             try{resultingList.push(testSuite[key](false));}
             catch(e){console.error(e); errorTests.push({Error: e, Description: key});}
+            //I could have breadcrumbs instead of key but these shouldn't happen and the stack trace is good enough
          }
       }
    }
    if(0 !== errorTests.length) resultingList.push(TesterUtility.displayResults('TesterUtility.testAll', errorTests, false));
-   document.getElementById('test results').value += TesterUtility.generateResultTable(resultingList, true);
+   var output = TesterUtility.generateResultTable(resultingList, true);
 
    var endTime = Date.now();
-   document.getElementById('test results').value += 'Time taken: ' + TesterUtility.formatTestTime(startTime, endTime) + '\n';
+   output += 'Time taken: ' + TesterUtility.formatTestTime(startTime, endTime) + '\n';
+
+   document.getElementById('test results').value = output;
+   //return output;  //can't return it because a javascript:TesterUtility.testAll(); link would cause it to write over the whole page
 };
 /**Returns true if testResult.Expected === testResult.Actual, however this also returns true if both are equal to NaN.
 If Expected and Actual are both (non-null) objects and Expected.equals is a function then it will return the result of Expected.equals(Actual).
@@ -185,7 +190,7 @@ Delta is the maximum number that numbers are allowed to differ by to be consider
 If Delta is not specified it will default to Tester.data.defaultDelta.
 Delta also applies to Dates which is useful if you'd like to ignore seconds for example.
 @returns {boolean}*/
-TesterUtility.testPassed=function(testResult)
+TesterUtility.testPassed=function(testResult)  //TODO: rename to doesTestPass
 {
    if(undefined !== testResult.Error) return false;
 
@@ -252,7 +257,7 @@ TesterUtility._shallowEquality=function(expected, actual, delta)
          //NaN is a jerk: NaN === NaN erroneously returns false (x === x is a tautology. the reason the standard returns false no longer applies)
 
       return Math.abs(expected - actual) <= delta;
-         //numbers are immutable. they are kept the same for the sake of display. TODO: change the display. somehow?
+         //numbers are immutable. they are kept the same for the sake of display
    }
 
    if(expected instanceof Object && typeof(expected.equals) === 'function') return expected.equals(actual);
@@ -286,37 +291,33 @@ Object.freeze(TesterUtility);
 
 //TODO: rewrite: Tests, TestConfig, TesterUtility -> TestRunner?
 var Tester = {};
-Tester.data = {defaultDelta: 0};
-//feel free to add new properties to Tester.data to act as global storage for testing data
+Tester.data = {betweenEach: function(){}, defaultDelta: 0};
 
 /*example:
 Tester.abilityList = {};
-Tester.abilityList.testAll=function(isFirst){TesterUtility.testAll(this, isFirst);};
-  //this is shorthand so that Tester.abilityList.testAll() may be called instead of TesterUtility.testAll(Tester.abilityList);
 //data does not need to be defined nor does data.betweenEach
 Tester.abilityList.calculateValues=function(isFirst)
 {
-    //be sure to copy the name of the function here:
-    TesterUtility.clearResults(isFirst);
+   TesterUtility.clearResults(isFirst);
 
-    var testResults=[];
-    testResults.push({Expected: true, Actual: Main.advantageSection.getRow(0).isBlank(), Description: 'Equipment Row is not created'});
-    try{
-    SelectUtil.changeText('powerChoices0', 'Feature'); TesterUtility.changeValue('equipmentRank0', 5);
-    testResults.push({Expected: NaN, Actual: Math.factorial('Not a number'), Description: 'Math.factorial when passed NaN'});
-    } catch(e){testResults.push({Error: e, Description: 'Set Concentration'});}  //not expecting an error to be thrown but it was. fail instead of crash
+   var testResults=[];
+   testResults.push({Expected: true, Actual: Main.advantageSection.getRow(0).isBlank(), Description: 'Equipment Row is not created'});
+   try{
+   SelectUtil.changeText('powerChoices0', 'Feature'); TesterUtility.changeValue('equipmentRank0', 5);
+   testResults.push({Expected: NaN, Actual: Math.factorial('Not a number'), Description: 'Math.factorial when passed NaN'});
+   } catch(e){testResults.push({Error: e, Description: 'Set Concentration'});}  //not expecting an error to be thrown but it was. fail instead of crash
 
-    try{
-    validator.validate(null);
-    TesterUtility.failedToThrow(testResults, 'Validator did not throw given an invalid value/ state.');
-    }
+   try{
+   validator.validate(null);
+   TesterUtility.failedToThrow(testResults, 'Validator did not throw given an invalid value/ state.');
+   }
    catch(e)
    {
-       testResults.push({Expected: new TypeError('Invalid state: object can\'t be null.'), Actual: e,
+      testResults.push({Expected: new TypeError('Invalid state: object can\'t be null.'), Actual: e,
          Description: 'Validator threw the correct type and message.'});
    }
 
-    //be sure to copy the name of the function here:
-    return TesterUtility.displayResults('Tester.abilityList.calculateValues', testResults, isFirst);
+   //be sure to copy the name of the function here:
+   return TesterUtility.displayResults('Tester.abilityList.calculateValues', testResults, isFirst);
 };
 */

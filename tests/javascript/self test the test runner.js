@@ -98,6 +98,21 @@ Tester.TesterUtility.clearResults=function(isFirst)
 
    return TesterUtility.displayResults('meta: TesterUtility.clearResults', testResults, isFirst);
 };
+Tester.TesterUtility.failedToThrow=function(isFirst)
+{
+   TesterUtility.clearResults(isFirst);
+
+   var testResults = [], actual, expected;
+
+   try{
+   expected  = [0, {Expected: 'throw', Actual: 'return', Description: 'Test'}]
+   actual = [0];
+   TesterUtility.failedToThrow(actual, 'Test');
+   testResults.push({Expected: expected, Actual: actual, Description: 'Happy path'});
+   } catch(e){testResults.push({Error: e, Description: 'Happy path'});}
+
+   return TesterUtility.displayResults('meta: TesterUtility.failedToThrow', testResults, isFirst);
+};
 Tester.TesterUtility.formatTestTime=function(isFirst)
 {
    TesterUtility.clearResults(isFirst);
@@ -269,6 +284,98 @@ Tester.TesterUtility.isPrimitive=function(isFirst)
    } catch(e){testResults.push({Error: e, Description: 'RegExp'});}
 
    return TesterUtility.displayResults('meta: TesterUtility.isPrimitive', testResults, isFirst);
+};
+Tester.TesterUtility.testAll_=function(isFirst)  //TODO: rename away the _ when allowed to
+{
+   TesterUtility.clearResults(isFirst);
+
+   var testResults = [], actual, testSuite, testConfig, expected, betweenTracker = 0;
+
+   var resultBox = document.getElementById('test results');
+   var emptyConfig = {betweenEach: function(){++betweenTracker;}, defaultDelta: 0};
+   var passTest = function(){return {tableName: 'Pass table', testResults:[
+      {Expected: true, Actual: true, Description: 'Desc 1'},
+      {Expected: true, Actual: true, Description: 'Desc 2'}
+   ]}};
+   var failTest = function(){return {tableName: 'Fail table', testResults: [{Expected: true, Actual: false, Description: 'Desc'}]}};
+   var errorTest = function(){throw new Error('I\'m sorry guys but I just can\'t.');};
+
+   try{
+   resultBox.value = 'Override me';
+   testSuite = {testRow: passTest, anotherTest: passTest};
+   testConfig = emptyConfig;
+   expected = 'Grand total: 4/4\nTime taken: ?\n';
+
+   TesterUtility.testAll(testSuite, testConfig);
+   actual = resultBox.value.replace(/Time taken:.+/, 'Time taken: ?');
+   testResults.push({Expected: expected, Actual: actual, Description: 'Happy path: output'});
+   testResults.push({Expected: 1, Actual: betweenTracker, Description: 'Happy path: betweenTracker'});
+   } catch(e){testResults.push({Error: e, Description: 'Happy path'});}
+
+   try{
+   testSuite = {testRow: passTest, anotherTest: passTest};
+   TesterUtility.testAll(testSuite, {});
+   testResults.push({Expected: true, Actual: true, Description: 'betweenEach default does nothing'});
+   } catch(e){testResults.push({Error: e, Description: 'betweenEach default does nothing'});}
+
+   try{
+   Object.prototype.polution = function(){};
+   testSuite = {aTest: passTest};
+   testConfig = emptyConfig;
+   expected = 'Grand total: 2/2\nTime taken: ?\n';
+
+   TesterUtility.testAll(testSuite, testConfig);
+   actual = resultBox.value.replace(/Time taken:.+/, 'Time taken: ?');
+   testResults.push({Expected: expected, Actual: actual, Description: 'Checks hasOwnProperty'});
+   } catch(e){testResults.push({Error: e, Description: 'Checks hasOwnProperty'});}
+   delete Object.prototype.polution;
+
+   try{
+   testSuite = {notATest: 0, stillNot: null};
+   testConfig = emptyConfig;
+   expected = 'Grand total: 0/0\nTime taken: ?\n';
+
+   TesterUtility.testAll(testSuite, testConfig);
+   actual = resultBox.value.replace(/Time taken:.+/, 'Time taken: ?');
+   testResults.push({Expected: expected, Actual: actual, Description: 'Ignore non-tests'});
+   } catch(e){testResults.push({Error: e, Description: 'Ignore non-tests'});}
+
+   try{
+   betweenTracker = 0;
+   testSuite = {firstTest: errorTest, someTest: failTest};
+   testConfig = emptyConfig;
+   expected = '0/1: Fail table\n   Fail: Desc\n      Expected: true\n      Actual: false\n';
+   expected += '0/1: TesterUtility.testAll\n   Fail: firstTest\n      Error: Error: I\'m sorry guys but I just can\'t.\n';
+   expected += '\nGrand total: 0/2\nTime taken: ?\n';
+
+   TesterUtility.testAll(testSuite, testConfig);
+   actual = resultBox.value.replace(/Time taken:.+/, 'Time taken: ?');
+   testResults.push({Expected: expected, Actual: actual, Description: 'Failure: output'});
+   testResults.push({Expected: 1, Actual: betweenTracker, Description: 'Failure: betweenTracker'});
+   } catch(e){testResults.push({Error: e, Description: 'Failure'});}
+
+   try{
+   testSuite = {someObject: {someTest: passTest}, anotherTest: passTest};
+   testConfig = emptyConfig;
+   expected = 'Grand total: 4/4\nTime taken: ?\n';
+
+   TesterUtility.testAll(testSuite, testConfig);
+   actual = resultBox.value.replace(/Time taken:.+/, 'Time taken: ?');
+   testResults.push({Expected: expected, Actual: actual, Description: 'Nesting'});
+   } catch(e){testResults.push({Error: e, Description: 'Nesting'});}
+
+   try{
+   betweenTracker = 0;
+   testSuite = {someTest: passTest};
+   testConfig = emptyConfig;
+
+   TesterUtility.testAll(testSuite, testConfig);
+   testResults.push({Expected: 0, Actual: betweenTracker, Description: 'No between'});
+   } catch(e){testResults.push({Error: e, Description: 'No between'});}
+
+   resultBox.value = '';
+
+   return TesterUtility.displayResults('meta: TesterUtility.testAll', testResults, isFirst);
 };
 Tester.TesterUtility.testPassed=function(isFirst)
 {
