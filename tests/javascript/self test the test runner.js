@@ -1,3 +1,4 @@
+'use strict';
 TestSuite.TestRunner={};
 TestSuite.TestRunner.changeValue=function(isFirst)
 {
@@ -64,25 +65,6 @@ TestSuite.TestRunner.clearResults=function(isFirst)
    actual = resultBox.value;
    testResults.push({Expected: '', Actual: actual, Description: 'Clear with no arg'});
    } catch(e){testResults.push({Error: e, Description: 'Clear with no arg'});}
-
-   try{
-   Tester.data.defaultPrecision = 5;
-   TestRunner.clearResults();
-   TestRunner.failedToThrow(testResults, 'Reject defaultPrecision');
-   }
-   catch(e)
-   {
-      testResults.push({Expected: new Error('Must update tests'), Actual: e, Description: 'Reject defaultPrecision'});
-   }
-   delete Tester.data.defaultPrecision;
-
-   try{
-   Tester.data.defaultPrecision = 15;
-   TestRunner.clearResults();
-   //15 isn't rejected because that was the default value
-   testResults.push({Expected: true, Actual: true, Description: 'Don\'t reject defaultPrecision: 15'});
-   } catch(e){testResults.push({Error: e, Description: 'Don\'t reject defaultPrecision: 15'});}
-   delete Tester.data.defaultPrecision;
 
    try{
    resultBox.value = 'Test';
@@ -394,7 +376,7 @@ TestSuite.TestRunner.isPrimitive=function(isFirst)
 
    return TestRunner.displayResults('meta: TestRunner.isPrimitive', testResults, isFirst);
 };
-TestSuite.TestRunner.testAll_=function(isFirst)  //TODO: rename away the _ when allowed to
+TestSuite.TestRunner.testAll=function(isFirst)
 {
    TestRunner.clearResults(isFirst);
 

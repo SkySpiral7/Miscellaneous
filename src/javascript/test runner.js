@@ -1,4 +1,5 @@
 //Note that throughout this file the word 'suite' means an object that contains any number of test cases and suites
+'use strict';
 
 const TestRunner = {};
 /*If all of the requirements pass then return true otherwise add the failures to the testResults and return false
@@ -29,12 +30,7 @@ TestRunner.changeValue=function(elementID, valueToSet)
 but if(isFirst) this function will clear the testing area.*/
 TestRunner.clearResults=function(isFirst)
 {
-   if(undefined === isFirst) isFirst = true;
-   else if(true !== isFirst) return;
-   //no support for previous version (only shown if first):
-   if(undefined !== Tester.data.defaultPrecision && 15 !== Tester.data.defaultPrecision) throw new Error('Must update tests');
-      //this must get it from Tester.data since that's the only thing the previous version supported
-   document.getElementById('testResults').value = '';
+   if(false !== isFirst) document.getElementById('testResults').value = '';
 };
 /**if(isFirst) This function clears out then writes the test results to the "testResults" text area.
 else it does nothing
@@ -181,7 +177,6 @@ Lastly the total time taken is displayed (everything is written to "testResults"
 */
 TestRunner.testAll=function(testSuite, testConfig)
 {
-   TestRunner.clearResults(true);  //TODO: remove later since the only thing it's doing is rejecting the old version
    var startTime = Date.now();
 
    //testSuite and testConfig defaults can't be self tested
@@ -196,10 +191,10 @@ TestRunner.testAll=function(testSuite, testConfig)
       testSuite = suiteCollection.shift();
       for (var key in testSuite)
       {
-         if(!testSuite.hasOwnProperty(key) || 'data' === key) continue;  //"for in" loops are always risky and therefore require sanitizing
+         if(!testSuite.hasOwnProperty(key)) continue;  //"for in" loops are always risky and therefore require sanitizing
          else if('object' === typeof(testSuite[key]) && null !== testSuite[key]) suiteCollection.push(testSuite[key]);
             //null is a jerk: typeof erroneously returns 'object' (null isn't an object because it doesn't inherit Object.prototype)
-         else if ('function' === typeof(testSuite[key]) && 'testAll' !== key)  //TODO: testAll is legacy so is data
+         else if ('function' === typeof(testSuite[key]))
          {
             if(0 !== resultingList.length || 0 !== errorTests.length) betweenEach();
             try{resultingList.push(testSuite[key](false));}
@@ -286,7 +281,6 @@ TestRunner._shallowEquality=function(expected, actual, delta)
 Object.freeze(TestRunner);
 
 var TestConfig = {betweenEach: function(){}, defaultDelta: 0};
-var Tester = {data: {}};  //TODO: remove when possible
 var TestSuite = {};
 
 /*example:
