@@ -17,17 +17,17 @@ output.value = eval('(function(){' + document.getElementById('inputCode').value 
 <!--/Test section-->
 <a>Code:</a><br />
 <textarea id="inputCode" rows="10" cols="80">
-Tester.testAll();
+TestRunner.testAll();
 return 0;
 </textarea><br />
 <input type="button" onClick="main();" value="Execute" /><br />
-<a href="javascript:TesterUtility.testAll();">Run all tests</a><br />
+<a href="javascript:TestRunner.testAll();">Run all tests</a><br />
 <br />
 <a>Return Value:</a><br />
 <textarea id="output" rows="2" cols="20"></textarea><br />
 <br />
 <a>Test Results:</a><br />
-<textarea id="test results" rows="20" cols="100"></textarea>
+<textarea id="testResults" rows="20" cols="100"></textarea>
 <br /><br />
 <script>document.getElementById('inputCode').focus();</script>
 </html>

@@ -1,25 +1,25 @@
 //Note that throughout this file the word 'suite' means an object that contains any number of test cases and suites
 
-const TesterUtility={};
+const TestRunner = {};
 /*If all of the requirements pass then return true otherwise add the failures to the testResults and return false
 Use this if the test output gets too huge*/
-TesterUtility.assert=function(testResults, requiredArray)  //TODO: unused. Should it exist?
+TestRunner.assert=function(testResults, requiredArray)  //TODO: unused. Should it exist?
 {
-    var shouldContinue = true;
-   for (var i=0; i < requiredArray.length; i++)
+   var shouldContinue = true;
+   for (var i = 0; i < requiredArray.length; ++i)
    {
-      if (!TesterUtility.testPassed(requiredArray[i]))
+      if (!TestRunner.doesTestPass(requiredArray[i]))
       {
-          shouldContinue = false;
-          testResults.push(requiredArray[i]);
+         shouldContinue = false;
+         testResults.push(requiredArray[i]);
       }
    }
-    return shouldContinue;
+   return shouldContinue;
 };
 /**Given the DOM's id this function sets the value property equal to valueToSet then calls onchange.
 No validation is done so if the id is not found it will throw an error.
 It will also throw if there is no onchange defined (instead just set .value directly).*/
-TesterUtility.changeValue=function(elementID, valueToSet)
+TestRunner.changeValue=function(elementID, valueToSet)
 {
    var element = document.getElementById(elementID);
    element.value = valueToSet;
@@ -27,33 +27,73 @@ TesterUtility.changeValue=function(elementID, valueToSet)
 };
 /**Will do nothing if isFirst is not either undefined or true (strict).
 but if(isFirst) this function will clear the testing area.*/
-TesterUtility.clearResults=function(isFirst)
+TestRunner.clearResults=function(isFirst)
 {
    if(undefined === isFirst) isFirst = true;
    else if(true !== isFirst) return;
    //no support for previous version (only shown if first):
    if(undefined !== Tester.data.defaultPrecision && 15 !== Tester.data.defaultPrecision) throw new Error('Must update tests');
       //this must get it from Tester.data since that's the only thing the previous version supported
-   document.getElementById('test results').value = '';
+   document.getElementById('testResults').value = '';
 };
-/**if(isFirst) This function clears out then writes the test results to the "test results" text area.
+/**if(isFirst) This function clears out then writes the test results to the "testResults" text area.
 else it does nothing
 Either way time taken is not displayed.
-@returns {object} that can be used by TesterUtility.generateResultTable. It is always returned so that TesterUtility.testAll
+@returns {object} that can be used by TestRunner.generateResultTable. It is always returned so that TestRunner.testAll
 can gather all it needs.*/
-TesterUtility.displayResults=function(tableName, testResults, isFirst)
+TestRunner.displayResults=function(tableName, testResults, isFirst)  //TODO: make a simple test
 {
    if(isFirst !== false) isFirst = true;
    var input = {tableName: tableName, testResults: testResults};
    if (isFirst)
    {
-      TesterUtility.clearResults(isFirst);
-      document.getElementById('test results').value += TesterUtility.generateResultTable([input], false);  //TODO: add checkbox for hide pass
+      TestRunner.clearResults(isFirst);
+      document.getElementById('testResults').value += TestRunner.generateResultTable([input], false);  //TODO: add checkbox for hide pass
    }
    return input;
 };
+/**Returns true if testResult.Expected === testResult.Actual, however this also returns true if both are equal to NaN.
+If Expected and Actual are both (non-null) objects and Expected.equals is a function then it will return the result of Expected.equals(Actual).
+Functions must be the same object for equality in this case, if you want to compare the sources call toString.
+
+If Expected and Actual are both numbers then testResult.Delta can also be specified (it must be a number).
+Delta is the maximum number that numbers are allowed to differ by to be considered equal (eg 1 and 2 are equal if delta is 1).
+If Delta is not specified it will default to TestConfig.defaultDelta.
+Delta also applies to Dates which is useful if you'd like to ignore seconds for example.
+@returns {boolean}*/
+TestRunner.doesTestPass=function(testResult)
+{
+   if(undefined !== testResult.Error) return false;
+
+   var delta = testResult.Delta;
+   if(undefined === delta) delta = TestConfig.defaultDelta;
+   if(typeof(delta) !== 'number' || !isFinite(delta)) throw new Error('Test error: illegal delta: ' + delta);
+
+   var remainingComparisons = [{Expected: testResult.Expected, Actual: testResult.Actual}];
+   while (remainingComparisons.length > 0)
+   {
+      var thisComparison = remainingComparisons.pop();  //order doesn't matter
+      var shallowResult = TestRunner._shallowEquality(thisComparison.Expected, thisComparison.Actual, delta);
+      if(false === shallowResult) return false;
+      if (undefined === shallowResult)
+      {
+         //in addition to being a fast path, checking the key count makes sure Actual doesn't have more keys
+         if(Object.keys(thisComparison.Expected).length !== Object.keys(thisComparison.Actual).length) return false;
+         for (var key in thisComparison.Expected)
+         {
+             //if(!thisComparison.Expected.hasOwnProperty(key)) continue;  //intentionally not used: all enumerated properties must match
+             if(!(key in thisComparison.Actual)) return false;  //prevents edge case (see test) of key existing undefined vs not existing
+             remainingComparisons.push({Expected: thisComparison.Expected[key], Actual: thisComparison.Actual[key]});
+         }
+      }
+      //else (shallowResult === true): ignore it
+   }
+
+   //all leaves have a shallow equality of true to reach this point
+   return true;
+};
 /**This is a simple way to fail when a test was expected to throw but didn't.*/
-TesterUtility.failedToThrow=function(testsSoFar, description)
+TestRunner.failedToThrow=function(testsSoFar, description)
 {
     testsSoFar.push({Expected: 'throw', Actual: 'return', Description: description});
 };
@@ -62,7 +102,7 @@ TesterUtility.failedToThrow=function(testsSoFar, description)
 @param {number or Date} endTime date in milliseconds
 @returns {string} a string stating the number of minutes, seconds, and milliseconds.
 */
-TesterUtility.formatTestTime=function(startTime, endTime)
+TestRunner.formatTestTime=function(startTime, endTime)
 {
    //I could use new Date(diff).getUTCMilliseconds etc but that wouldn't give me everything above minutes as minutes
    var milliseconds = (endTime - startTime);
@@ -78,7 +118,7 @@ TesterUtility.formatTestTime=function(startTime, endTime)
 /**This function creates the (text) table used to display the test results of a suite.
 Pass and fail counts are counted and added to the grand total and displayed.
 @returns {string} the result*/
-TesterUtility.generateResultTable=function(suiteResults, hidePassed)
+TestRunner.generateResultTable=function(suiteResults, hidePassed)
 {
    var output = '';
    var suitePassCount = 0;
@@ -90,7 +130,7 @@ TesterUtility.generateResultTable=function(suiteResults, hidePassed)
       var testResults = suiteResults[tableIndex].testResults;
       for (var testIndex = 0; testIndex < testResults.length; ++testIndex)
       {
-         if (TesterUtility.testPassed(testResults[testIndex]))
+         if (TestRunner.doesTestPass(testResults[testIndex]))
          {
             ++tablePassCount;
             if(!hidePassed) tableBody += '   Pass: ' + testResults[testIndex].Description + '\n';
@@ -125,32 +165,32 @@ TesterUtility.generateResultTable=function(suiteResults, hidePassed)
    return output;
 };
 /**@returns true if the input should be compared via === when determining equality*/
-TesterUtility.isPrimitive=function(input)
+TestRunner.isPrimitive=function(input)
 {
    var inputType = typeof(input);
    return ('boolean' === inputType || 'number' === inputType || 'string' === inputType
       || 'function' === inputType || 'symbol' === inputType || undefined === input || null === input);
-   //TesterUtility.testPassed doesn't reach the undefined and null cases
+   //TestRunner.doesTestPass doesn't reach the undefined and null cases
 };
 /**Used to run every test in a suite. This function is assumed to run alone.
-This function calls TesterUtility.clearResults and TesterUtility.generateResultTable.
+This function calls TestRunner.clearResults and TestRunner.generateResultTable.
 The main loop enumerates over the testSuite object given and calls each function that isn't named "testAll".
 The loop is deep and all properties that are objects and not named "data" will also be enumerated over.
 It will call testConfig.data.betweenEach (if it is defined) between each test.
-If the called test function throws, TesterUtility.testAll will catch it and display the list of errors when finished
+If the called test function throws, TestRunner.testAll will catch it and display the list of errors when finished
 (and will also send the stack to console.error).
-Lastly the total time taken is displayed (everything is written to "test results" text area).
-@param {object} an object that contains every test to be run. defaults to Tester
-@param {object} an object that contains betweenEach and defaultDelta. defaults to Tester.data
+Lastly the total time taken is displayed (everything is written to "testResults" text area).
+@param {object} an object that contains every test to be run. defaults to TestSuite
+@param {object} an object that contains betweenEach and defaultDelta. defaults to TestConfig
 */
-TesterUtility.testAll=function(testSuite, testConfig)
+TestRunner.testAll=function(testSuite, testConfig)
 {
-   TesterUtility.clearResults(true);  //TODO: remove later since the only thing it's doing is rejecting the old version
+   TestRunner.clearResults(true);  //TODO: remove later since the only thing it's doing is rejecting the old version
    var startTime = Date.now();
 
    //testSuite and testConfig defaults can't be self tested
-   if(undefined === testSuite) testSuite = Tester;
-   if(undefined === testConfig) testConfig = Tester.data;  //TODO: replace testConfig with 2 args if possible
+   if(undefined === testSuite) testSuite = TestSuite;
+   if(undefined === testConfig) testConfig = TestConfig;  //TODO: replace testConfig with 2 args if possible
    var betweenEach = testConfig.betweenEach;
    if(undefined === betweenEach) betweenEach = function(){};
 
@@ -172,66 +212,26 @@ TesterUtility.testAll=function(testSuite, testConfig)
          }
       }
    }
-   if(0 !== errorTests.length) resultingList.push(TesterUtility.displayResults('TesterUtility.testAll', errorTests, false));
-   var output = TesterUtility.generateResultTable(resultingList, true);
+   if(0 !== errorTests.length) resultingList.push(TestRunner.displayResults('TestRunner.testAll', errorTests, false));
+   var output = TestRunner.generateResultTable(resultingList, true);
 
    var endTime = Date.now();
-   output += 'Time taken: ' + TesterUtility.formatTestTime(startTime, endTime) + '\n';
+   output += 'Time taken: ' + TestRunner.formatTestTime(startTime, endTime) + '\n';
 
-   document.getElementById('test results').value = output;
-   //return output;  //can't return it because a javascript:TesterUtility.testAll(); link would cause it to write over the whole page
-};
-/**Returns true if testResult.Expected === testResult.Actual, however this also returns true if both are equal to NaN.
-If Expected and Actual are both (non-null) objects and Expected.equals is a function then it will return the result of Expected.equals(Actual).
-Functions must be the same object for equality in this case, if you want to compare the sources call toString.
-
-If Expected and Actual are both numbers then testResult.Delta can also be specified (it must be a number).
-Delta is the maximum number that numbers are allowed to differ by to be considered equal (eg 1 and 2 are equal if delta is 1).
-If Delta is not specified it will default to Tester.data.defaultDelta.
-Delta also applies to Dates which is useful if you'd like to ignore seconds for example.
-@returns {boolean}*/
-TesterUtility.testPassed=function(testResult)  //TODO: rename to doesTestPass
-{
-   if(undefined !== testResult.Error) return false;
-
-   var delta = testResult.Delta;
-   if(undefined === delta) delta = Tester.data.defaultDelta;
-   if(typeof(delta) !== 'number' || !isFinite(delta)) throw new Error('Test error: illegal delta: ' + delta);
-
-   var remainingComparisons = [{Expected: testResult.Expected, Actual: testResult.Actual}];
-   while (remainingComparisons.length > 0)
-   {
-      var thisComparison = remainingComparisons.pop();  //order doesn't matter
-      var shallowResult = TesterUtility._shallowEquality(thisComparison.Expected, thisComparison.Actual, delta);
-      if(false === shallowResult) return false;
-      if (undefined === shallowResult)
-      {
-         //in addition to being a fast path, checking the key count makes sure Actual doesn't have more keys
-         if(Object.keys(thisComparison.Expected).length !== Object.keys(thisComparison.Actual).length) return false;
-         for (var key in thisComparison.Expected)
-         {
-             //if(!thisComparison.Expected.hasOwnProperty(key)) continue;  //intentionally not used: all enumerated properties must match
-             if(!(key in thisComparison.Actual)) return false;  //prevents edge case (see test) of key existing undefined vs not existing
-             remainingComparisons.push({Expected: thisComparison.Expected[key], Actual: thisComparison.Actual[key]});
-         }
-      }
-      //else (shallowResult === true): ignore it
-   }
-
-   //all leaves have a shallow equality of true to reach this point
-   return true;
+   document.getElementById('testResults').value = output;
+   //return output;  //can't return it because a javascript:TestRunner.testAll(); link would cause it to write over the whole page
 };
 /**@returns true if the input should be compared via .valueOf when determining equality*/
-TesterUtility.useValueOf=function(input)
+TestRunner.useValueOf=function(input)
 {
    return (input instanceof Boolean || input instanceof Number || input instanceof String
       || input instanceof Date);
       //although RegExp has a valueOf it returns an object so it is pointless to call
       //typeof(new Function()) === 'function' and any subclass would need to have equals
 };
-/**Used internally by TesterUtility.testPassed. Don't call this directly (delta isn't validated).
+/**Used internally by TestRunner.doesTestPass. Don't call this directly (delta isn't validated).
 @returns true or false based on a shallow equality check or undefined if a deep equality is required.*/
-TesterUtility._shallowEquality=function(expected, actual, delta)
+TestRunner._shallowEquality=function(expected, actual, delta)
 {
    if(typeof(expected) !== typeof(actual)) return false;  //testing is type strict
 
@@ -239,7 +239,7 @@ TesterUtility._shallowEquality=function(expected, actual, delta)
    if(null === actual) return false;
    if('object' === typeof(expected) && expected.constructor !== actual.constructor) return false;
 
-   if (TesterUtility.useValueOf(expected))
+   if (TestRunner.useValueOf(expected))
    {
       //unboxing is intentionally after the type check (in case of box and primitive)
       expected = expected.valueOf();
@@ -249,7 +249,7 @@ TesterUtility._shallowEquality=function(expected, actual, delta)
    //undefined has it's own type so it will return true here or false above
    if(expected === actual) return true;  //base case. if this is true no need to get more advanced
 
-   if (TesterUtility.isPrimitive(expected))  //Date objects are considered primitive
+   if (TestRunner.isPrimitive(expected))  //Date objects are considered primitive
    {
       if(typeof(expected) !== 'number') return false;  //equality was denied at base case
       //dates will be a number after unboxing so that they can also use delta
@@ -287,29 +287,29 @@ TesterUtility._shallowEquality=function(expected, actual, delta)
 
    return undefined;  //it comes here for arrays and all custom objects
 };
-Object.freeze(TesterUtility);
+Object.freeze(TestRunner);
 
-//TODO: rewrite: Tests, TestConfig, TesterUtility -> TestRunner?
-var Tester = {};
-Tester.data = {betweenEach: function(){}, defaultDelta: 0};
+var TestConfig = {betweenEach: function(){}, defaultDelta: 0};
+var Tester = {data: {}};  //TODO: remove when possible
+var TestSuite = {};
 
 /*example:
-Tester.abilityList = {};
+TestSuite.abilityList = {};
 //data does not need to be defined nor does data.betweenEach
-Tester.abilityList.calculateValues=function(isFirst)
+TestSuite.abilityList.calculateValues=function(isFirst)
 {
-   TesterUtility.clearResults(isFirst);
+   TestRunner.clearResults(isFirst);
 
    var testResults=[];
    testResults.push({Expected: true, Actual: Main.advantageSection.getRow(0).isBlank(), Description: 'Equipment Row is not created'});
    try{
-   SelectUtil.changeText('powerChoices0', 'Feature'); TesterUtility.changeValue('equipmentRank0', 5);
+   SelectUtil.changeText('powerChoices0', 'Feature'); TestRunner.changeValue('equipmentRank0', 5);
    testResults.push({Expected: NaN, Actual: Math.factorial('Not a number'), Description: 'Math.factorial when passed NaN'});
    } catch(e){testResults.push({Error: e, Description: 'Set Concentration'});}  //not expecting an error to be thrown but it was. fail instead of crash
 
    try{
    validator.validate(null);
-   TesterUtility.failedToThrow(testResults, 'Validator did not throw given an invalid value/ state.');
+   TestRunner.failedToThrow(testResults, 'Validator did not throw given an invalid value/ state.');
    }
    catch(e)
    {
@@ -318,6 +318,6 @@ Tester.abilityList.calculateValues=function(isFirst)
    }
 
    //be sure to copy the name of the function here:
-   return TesterUtility.displayResults('Tester.abilityList.calculateValues', testResults, isFirst);
+   return TestRunner.displayResults('TestSuite.abilityList.calculateValues', testResults, isFirst);
 };
 */
