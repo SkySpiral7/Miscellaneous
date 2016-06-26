@@ -329,38 +329,10 @@ RoundingMode.Half_Up = RoundingMode({divisible: 1, half: RoundingMode.Up});
 RoundingMode.Half_Down = RoundingMode({divisible: 1, half: RoundingMode.Down});
 RoundingMode.Half_Truncate = RoundingMode.Half_Down;  //aka
 
-{  //Fermi block (no block scope)
-//Fermi Estimation is not a formula. It's the idea of rounding wildly to estimate a problem (doesn't need to be base 10).
-//All of the following are therefore types of fermi estimations.
-//TODO: estimation != rounding. Remove Fermi block
+/*Fermi Estimation is not a formula (estimations don't have formulas):
+it's the idea of rounding wildly to estimate a problem (doesn't need to be base 10).
+if it had a formula it would be a type of rounding but it is only an estimation strategy
+and therefore doesn't belong here. The formula from https://what-if.xkcd.com/84/
+is used for 2 joke images but isn't actually used for the numbers in the problem.*/
 
-RoundingMode.Fermi = {};
-//This is the formula used in https://what-if.xkcd.com/84/
-RoundingMode.Fermi.Xkcd = function(x)
-{
-    x = Math.logBaseX(x, 10);
-    x = RoundingMode.Half_Up(x);
-    return Math.pow(10, x);
-    //examples: 3 -> 1, 4 -> 10
-}
-
-//This was used by Enrico Fermi himself.
-RoundingMode.Fermi.One_Significant_Figure = function(x)
-{
-    //such that there is only 1 significant figure
-    var base = RoundingMode.Fermi.Nearest_Magnitude_of_10(x);
-    if(Math.abs(base) > Math.abs(x)) base/=10;
-    x = RoundingMode.Truncate(x / base);
-    return x*base;
-    //examples: 94 -> 90; 4 -> 4; 2,234,568 -> 2,000,000
-    //TODO: allow this to be an option: RoundingMode({significant: 1, away: 0}); significant figures would always be base 10
-}
-
-//A friend told me that this was the definition of a formula called "the Fermi Estimation"
-//Although it is a type of Fermi Estimation it is not THE Fermi Estimation therefore he mislabelled it
-RoundingMode.Fermi.Up_Magnitude_of_10 = RoundingMode({magnitude: 10, away: 0});
-//This is a more useful way to estimate a magnitude of 10
-RoundingMode.Fermi.Nearest_Magnitude_of_10 = RoundingMode({magnitude: 10, half: RoundingMode({away: 0, magnitude: 10})});
-}
-
-//TODO: further define Half_Mode and doc it. test Half_Mode and Fermi
+//TODO: further define Half_Mode and doc it. test Half_Mode
