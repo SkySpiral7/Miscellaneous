@@ -41,15 +41,11 @@ else it does nothing
 Either way time taken is not displayed.
 @returns {object} that can be used by TestRunner.generateResultTable. It is always returned so that TestRunner.testAll
 can gather all it needs.*/
-TestRunner.displayResults=function(tableName, testResults, isFirst)  //TODO: make a simple test
+TestRunner.displayResults=function(tableName, testResults, isFirst)
 {
    if(isFirst !== false) isFirst = true;
    var input = {tableName: tableName, testResults: testResults};
-   if (isFirst)
-   {
-      TestRunner.clearResults(isFirst);
-      document.getElementById('testResults').value += TestRunner.generateResultTable([input], false);  //TODO: add checkbox for hide pass
-   }
+   if(isFirst) document.getElementById('testResults').value = TestRunner.generateResultTable([input], false);  //TODO: add checkbox for hide pass
    return input;
 };
 /**Returns true if testResult.Expected === testResult.Actual, however this also returns true if both are equal to NaN.
@@ -67,7 +63,7 @@ TestRunner.doesTestPass=function(testResult)
 
    var delta = testResult.Delta;
    if(undefined === delta) delta = TestConfig.defaultDelta;
-   if(typeof(delta) !== 'number' || !isFinite(delta)) throw new Error('Test error: illegal delta: ' + delta);
+   if('number' !== typeof(delta) || !isFinite(delta)) throw new Error('Test error: illegal delta: ' + delta);
 
    var remainingComparisons = [{Expected: testResult.Expected, Actual: testResult.Actual}];
    while (remainingComparisons.length > 0)
@@ -176,7 +172,7 @@ TestRunner.isPrimitive=function(input)
 This function calls TestRunner.clearResults and TestRunner.generateResultTable.
 The main loop enumerates over the testSuite object given and calls each function that isn't named "testAll".
 The loop is deep and all properties that are objects and not named "data" will also be enumerated over.
-It will call testConfig.data.betweenEach (if it is defined) between each test.
+It will call testConfig.betweenEach (if it is defined) between each test.
 If the called test function throws, TestRunner.testAll will catch it and display the list of errors when finished
 (and will also send the stack to console.error).
 Lastly the total time taken is displayed (everything is written to "testResults" text area).

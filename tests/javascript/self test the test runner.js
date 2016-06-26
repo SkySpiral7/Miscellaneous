@@ -97,6 +97,42 @@ TestSuite.TestRunner.clearResults=function(isFirst)
 
    return TestRunner.displayResults('meta: TestRunner.clearResults', testResults, isFirst);
 };
+TestSuite.TestRunner.displayResults=function(isFirst)
+{
+   TestRunner.clearResults(isFirst);
+
+   var testResults = [], actual, input, expected;
+
+   var resultBox = document.getElementById('testResults');
+
+   try{
+   resultBox.value = 'no change';
+   input = [{Expected: true, Actual: true, Description: 'Test name'}];
+   expected = {tableName: 'table name', testResults: [{Expected: true, Actual: true, Description: 'Test name'}]};
+   actual = TestRunner.displayResults('table name', input, false);
+   testResults.push({Expected: expected, Actual: actual, Description: 'Not first: return'});
+   testResults.push({Expected: 'no change', Actual: resultBox.value, Description: 'Not first: output'});
+   } catch(e){testResults.push({Error: e, Description: 'Not first'});}
+
+   try{
+   input = [{Expected: true, Actual: true, Description: 'Test name'}];
+   TestRunner.displayResults('table name', input, true);
+   expected = '1/1: table name\n   Pass: Test name\n\nGrand total: 1/1\n';
+   testResults.push({Expected: expected, Actual: resultBox.value, Description: 'First'});
+   //return value isn't asserted because it doesn't matter when first
+   } catch(e){testResults.push({Error: e, Description: 'First'});}
+
+   try{
+   input = [{Expected: true, Actual: true, Description: 'Test name'}];
+   TestRunner.displayResults('table name', input);
+   expected = '1/1: table name\n   Pass: Test name\n\nGrand total: 1/1\n';
+   testResults.push({Expected: expected, Actual: resultBox.value, Description: 'First by default'});
+   } catch(e){testResults.push({Error: e, Description: 'First by default'});}
+
+   resultBox.value = '';
+
+   return TestRunner.displayResults('meta: TestRunner.displayResults', testResults, isFirst);
+};
 TestSuite.TestRunner.doesTestPass=function(isFirst)
 {
    TestRunner.clearResults(isFirst);
@@ -178,7 +214,7 @@ TestSuite.TestRunner.failedToThrow=function(isFirst)
    var testResults = [], actual, expected;
 
    try{
-   expected  = [0, {Expected: 'throw', Actual: 'return', Description: 'Test'}]
+   expected = [0, {Expected: 'throw', Actual: 'return', Description: 'Test'}]
    actual = [0];
    TestRunner.failedToThrow(actual, 'Test');
    testResults.push({Expected: expected, Actual: actual, Description: 'Happy path'});
@@ -193,19 +229,19 @@ TestSuite.TestRunner.formatTestTime=function(isFirst)
    var testResults = [], actual, expected;
 
    try{
-   expected  = '0 minutes, 0 seconds, and 100 milliseconds';
+   expected = '0 minutes, 0 seconds, and 100 milliseconds';
    actual = TestRunner.formatTestTime(20, 120);
    testResults.push({Expected: expected, Actual: actual, Description: 'milliseconds only'});
    } catch(e){testResults.push({Error: e, Description: 'milliseconds only'});}
 
    try{
-   expected  = '2 minutes, 3 seconds, and 123 milliseconds';
+   expected = '2 minutes, 3 seconds, and 123 milliseconds';
    actual = TestRunner.formatTestTime(0, 123123);
    testResults.push({Expected: expected, Actual: actual, Description: 'each'});
    } catch(e){testResults.push({Error: e, Description: 'each'});}
 
    try{
-   expected  = '61 minutes, 0 seconds, and 1 milliseconds';
+   expected = '61 minutes, 0 seconds, and 1 milliseconds';
    actual = TestRunner.formatTestTime(0, 3660001);
    testResults.push({Expected: expected, Actual: actual, Description: 'no hours'});
    } catch(e){testResults.push({Error: e, Description: 'no hours'});}
@@ -216,7 +252,7 @@ TestSuite.TestRunner.generateResultTable=function(isFirst)
 {
    TestRunner.clearResults(isFirst);
 
-   var testResults = [], actual, input, inputRow, expected;
+   var testResults = [], actual, input, expected;
 
    try{
    input = [{tableName: 'Table name'}];
