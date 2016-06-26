@@ -313,7 +313,7 @@ TestSuite.abilityList.calculateValues=function(isFirst)
          Description: 'Validator threw the correct type and message.'});
    }
 
-   //be sure to copy the name of the function here:
+   //be sure to give the test a name here:
    return TestRunner.displayResults('TestSuite.abilityList.calculateValues', testResults, isFirst);
 };
 */
