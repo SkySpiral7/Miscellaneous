@@ -92,20 +92,21 @@ TestRunner.failedToThrow=function(testsSoFar, description)
 /*
 @param {number or Date} startTime date in milliseconds
 @param {number or Date} endTime date in milliseconds
-@returns {string} a string stating the number of minutes, seconds, and milliseconds.
+@returns {string} a string stating the number of seconds (to 3 decimal places) and the number of minutes if applicable
 */
 TestRunner.formatTestTime=function(startTime, endTime)
 {
    //I could use new Date(diff).getUTCMilliseconds etc but that wouldn't give me everything above minutes as minutes
    var milliseconds = (endTime - startTime);
-   var seconds = Math.floor(milliseconds / 1000);
-   milliseconds -= (seconds * 1000);
+   var seconds = (milliseconds / 1000);
    var minutes = Math.floor(seconds / 60);
    seconds -= (minutes * 60);
-   //tests can't take an hour and shouldn't take minutes so the units stop at minutes
+   //Chrome kills js after 30 seconds so minutes are likely not possible in a browser
+   //tests shouldn't take minutes so the units stop at minutes
 
-   return '' + minutes + ' minutes, ' + seconds +' seconds, and ' + milliseconds + ' milliseconds';
-   //yes I know that it would display "1 seconds" etc. so change it if you care so much
+   if(0 === minutes) return '' + seconds.toFixed(3) +' seconds';
+   return '' + minutes + ' minutes and ' + seconds.toFixed(3) +' seconds';
+   //yes I know that it would display "1 minutes" etc. so change it if you care so much
 };
 /**This function creates the (text) table used to display the test results of a suite.
 Pass and fail counts are counted and added to the grand total and displayed.
@@ -285,7 +286,7 @@ var TestSuite = {};
 
 /*example:
 TestSuite.abilityList = {};
-//data does not need to be defined nor does data.betweenEach
+//TestConfig does not need to be changed from defaults
 TestSuite.abilityList.calculateValues=function(isFirst)
 {
    TestRunner.clearResults(isFirst);

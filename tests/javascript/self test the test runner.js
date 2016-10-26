@@ -211,20 +211,20 @@ TestSuite.TestRunner.formatTestTime=function(isFirst)
    var testResults = [], actual, expected;
 
    try{
-   expected = '0 minutes, 0 seconds, and 100 milliseconds';
+   expected = '0.100 seconds';
    actual = TestRunner.formatTestTime(20, 120);
    testResults.push({Expected: expected, Actual: actual, Description: 'milliseconds only'});
    } catch(e){testResults.push({Error: e, Description: 'milliseconds only'});}
 
    try{
-   expected = '2 minutes, 3 seconds, and 123 milliseconds';
-   actual = TestRunner.formatTestTime(0, 123123);
+   expected = '1 minutes and 3.123 seconds';
+   actual = TestRunner.formatTestTime(0, 63123);
    testResults.push({Expected: expected, Actual: actual, Description: 'each'});
    } catch(e){testResults.push({Error: e, Description: 'each'});}
 
    try{
-   expected = '61 minutes, 0 seconds, and 1 milliseconds';
-   actual = TestRunner.formatTestTime(0, 3660001);
+   expected = '61 minutes and 0.000 seconds';
+   actual = TestRunner.formatTestTime(0, 3660000);
    testResults.push({Expected: expected, Actual: actual, Description: 'no hours'});
    } catch(e){testResults.push({Error: e, Description: 'no hours'});}
 
