@@ -71,7 +71,7 @@ TestRunner.doesTestPass=function(testResult)
       {
          //in addition to being a fast path, checking the key count makes sure Actual doesn't have more keys
          if(Object.keys(thisComparison.Expected).length !== Object.keys(thisComparison.Actual).length) return false;
-         for (var key in thisComparison.Expected)
+         for (var key in thisComparison.Expected)  //works for both objects and arrays
          {
              //if(!thisComparison.Expected.hasOwnProperty(key)) continue;  //intentionally not used: all enumerated properties must match
              if(!(key in thisComparison.Actual)) return false;  //prevents edge case (see test) of key existing undefined vs not existing
@@ -281,6 +281,7 @@ TestRunner._shallowEquality=function(expected, actual, delta)
 };
 Object.freeze(TestRunner);
 
+/**defaultDelta requires an exact match. To handle imprecise decimals use TestConfig.defaultDelta = Number.EPSILON;*/
 var TestConfig = {betweenEach: function(){}, defaultDelta: 0};
 var TestSuite = {};
 
@@ -292,23 +293,30 @@ TestSuite.abilityList.calculateValues=function(isFirst)
    TestRunner.clearResults(isFirst);
 
    var testResults=[];
-   testResults.push({Expected: true, Actual: Main.advantageSection.getRow(0).isBlank(), Description: 'Equipment Row is not created'});
    try{
-   SelectUtil.changeText('powerChoices0', 'Feature'); TestRunner.changeValue('equipmentRank0', 5);
-   testResults.push({Expected: NaN, Actual: Math.factorial('Not a number'), Description: 'Math.factorial when passed NaN'});
-   } catch(e){testResults.push({Error: e, Description: 'Set Concentration'});}  //not expecting an error to be thrown but it was. fail instead of crash
+   TestRunner.changeValue('input', 5);
+   testResults.push({Expected: 5, Actual: document.getElementById('output').value, Description: 'input is copied over on change'});
+   } catch(e){testResults.push({Error: e, Description: 'input is copied over on change'});}  //not expecting an error to be thrown but it was. fail instead of crash
 
    try{
-   validator.validate(null);
-   TestRunner.failedToThrow(testResults, 'Validator did not throw given an invalid value/ state.');
+   testResults.push({Expected: NaN, Actual: Math.factorial('Not a number'), Description: 'Math.factorial when passed NaN'});
+   } catch(e){testResults.push({Error: e, Description: 'Math.factorial when passed NaN'});}
+
+   try{
+   Validator.nonNull(null);
+   TestRunner.failedToThrow(testResults, 'Validator.nonNull did not throw given null.');
    }
    catch(e)
    {
-      testResults.push({Expected: new TypeError('Invalid state: object can\'t be null.'), Actual: e,
-         Description: 'Validator threw the correct type and message.'});
+      testResults.push({Expected: new TypeError('Illegal argument: object can\'t be null.'), Actual: e,
+         Description: 'Validator.nonNull threw the correct type and message.'});
    }
 
    //be sure to give the test a name here:
    return TestRunner.displayResults('TestSuite.abilityList.calculateValues', testResults, isFirst);
+};
+TestSuite.abilityList.unfinishedTest=function(isFirst)
+{
+   return {tableName: 'unmade', testResults: []};  //remove this when actual tests exist. ADD TESTS
 };
 */
