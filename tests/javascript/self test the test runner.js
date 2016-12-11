@@ -99,16 +99,18 @@ TestSuite.TestRunner.displayResults=function(isFirst)
    try{
    input = [{Expected: true, Actual: true, Description: 'Test name'}];
    TestRunner.displayResults('table name', input, true);
-   expected = '1/1: table name\n   Pass: Test name\n\nGrand total: 1/1\n';
-   testResults.push({Expected: expected, Actual: resultBox.value, Description: 'First'});
+   expected = '1/1: table name\n   Pass: Test name\n\nGrand total: 1/1\nTime taken: ?\n';
+   actual = resultBox.value.replace(/Time taken:.+/, 'Time taken: ?');
+   testResults.push({Expected: expected, Actual: actual, Description: 'First'});
    //return value isn't asserted because it doesn't matter when first
    } catch(e){testResults.push({Error: e, Description: 'First'});}
 
    try{
    input = [{Expected: true, Actual: true, Description: 'Test name'}];
    TestRunner.displayResults('table name', input);
-   expected = '1/1: table name\n   Pass: Test name\n\nGrand total: 1/1\n';
-   testResults.push({Expected: expected, Actual: resultBox.value, Description: 'First by default'});
+   expected = '1/1: table name\n   Pass: Test name\n\nGrand total: 1/1\nTime taken: ?\n';
+   actual = resultBox.value.replace(/Time taken:.+/, 'Time taken: ?');
+   testResults.push({Expected: expected, Actual: actual, Description: 'First by default'});
    } catch(e){testResults.push({Error: e, Description: 'First by default'});}
 
    resultBox.value = '';
@@ -410,7 +412,7 @@ TestSuite.TestRunner.testAll=function(isFirst)
    } catch(e){testResults.push({Error: e, Description: 'betweenEach default does nothing'});}
 
    try{
-   Object.prototype.polution = function(){};
+   Object.prototype.pollution = function(){};
    testSuite = {aTest: passTest};
    testConfig = emptyConfig;
    expected = 'Grand total: 2/2\nTime taken: ?\n';

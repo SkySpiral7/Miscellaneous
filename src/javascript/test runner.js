@@ -2,6 +2,8 @@
 'use strict';
 
 const TestRunner = {};
+(function(){
+var startTime, endTime;  //private state to avoid pollution and user tampering
 /*If all of the requirements pass then return true otherwise add the failures to the testResults and return false
 Use this if the test output gets too huge*/
 TestRunner.assert=function(testResults, requiredArray)  //TODO: unused. Should it exist?
@@ -26,11 +28,14 @@ TestRunner.changeValue=function(elementID, valueToSet)
    element.value = valueToSet;
    element.onchange();
 };
-/**Will do nothing if isFirst is not either undefined or true (strict).
-but if(isFirst) this function will clear the testing area.*/
+/**Will do nothing if isFirst is false (strict). else this function will clear the testing area and start the timer.*/
 TestRunner.clearResults=function(isFirst)
 {
-   if(false !== isFirst) document.getElementById('testResults').value = '';
+   if (false !== isFirst)
+   {
+      document.getElementById('testResults').value = '';
+      startTime = Date.now();
+   }
 };
 /**if(isFirst) This function clears out then writes the test results to the "testResults" text area.
 else it does nothing
@@ -39,9 +44,15 @@ Either way time taken is not displayed.
 can gather all it needs.*/
 TestRunner.displayResults=function(tableName, testResults, isFirst)
 {
-   if(isFirst !== false) isFirst = true;
+   if(false !== isFirst) isFirst = true;
    var input = {tableName: tableName, testResults: testResults};
-   if(isFirst) document.getElementById('testResults').value = TestRunner.generateResultTable([input], false);  //TODO: add checkbox for hide pass
+   if (isFirst)
+   {
+      endTime = Date.now();
+      var output = TestRunner.generateResultTable([input], false);  //TODO: add checkbox for hide pass
+      output += 'Time taken: ' + TestRunner.formatTestTime(startTime, endTime) + '\n';
+      document.getElementById('testResults').value = output;
+   }
    return input;
 };
 /**Returns true if testResult.Expected === testResult.Actual, however this also returns true if both are equal to NaN.
@@ -90,14 +101,14 @@ TestRunner.failedToThrow=function(testsSoFar, description)
     testsSoFar.push({Expected: 'throw', Actual: 'return', Description: description});
 };
 /*
-@param {number or Date} startTime date in milliseconds
-@param {number or Date} endTime date in milliseconds
+@param {number or Date} startTimeParam date in milliseconds
+@param {number or Date} endTimeParam date in milliseconds
 @returns {string} a string stating the number of seconds (to 3 decimal places) and the number of minutes if applicable
 */
-TestRunner.formatTestTime=function(startTime, endTime)
+TestRunner.formatTestTime=function(startTimeParam, endTimeParam)
 {
    //I could use new Date(diff).getUTCMilliseconds etc but that wouldn't give me everything above minutes as minutes
-   var milliseconds = (endTime - startTime);
+   var milliseconds = (endTimeParam - startTimeParam);
    var seconds = (milliseconds / 1000);
    var minutes = Math.floor(seconds / 60);
    seconds -= (minutes * 60);
@@ -178,7 +189,7 @@ Lastly the total time taken is displayed (everything is written to "testResults"
 */
 TestRunner.testAll=function(testSuite, testConfig)
 {
-   var startTime = Date.now();
+   startTime = Date.now();
 
    //testSuite and testConfig defaults can't be self tested
    if(undefined === testSuite) testSuite = TestSuite;
@@ -207,7 +218,7 @@ TestRunner.testAll=function(testSuite, testConfig)
    if(0 !== errorTests.length) resultingList.push(TestRunner.displayResults('TestRunner.testAll', errorTests, false));
    var output = TestRunner.generateResultTable(resultingList, true);
 
-   var endTime = Date.now();
+   endTime = Date.now();
    output += 'Time taken: ' + TestRunner.formatTestTime(startTime, endTime) + '\n';
 
    document.getElementById('testResults').value = output;
@@ -279,6 +290,7 @@ TestRunner._shallowEquality=function(expected, actual, delta)
 
    return undefined;  //it comes here for arrays and all custom objects
 };
+})();
 Object.freeze(TestRunner);
 
 /**defaultDelta requires an exact match. To handle imprecise decimals use TestConfig.defaultDelta = Number.EPSILON;*/
