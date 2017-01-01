@@ -136,34 +136,47 @@ TestSuite.TestRunner.doesTestPass=function(isFirst)
    } catch(e){testResults.push({Error: e, Description: 'Happy path: pass'});}
 
    try{
+   TestConfig.defaultDelta = 'pork';
+   actual = TestRunner.doesTestPass({Expected: 1.2, Actual: 1.4, Delta: 0.2}, 'pig');
+   testResults.push({Expected: true, Actual: actual, Description: 'Use delta property first'});
+
+   actual = TestRunner.doesTestPass({Expected: 1, Actual: 2}, 5);
+   testResults.push({Expected: true, Actual: actual, Description: 'Then use delta arg'});
+
+   TestConfig.defaultDelta = 0;
    actual = TestRunner.doesTestPass({Expected: 1, Actual: (1 + Number.EPSILON)});
-   testResults.push({Expected: false, Actual: actual, Description: 'Using default delta'});
-   } catch(e){testResults.push({Error: e, Description: 'Using default delta'});}
+   testResults.push({Expected: false, Actual: actual, Description: 'Then TestConfig.defaultDelta'});
+   } catch(e){testResults.push({Error: e, Description: 'Delta order'});}
+   TestConfig.defaultDelta = 0;
 
    try{
    TestRunner.doesTestPass({Expected: 1, Actual: 1.5, Delta: 'ham'});
-   TestRunner.failedToThrow(testResults, 'Using invalid delta');
+   TestRunner.failedToThrow(testResults, 'Using invalid delta property');
    }
    catch(e)
    {
-      testResults.push({Expected: new Error('Test error: illegal delta: ham'), Actual: e, Description: 'Using invalid delta'});
+      testResults.push({Expected: new Error('Test error: illegal delta: ham'), Actual: e, Description: 'Using invalid delta property'});
+   }
+
+   try{
+   TestRunner.doesTestPass({Expected: 1, Actual: 1.5}, 'pig');
+   TestRunner.failedToThrow(testResults, 'Using invalid delta arg');
+   }
+   catch(e)
+   {
+      testResults.push({Expected: new Error('Test error: illegal delta: pig'), Actual: e, Description: 'Using invalid delta arg'});
    }
 
    try{
    TestConfig.defaultDelta = 'pork';
    TestRunner.doesTestPass({Expected: 1, Actual: 1.5});
-   TestRunner.failedToThrow(testResults, 'Using invalid default delta');
+   TestRunner.failedToThrow(testResults, 'Using invalid TestConfig.defaultDelta');
    }
    catch(e)
    {
-      testResults.push({Expected: new Error('Test error: illegal delta: pork'), Actual: e, Description: 'Using invalid default delta'});
+      testResults.push({Expected: new Error('Test error: illegal delta: pork'), Actual: e, Description: 'Using invalid TestConfig.defaultDelta'});
    }
    TestConfig.defaultDelta = 0;
-
-   try{
-   actual = TestRunner.doesTestPass({Expected: 1.2, Actual: 1.4, Delta: 0.2});
-   testResults.push({Expected: true, Actual: actual, Description: 'Using custom delta'});
-   } catch(e){testResults.push({Error: e, Description: 'Using custom delta'});}
 
    try{
    actual = TestRunner.doesTestPass({Expected: [1,2], Actual: [1,2]});
@@ -384,10 +397,10 @@ TestSuite.TestRunner.testAll=function(isFirst)
 {
    TestRunner.clearResults(isFirst);
 
-   var testResults = [], actual, testSuite, testConfig, expected, betweenTracker = 0;
+   var testResults = [], actual, testSuite, expected, betweenTracker = 0;
 
    var resultBox = document.getElementById('testResults');
-   var emptyConfig = {betweenEach: function(){++betweenTracker;}, defaultDelta: 0};
+   var trackingConfig = {betweenEach: function(){++betweenTracker;}, defaultDelta: 0};
    var passTest = function(){return {tableName: 'Pass table', testResults:[
       {Expected: true, Actual: true, Description: 'Desc 1'},
       {Expected: true, Actual: true, Description: 'Desc 2'}
@@ -399,15 +412,25 @@ TestSuite.TestRunner.testAll=function(isFirst)
    location.hash = '';
    resultBox.value = 'Override me';
    testSuite = {testRow: passTest, anotherTest: passTest};
-   testConfig = emptyConfig;
    expected = 'Grand total: 4/4\nTime taken: ?\n';
 
-   TestRunner.testAll(testSuite, testConfig);
+   TestRunner.testAll(testSuite, trackingConfig);
    actual = resultBox.value.replace(/Time taken:.+/, 'Time taken: ?');
    testResults.push({Expected: expected, Actual: actual, Description: 'Happy path: output'});
    testResults.push({Expected: 1, Actual: betweenTracker, Description: 'Happy path: betweenTracker'});
    testResults.push({Expected: '#testResults', Actual: location.hash, Description: 'Happy path: scrolls to testResults'});
    } catch(e){testResults.push({Error: e, Description: 'Happy path'});}
+
+   try{
+   testSuite = {testRow: function(){return {tableName: 'Off table', testResults:[
+      {Expected: 1, Actual: 5, Description: '4 Off'}
+   ]}}};
+   expected = 'Grand total: 1/1\nTime taken: ?\n';
+
+   TestRunner.testAll(testSuite, {betweenEach: function(){}, defaultDelta: 100});
+   actual = resultBox.value.replace(/Time taken:.+/, 'Time taken: ?');
+   testResults.push({Expected: expected, Actual: actual, Description: 'IT: defaultDelta is passed all the way down'});
+   } catch(e){testResults.push({Error: e, Description: 'IT: defaultDelta is passed all the way down'});}
 
    try{
    testSuite = {testRow: passTest, anotherTest: passTest};
@@ -418,10 +441,9 @@ TestSuite.TestRunner.testAll=function(isFirst)
    try{
    Object.prototype.pollution = function(){};
    testSuite = {aTest: passTest};
-   testConfig = emptyConfig;
    expected = 'Grand total: 2/2\nTime taken: ?\n';
 
-   TestRunner.testAll(testSuite, testConfig);
+   TestRunner.testAll(testSuite, trackingConfig);
    actual = resultBox.value.replace(/Time taken:.+/, 'Time taken: ?');
    testResults.push({Expected: expected, Actual: actual, Description: 'Checks hasOwnProperty'});
    } catch(e){testResults.push({Error: e, Description: 'Checks hasOwnProperty'});}
@@ -429,10 +451,9 @@ TestSuite.TestRunner.testAll=function(isFirst)
 
    try{
    testSuite = {notATest: 0, stillNot: null};
-   testConfig = emptyConfig;
    expected = 'Grand total: 0/0\nTime taken: ?\n';
 
-   TestRunner.testAll(testSuite, testConfig);
+   TestRunner.testAll(testSuite, trackingConfig);
    actual = resultBox.value.replace(/Time taken:.+/, 'Time taken: ?');
    testResults.push({Expected: expected, Actual: actual, Description: 'Ignore non-tests'});
    } catch(e){testResults.push({Error: e, Description: 'Ignore non-tests'});}
@@ -440,12 +461,11 @@ TestSuite.TestRunner.testAll=function(isFirst)
    try{
    betweenTracker = 0;
    testSuite = {firstTest: errorTest, someTest: failTest};
-   testConfig = emptyConfig;
    expected = '0/1: Fail table\n   Fail: Desc\n      Expected: true\n      Actual: false\n';
    expected += '0/1: TestRunner.testAll\n   Fail: firstTest\n      Error: Error: I\'m sorry guys but I just can\'t.\n';
    expected += '\nGrand total: 0/2\nTime taken: ?\n';
 
-   TestRunner.testAll(testSuite, testConfig);
+   TestRunner.testAll(testSuite, trackingConfig);
    actual = resultBox.value.replace(/Time taken:.+/, 'Time taken: ?');
    testResults.push({Expected: expected, Actual: actual, Description: 'Failure: output'});
    testResults.push({Expected: 1, Actual: betweenTracker, Description: 'Failure: betweenTracker'});
@@ -453,10 +473,9 @@ TestSuite.TestRunner.testAll=function(isFirst)
 
    try{
    testSuite = {someObject: {someTest: passTest}, anotherTest: passTest};
-   testConfig = emptyConfig;
    expected = 'Grand total: 4/4\nTime taken: ?\n';
 
-   TestRunner.testAll(testSuite, testConfig);
+   TestRunner.testAll(testSuite, trackingConfig);
    actual = resultBox.value.replace(/Time taken:.+/, 'Time taken: ?');
    testResults.push({Expected: expected, Actual: actual, Description: 'Nesting'});
    } catch(e){testResults.push({Error: e, Description: 'Nesting'});}
@@ -464,9 +483,8 @@ TestSuite.TestRunner.testAll=function(isFirst)
    try{
    betweenTracker = 0;
    testSuite = {someTest: passTest};
-   testConfig = emptyConfig;
 
-   TestRunner.testAll(testSuite, testConfig);
+   TestRunner.testAll(testSuite, trackingConfig);
    testResults.push({Expected: 0, Actual: betweenTracker, Description: 'No between'});
    } catch(e){testResults.push({Error: e, Description: 'No between'});}
 
@@ -667,7 +685,7 @@ TestSuite.TestRunner._shallowEquality=function(isFirst)
    } catch(e){testResults.push({Error: e, Description: 'Error description'});}
 
    try{
-   actual = TestRunner.doesTestPass({Expected: /a/, Actual: /b/});
+   actual = TestRunner._shallowEquality(/a/, /b/, 0);
    testResults.push({Expected: false, Actual: actual, Description: 'RegExp'});
    } catch(e){testResults.push({Error: e, Description: 'RegExp'});}
 

@@ -24,14 +24,14 @@ TestRunner.clearResults=function(isFirst)
 };
 /**if(isFirst) This function clears out then writes the test results to the "testResults" text area and scrolls to it.
 @returns {object} that can be used by TestRunner.generateResultTable which is used by TestRunner.testAll.*/
-TestRunner.displayResults=function(tableName, testResults, isFirst)
+TestRunner.displayResults=function(tableName, testResults, isFirst, defaultDelta)
 {
    if(false !== isFirst) isFirst = true;
    var input = {tableName: tableName, testResults: testResults};
    if (isFirst)
    {
       endTime = Date.now();
-      var output = TestRunner.generateResultTable([input], false);  //TODO: add checkbox for hide pass
+      var output = TestRunner.generateResultTable([input], false, defaultDelta);  //TODO: add checkbox for hide pass
       output += 'Time taken: ' + TestRunner.formatTestTime(startTime, endTime) + '\n';
       document.getElementById('testResults').value = output;
       location.hash = '#testResults';  //scroll to the results
@@ -44,14 +44,15 @@ Functions must be the same object for equality in this case, if you want to comp
 
 If Expected and Actual are both numbers then testResult.Delta can also be specified (it must be a number).
 Delta is the maximum number that numbers are allowed to differ by to be considered equal (eg 1 and 2 are equal if delta is 1).
-If Delta is not specified it will default to TestConfig.defaultDelta.
+If Delta is not specified it will default to defaultDelta.
 Delta also applies to Dates which is useful if you'd like to ignore seconds for example.
 @returns {boolean}*/
-TestRunner.doesTestPass=function(testResult)
+TestRunner.doesTestPass=function(testResult, defaultDelta)
 {
    if(undefined !== testResult.Error) return false;
 
    var delta = testResult.Delta;
+   if(undefined === delta) delta = defaultDelta;
    if(undefined === delta) delta = TestConfig.defaultDelta;
    if('number' !== typeof(delta) || !isFinite(delta)) throw new Error('Test error: illegal delta: ' + delta);
 
@@ -104,8 +105,11 @@ TestRunner.formatTestTime=function(startTimeParam, endTimeParam)
 };
 /**This function creates the (text) table used to display the test results of a suite.
 Pass and fail counts are counted and added to the grand total and displayed.
-@returns {string} the result*/
-TestRunner.generateResultTable=function(suiteResults, hidePassed)
+@param {object[][]} suiteResults each assertion for the test suite
+@param {boolean} hidePassed if false then the assertions within a table that pass won't display (only the table's total)
+@param {number} defaultDelta passed to TestRunner.doesTestPass
+@returns {string} the a formatted string result*/
+TestRunner.generateResultTable=function(suiteResults, hidePassed, defaultDelta)
 {
    var output = '';
    var suitePassCount = 0;
@@ -117,7 +121,7 @@ TestRunner.generateResultTable=function(suiteResults, hidePassed)
       var testResults = suiteResults[tableIndex].testResults;
       for (var testIndex = 0; testIndex < testResults.length; ++testIndex)
       {
-         if (TestRunner.doesTestPass(testResults[testIndex]))
+         if (TestRunner.doesTestPass(testResults[testIndex], defaultDelta))
          {
             ++tablePassCount;
             if(!hidePassed) tableBody += '   Pass: ' + testResults[testIndex].Description + '\n';
@@ -176,7 +180,7 @@ TestRunner.testAll=function(testSuite, testConfig)
 
    //testSuite and testConfig defaults can't be self tested
    if(undefined === testSuite) testSuite = TestSuite;
-   if(undefined === testConfig) testConfig = TestConfig;  //TODO: replace testConfig with 2 args if possible
+   if(undefined === testConfig) testConfig = TestConfig;
    var betweenEach = testConfig.betweenEach;
    if(undefined === betweenEach) betweenEach = function(){};
 
@@ -199,7 +203,7 @@ TestRunner.testAll=function(testSuite, testConfig)
       }
    }
    if(0 !== errorTests.length) resultingList.push(TestRunner.displayResults('TestRunner.testAll', errorTests, false));
-   var output = TestRunner.generateResultTable(resultingList, true);
+   var output = TestRunner.generateResultTable(resultingList, true, testConfig.defaultDelta);
 
    endTime = Date.now();
    output += 'Time taken: ' + TestRunner.formatTestTime(startTime, endTime) + '\n';
