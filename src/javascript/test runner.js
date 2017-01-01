@@ -4,21 +4,6 @@
 const TestRunner = {};
 (function(){
 var startTime, endTime;  //private state to avoid pollution and user tampering
-/*If all of the requirements pass then return true otherwise add the failures to the testResults and return false
-Use this if the test output gets too huge*/
-TestRunner.assert=function(testResults, requiredArray)  //TODO: unused. Should it exist?
-{
-   var shouldContinue = true;
-   for (var i = 0; i < requiredArray.length; ++i)
-   {
-      if (!TestRunner.doesTestPass(requiredArray[i]))
-      {
-         shouldContinue = false;
-         testResults.push(requiredArray[i]);
-      }
-   }
-   return shouldContinue;
-};
 /**Given the DOM's id this function sets the value property equal to valueToSet then calls onchange.
 No validation is done so if the id is not found it will throw an error.
 It will also throw if there is no onchange defined (instead just set .value directly).*/
@@ -37,11 +22,8 @@ TestRunner.clearResults=function(isFirst)
       startTime = Date.now();
    }
 };
-/**if(isFirst) This function clears out then writes the test results to the "testResults" text area.
-else it does nothing
-Either way time taken is not displayed.
-@returns {object} that can be used by TestRunner.generateResultTable. It is always returned so that TestRunner.testAll
-can gather all it needs.*/
+/**if(isFirst) This function clears out then writes the test results to the "testResults" text area and scrolls to it.
+@returns {object} that can be used by TestRunner.generateResultTable which is used by TestRunner.testAll.*/
 TestRunner.displayResults=function(tableName, testResults, isFirst)
 {
    if(false !== isFirst) isFirst = true;
@@ -52,6 +34,7 @@ TestRunner.displayResults=function(tableName, testResults, isFirst)
       var output = TestRunner.generateResultTable([input], false);  //TODO: add checkbox for hide pass
       output += 'Time taken: ' + TestRunner.formatTestTime(startTime, endTime) + '\n';
       document.getElementById('testResults').value = output;
+      location.hash = '#testResults';  //scroll to the results
    }
    return input;
 };
@@ -178,12 +161,12 @@ TestRunner.isPrimitive=function(input)
 };
 /**Used to run every test in a suite. This function is assumed to run alone.
 This function calls TestRunner.clearResults and TestRunner.generateResultTable.
-The main loop enumerates over the testSuite object given and calls each function that isn't named "testAll".
-The loop is deep and all properties that are objects and not named "data" will also be enumerated over.
+The main loop enumerates over the testSuite object given and calls each function.
+The loop is deep and all properties that are objects will also be enumerated over.
 It will call testConfig.betweenEach (if it is defined) between each test.
 If the called test function throws, TestRunner.testAll will catch it and display the list of errors when finished
 (and will also send the stack to console.error).
-Lastly the total time taken is displayed (everything is written to "testResults" text area).
+The total time taken is displayed (everything is written to "testResults" text area) then it scrolls to testResults.
 @param {object} an object that contains every test to be run. defaults to TestSuite
 @param {object} an object that contains betweenEach and defaultDelta. defaults to TestConfig
 */
@@ -222,6 +205,7 @@ TestRunner.testAll=function(testSuite, testConfig)
    output += 'Time taken: ' + TestRunner.formatTestTime(startTime, endTime) + '\n';
 
    document.getElementById('testResults').value = output;
+   location.hash = '#testResults';  //scroll to the results
    //return output;  //can't return it because a javascript:TestRunner.testAll(); link would cause it to write over the whole page
 };
 /**@returns true if the input should be compared via .valueOf when determining equality*/

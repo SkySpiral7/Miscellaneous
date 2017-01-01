@@ -97,11 +97,13 @@ TestSuite.TestRunner.displayResults=function(isFirst)
    } catch(e){testResults.push({Error: e, Description: 'Not first'});}
 
    try{
+   location.hash = '';
    input = [{Expected: true, Actual: true, Description: 'Test name'}];
    TestRunner.displayResults('table name', input, true);
    expected = '1/1: table name\n   Pass: Test name\n\nGrand total: 1/1\nTime taken: ?\n';
    actual = resultBox.value.replace(/Time taken:.+/, 'Time taken: ?');
    testResults.push({Expected: expected, Actual: actual, Description: 'First'});
+   testResults.push({Expected: '#testResults', Actual: location.hash, Description: 'First scrolls to testResults'});
    //return value isn't asserted because it doesn't matter when first
    } catch(e){testResults.push({Error: e, Description: 'First'});}
 
@@ -394,6 +396,7 @@ TestSuite.TestRunner.testAll=function(isFirst)
    var errorTest = function(){throw new Error('I\'m sorry guys but I just can\'t.');};
 
    try{
+   location.hash = '';
    resultBox.value = 'Override me';
    testSuite = {testRow: passTest, anotherTest: passTest};
    testConfig = emptyConfig;
@@ -403,6 +406,7 @@ TestSuite.TestRunner.testAll=function(isFirst)
    actual = resultBox.value.replace(/Time taken:.+/, 'Time taken: ?');
    testResults.push({Expected: expected, Actual: actual, Description: 'Happy path: output'});
    testResults.push({Expected: 1, Actual: betweenTracker, Description: 'Happy path: betweenTracker'});
+   testResults.push({Expected: '#testResults', Actual: location.hash, Description: 'Happy path: scrolls to testResults'});
    } catch(e){testResults.push({Error: e, Description: 'Happy path'});}
 
    try{
