@@ -23,15 +23,19 @@ TestRunner.clearResults=function(isFirst)
    }
 };
 /**if(isFirst) This function clears out then writes the test results to the "testResults" text area and scrolls to it.
+@param {object} testConfig hidePassed defaults to false. if(!isFirst) ignored else it is passed to TestRunner.generateResultTable
 @returns {object} that can be used by TestRunner.generateResultTable which is used by TestRunner.testAll.*/
-TestRunner.displayResults=function(tableName, testResults, isFirst, defaultDelta)
+TestRunner.displayResults=function(tableName, testResults, isFirst, testConfig)
 {
    if(false !== isFirst) isFirst = true;
    var input = {tableName: tableName, testResults: testResults};
    if (isFirst)
    {
+      if(undefined === testConfig) testConfig = {hidePassed: false};
+      else if(undefined === testConfig.hidePassed) testConfig = {defaultDelta: testConfig.defaultDelta, hidePassed: false};
+         //new object to avoid mutating the user's config
+      var output = TestRunner.generateResultTable([input], testConfig);  //TODO: add checkbox for hide pass
       endTime = Date.now();
-      var output = TestRunner.generateResultTable([input], false, defaultDelta);  //TODO: add checkbox for hide pass
       output += 'Time taken: ' + TestRunner.formatTestTime(startTime, endTime) + '\n';
       document.getElementById('testResults').value = output;
       location.hash = '#testResults';  //scroll to the results
@@ -106,25 +110,25 @@ TestRunner.formatTestTime=function(startTimeParam, endTimeParam)
 /**This function creates the (text) table used to display the test results of a suite.
 Pass and fail counts are counted and added to the grand total and displayed.
 @param {object[][]} suiteResults each assertion for the test suite
-@param {boolean} hidePassed if false then the assertions within a table that pass won't display (only the table's total)
-@param {number} defaultDelta passed to TestRunner.doesTestPass
+@param {object} testConfig with properties:
+   {boolean} hidePassed if false then the assertions within a table that pass won't display (returns only grand total if all pass)
+   {number} defaultDelta passed to TestRunner.doesTestPass
 @returns {string} the a formatted string result*/
-TestRunner.generateResultTable=function(suiteResults, hidePassed, defaultDelta)
+TestRunner.generateResultTable=function(suiteResults, testConfig)
 {
-   var output = '';
-   var suitePassCount = 0;
-   var suiteTotalCount = 0;
+   var output = '', suitePassCount = 0, suiteTotalCount = 0;
+   if(true !== testConfig.hidePassed && false !== testConfig.hidePassed)
+      throw new Error('Test error: illegal testConfig.hidePassed: ' + testConfig.hidePassed);
    for (var tableIndex = 0; tableIndex < suiteResults.length; ++tableIndex)
    {
-      var tablePassCount = 0;
-      var tableBody = '';
+      var tablePassCount = 0, tableBody = '';
       var testResults = suiteResults[tableIndex].testResults;
       for (var testIndex = 0; testIndex < testResults.length; ++testIndex)
       {
-         if (TestRunner.doesTestPass(testResults[testIndex], defaultDelta))
+         if (TestRunner.doesTestPass(testResults[testIndex], testConfig.defaultDelta))
          {
             ++tablePassCount;
-            if(!hidePassed) tableBody += '   Pass: ' + testResults[testIndex].Description + '\n';
+            if(!testConfig.hidePassed) tableBody += '   Pass: ' + testResults[testIndex].Description + '\n';
          }
          else
          {
@@ -143,7 +147,7 @@ TestRunner.generateResultTable=function(suiteResults, hidePassed, defaultDelta)
             }
          }
       }
-      if (!hidePassed || testResults.length !== tablePassCount)
+      if (!testConfig.hidePassed || testResults.length !== tablePassCount)
       {
          var tableHeader = '' + tablePassCount + '/' + testResults.length + ': ' + suiteResults[tableIndex].tableName + '\n';
          output += tableHeader + tableBody;
@@ -172,7 +176,10 @@ If the called test function throws, TestRunner.testAll will catch it and display
 (and will also send the stack to console.error).
 The total time taken is displayed (everything is written to "testResults" text area) then it scrolls to testResults.
 @param {object} an object that contains every test to be run. defaults to TestSuite
-@param {object} an object that contains betweenEach and defaultDelta. defaults to TestConfig
+@param {object} an object (defaults to TestConfig) that contains:
+   {function} betweenEach if defined it will be called between each test
+   {number} defaultDelta passed to TestRunner.doesTestPass
+   {boolean} hidePassed defaults to true and is passed to TestRunner.generateResultTable
 */
 TestRunner.testAll=function(testSuite, testConfig)
 {
@@ -181,8 +188,11 @@ TestRunner.testAll=function(testSuite, testConfig)
    //testSuite and testConfig defaults can't be self tested
    if(undefined === testSuite) testSuite = TestSuite;
    if(undefined === testConfig) testConfig = TestConfig;
+
    var betweenEach = testConfig.betweenEach;
    if(undefined === betweenEach) betweenEach = function(){};
+   if(undefined === testConfig.hidePassed) testConfig = {defaultDelta: testConfig.defaultDelta, hidePassed: true};
+      //new object to avoid mutating the user's config
 
    var suiteCollection = [testSuite], errorTests = [], resultingList = [];
    while (0 !== suiteCollection.length)
@@ -203,14 +213,15 @@ TestRunner.testAll=function(testSuite, testConfig)
       }
    }
    if(0 !== errorTests.length) resultingList.push(TestRunner.displayResults('TestRunner.testAll', errorTests, false));
-   var output = TestRunner.generateResultTable(resultingList, true, testConfig.defaultDelta);
+      //testConfig is not needed because !isFirst
+   var output = TestRunner.generateResultTable(resultingList, testConfig);
 
    endTime = Date.now();
    output += 'Time taken: ' + TestRunner.formatTestTime(startTime, endTime) + '\n';
 
    document.getElementById('testResults').value = output;
    location.hash = '#testResults';  //scroll to the results
-   //return output;  //can't return it because a javascript:TestRunner.testAll(); link would cause it to write over the whole page
+   //return output;  //don't return because a javascript:TestRunner.testAll(); link would cause it to write over the whole page
 };
 /**@returns true if the input should be compared via .valueOf when determining equality*/
 TestRunner.useValueOf=function(input)
@@ -282,7 +293,7 @@ TestRunner._shallowEquality=function(expected, actual, delta)
 Object.freeze(TestRunner);
 
 /**defaultDelta requires an exact match. To handle imprecise decimals use TestConfig.defaultDelta = Number.EPSILON;*/
-var TestConfig = {betweenEach: function(){}, defaultDelta: 0};
+var TestConfig = {betweenEach: function(){}, defaultDelta: 0, hidePassed: undefined};
 var TestSuite = {};
 
 /*example:

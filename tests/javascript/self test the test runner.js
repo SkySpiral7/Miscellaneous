@@ -115,6 +115,28 @@ TestSuite.TestRunner.displayResults=function(isFirst)
    testResults.push({Expected: expected, Actual: actual, Description: 'First by default'});
    } catch(e){testResults.push({Error: e, Description: 'First by default'});}
 
+   try{
+   input = [{Expected: true, Actual: true, Description: 'Test name'}];
+   TestRunner.displayResults('table name', input, true);
+   expected = '1/1: table name\n   Pass: Test name\n\nGrand total: 1/1\nTime taken: ?\n';
+   actual = resultBox.value.replace(/Time taken:.+/, 'Time taken: ?');
+   testResults.push({Expected: expected, Actual: actual, Description: 'No testConfig defaults hidePassed to false'});
+
+   input = [{Expected: 1, Actual: 2, Description: 'Test name'}];
+   var myConfig = {defaultDelta: 5};
+   TestRunner.displayResults('table name', input, true, myConfig);
+   expected = '1/1: table name\n   Pass: Test name\n\nGrand total: 1/1\nTime taken: ?\n';
+   actual = resultBox.value.replace(/Time taken:.+/, 'Time taken: ?');
+   testResults.push({Expected: expected, Actual: actual, Description: 'No hidePassed to false'});
+   testResults.push({Expected: {defaultDelta: 5}, Actual: myConfig, Description: 'without mutating user config'});
+
+   input = [{Expected: true, Actual: true, Description: 'Test name'}];
+   TestRunner.displayResults('table name', input, true, {hidePassed: true});
+   expected = 'Grand total: 1/1\nTime taken: ?\n';
+   actual = resultBox.value.replace(/Time taken:.+/, 'Time taken: ?');
+   testResults.push({Expected: expected, Actual: actual, Description: 'hidePassed can be true'});
+   } catch(e){testResults.push({Error: e, Description: 'hidePassed'});}
+
    resultBox.value = '';
 
    return TestRunner.displayResults('meta: TestRunner.displayResults', testResults, isFirst);
@@ -254,20 +276,30 @@ TestSuite.TestRunner.generateResultTable=function(isFirst)
    var testResults = [], actual, input, expected;
 
    try{
+   TestRunner.generateResultTable(input, {defaultDelta: 1});
+   TestRunner.failedToThrow(testResults, 'hidePassed is required');
+   }
+   catch(e)
+   {
+      testResults.push({Expected: new Error('Test error: illegal testConfig.hidePassed: undefined'), Actual: e,
+         Description: 'hidePassed is required'});
+   }
+
+   try{
    input = [{tableName: 'Table name'}];
    input[0].testResults = [{Expected: true, Actual: true, Description: 'Test name'}];
    expected  = '1/1: Table name\n';
    expected += '   Pass: Test name\n';
    expected += '\n';
    expected += 'Grand total: 1/1\n';
-   actual = TestRunner.generateResultTable(input, false);
+   actual = TestRunner.generateResultTable(input, {hidePassed: false});
    testResults.push({Expected: expected, Actual: actual, Description: 'Happy path: 1 pass no hide'});
    } catch(e){testResults.push({Error: e, Description: 'Happy path: 1 pass no hide'});}
 
    try{
    input = [{tableName: 'Table name'}];
    input[0].testResults = [{Expected: true, Actual: true, Description: 'Test name'}];
-   actual = TestRunner.generateResultTable(input, true);
+   actual = TestRunner.generateResultTable(input, {hidePassed: true});
    testResults.push({Expected: 'Grand total: 1/1\n', Actual: actual, Description: 'Hidden all pass'});
    } catch(e){testResults.push({Error: e, Description: 'Hidden all pass'});}
 
@@ -283,7 +315,7 @@ TestSuite.TestRunner.generateResultTable=function(isFirst)
    expected += '      Actual: /f/\n';
    expected += '\n';
    expected += 'Grand total: 1/2\n';
-   actual = TestRunner.generateResultTable(input, true);
+   actual = TestRunner.generateResultTable(input, {hidePassed: true});
    testResults.push({Expected: expected, Actual: actual, Description: 'Hidden some pass'});
    } catch(e){testResults.push({Error: e, Description: 'Hidden some pass'});}
 
@@ -316,7 +348,7 @@ TestSuite.TestRunner.generateResultTable=function(isFirst)
    expected += '   Pass: Lone test\n';
    expected += '\n';
    expected += 'Grand total: 3/5\n';
-   actual = TestRunner.generateResultTable(input, false);
+   actual = TestRunner.generateResultTable(input, {hidePassed: false});
    testResults.push({Expected: expected, Actual: actual, Description: 'Complex'});
    } catch(e){testResults.push({Error: e, Description: 'Complex'});}
 
@@ -329,12 +361,12 @@ TestSuite.TestRunner.generateResultTable=function(isFirst)
    expected += '      Error: TypeError: something bad happened\n';
    expected += '\n';
    expected += 'Grand total: 0/1\n';
-   actual = TestRunner.generateResultTable(input, false);
+   actual = TestRunner.generateResultTable(input, {hidePassed: false});
    testResults.push({Expected: expected, Actual: actual, Description: 'Error'});
    } catch(e){testResults.push({Error: e, Description: 'Error'});}
 
    try{
-   actual = TestRunner.generateResultTable([], false);
+   actual = TestRunner.generateResultTable([], {hidePassed: false});
    testResults.push({Expected: 'Grand total: 0/0\n', Actual: actual, Description: 'No tests'});
    } catch(e){testResults.push({Error: e, Description: 'No tests'});}
 
@@ -400,7 +432,7 @@ TestSuite.TestRunner.testAll=function(isFirst)
    var testResults = [], actual, testSuite, expected, betweenTracker = 0;
 
    var resultBox = document.getElementById('testResults');
-   var trackingConfig = {betweenEach: function(){++betweenTracker;}, defaultDelta: 0};
+   var trackingConfig = {betweenEach: function(){++betweenTracker;}, defaultDelta: 0, hidePassed: true};
    var passTest = function(){return {tableName: 'Pass table', testResults:[
       {Expected: true, Actual: true, Description: 'Desc 1'},
       {Expected: true, Actual: true, Description: 'Desc 2'}
@@ -422,21 +454,20 @@ TestSuite.TestRunner.testAll=function(isFirst)
    } catch(e){testResults.push({Error: e, Description: 'Happy path'});}
 
    try{
-   testSuite = {testRow: function(){return {tableName: 'Off table', testResults:[
-      {Expected: 1, Actual: 5, Description: '4 Off'}
-   ]}}};
-   expected = 'Grand total: 1/1\nTime taken: ?\n';
-
-   TestRunner.testAll(testSuite, {betweenEach: function(){}, defaultDelta: 100});
-   actual = resultBox.value.replace(/Time taken:.+/, 'Time taken: ?');
-   testResults.push({Expected: expected, Actual: actual, Description: 'IT: defaultDelta is passed all the way down'});
-   } catch(e){testResults.push({Error: e, Description: 'IT: defaultDelta is passed all the way down'});}
-
-   try{
    testSuite = {testRow: passTest, anotherTest: passTest};
    TestRunner.testAll(testSuite, {});
    testResults.push({Expected: true, Actual: true, Description: 'betweenEach default does nothing'});
    } catch(e){testResults.push({Error: e, Description: 'betweenEach default does nothing'});}
+
+   try{
+   testSuite = {testRow: passTest};
+   var myConfig = {};
+   expected = 'Grand total: 2/2\nTime taken: ?\n';
+   TestRunner.testAll(testSuite, myConfig);
+   actual = resultBox.value.replace(/Time taken:.+/, 'Time taken: ?');
+   testResults.push({Expected: expected, Actual: actual, Description: 'hidePassed defaults to true'});
+   testResults.push({Expected: {}, Actual: myConfig, Description: 'without mutating user config'});
+   } catch(e){testResults.push({Error: e, Description: 'hidePassed'});}
 
    try{
    Object.prototype.pollution = function(){};
@@ -487,6 +518,38 @@ TestSuite.TestRunner.testAll=function(isFirst)
    TestRunner.testAll(testSuite, trackingConfig);
    testResults.push({Expected: 0, Actual: betweenTracker, Description: 'No between'});
    } catch(e){testResults.push({Error: e, Description: 'No between'});}
+
+   try{
+   testSuite = {testRow: function(){return {tableName: 'Off table', testResults:[
+      {Expected: 1, Actual: 5, Description: '4 Off'}
+   ]}}};
+   expected = 'Grand total: 1/1\nTime taken: ?\n';
+
+   TestRunner.testAll(testSuite, {defaultDelta: 100});
+   actual = resultBox.value.replace(/Time taken:.+/, 'Time taken: ?');
+   testResults.push({Expected: expected, Actual: actual, Description: 'IT: defaultDelta is passed all the way down'});
+   } catch(e){testResults.push({Error: e, Description: 'IT: defaultDelta is passed all the way down'});}
+
+   try{
+   testSuite = {testRow: function(){return {tableName: 'Pass table', testResults:[
+      {Expected: true, Actual: true, Description: 'Seems logical'}
+   ]}}};
+   expected = '1/1: Pass table\n   Pass: Seems logical\n\nGrand total: 1/1\nTime taken: ?\n';
+
+   TestRunner.testAll(testSuite, {hidePassed: false});
+   actual = resultBox.value.replace(/Time taken:.+/, 'Time taken: ?');
+   testResults.push({Expected: expected, Actual: actual, Description: 'IT: hidePassed is passed all the way down'});
+
+   testSuite = {firstTest: errorTest, someTest: function(){return {tableName: 'Pass table', testResults:[
+      {Expected: true, Actual: true, Description: 'Seems logical'}
+   ]}}};
+   expected = '1/1: Pass table\n   Pass: Seems logical\n';
+   expected += '0/1: TestRunner.testAll\n   Fail: firstTest\n      Error: Error: I\'m sorry guys but I just can\'t.\n';
+   expected += '\nGrand total: 1/2\nTime taken: ?\n';
+   TestRunner.testAll(testSuite, {hidePassed: false});
+   actual = resultBox.value.replace(/Time taken:.+/, 'Time taken: ?');
+   testResults.push({Expected: expected, Actual: actual, Description: 'IT: hidePassed is used for throwing tests too'});
+   } catch(e){testResults.push({Error: e, Description: 'IT: hidePassed is passed all the way down'});}
 
    resultBox.value = '';
 
