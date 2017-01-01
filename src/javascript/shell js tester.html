@@ -22,7 +22,11 @@ return 0;
 </textarea><br />
 <input type="button" onClick="main();" value="Execute" /><br />
 <a href="javascript:TestRunner.testAll();">Run all tests</a><br />
-<br />
+Hide tests that pass?
+<label>Yes: <input type="radio" name="hidePassed" onchange="TestConfig.hidePassed = true;" /></label>
+<label>No: <input type="radio" name="hidePassed" onchange="TestConfig.hidePassed = false;" /></label>
+<label>Only for testAll: <input type="radio" name="hidePassed" onchange="TestConfig.hidePassed = undefined;" checked="true" /></label>
+<br /><br />
 <a>Return Value:</a><br />
 <textarea id="output" rows="2" cols="20"></textarea><br />
 <br />

@@ -34,7 +34,7 @@ TestRunner.displayResults=function(tableName, testResults, isFirst, testConfig)
       if(undefined === testConfig) testConfig = {hidePassed: false};
       else if(undefined === testConfig.hidePassed) testConfig = {defaultDelta: testConfig.defaultDelta, hidePassed: false};
          //new object to avoid mutating the user's config
-      var output = TestRunner.generateResultTable([input], testConfig);  //TODO: add checkbox for hide pass
+      var output = TestRunner.generateResultTable([input], testConfig);
       endTime = Date.now();
       output += 'Time taken: ' + TestRunner.formatTestTime(startTime, endTime) + '\n';
       document.getElementById('testResults').value = output;
