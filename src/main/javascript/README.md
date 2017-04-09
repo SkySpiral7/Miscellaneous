@@ -10,17 +10,6 @@ See RoundingMode's jsdoc for details (the block comment above where RoundingMode
 **Outputs**: A function which takes a number and returns a number (which is rounded).
 
 
-#Catch Rate Calculator.html
-A simple program to calculate your chances of catching a pokemon. Based on the Generation 4 formula according to bulbapedia.
-Has many links to bulbapedia in order to look up numbers that are required input. Along with 3 random links for more pokemon calculations.
-
-**Inputs**: current and max hp, catch rate, ball rate, pokemon status, number of balls attempted
-
-**Outputs**: chance of success, chance of at least 1 success given a number of attempts, the ability to attempt it using random numbers
-
-Also has: an HP guesser based on lv. The formula for which is based on my speculation based on a few of my pokemon
-
-
 #generate password.html
 Generates a random text that makes a good password. It uses javascript only (is purely off-line, no AJAX) so nothing nefarious is going on here.
 
@@ -57,6 +46,15 @@ I have tested this code against the known problems and a few others.
 **Inputs**: string that might be JSON
 
 **Outputs**: a JSON object or undefined
+
+
+#testRunner.js
+A javascript program that asserts correctness. It is like weight but useful. I maintain it because I like how light weight it is
+and because it accepts a delta for comparing floating point numbers (and dates) which I don't think Jasmine or Q-Unit does.
+
+**Inputs**: a test suite that contains functions that return an array of test assertions.
+
+**Outputs**: a text output of the results put into a textarea
 
 
 #testRunnerExample.html
