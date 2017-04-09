@@ -141,38 +141,38 @@ TestSuite.TestRunner.displayResults=function(isFirst)
 
    return TestRunner.displayResults('meta: TestRunner.displayResults', testResults, isFirst);
 };
-TestSuite.TestRunner.doesTestPass=function(isFirst)
+TestSuite.TestRunner.findFirstFailurePath=function(isFirst)
 {
    TestRunner.clearResults(isFirst);
 
    var testResults = [], actual, input;
 
    try{
-   actual = TestRunner.doesTestPass({Error: new Error('Something evil')});
-   testResults.push({Expected: false, Actual: actual, Description: 'Happy path: error'});
+   actual = TestRunner.findFirstFailurePath({Error: new Error('Something evil')});
+   testResults.push({Expected: '', Actual: actual, Description: 'Happy path: error'});
    } catch(e){testResults.push({Error: e, Description: 'Happy path: error'});}
 
    try{
-   actual = TestRunner.doesTestPass({Expected: true, Actual: true});
-   testResults.push({Expected: true, Actual: actual, Description: 'Happy path: pass'});
+   actual = TestRunner.findFirstFailurePath({Expected: true, Actual: true});
+   testResults.push({Expected: undefined, Actual: actual, Description: 'Happy path: pass'});
    } catch(e){testResults.push({Error: e, Description: 'Happy path: pass'});}
 
    try{
    TestConfig.defaultDelta = 'pork';
-   actual = TestRunner.doesTestPass({Expected: 1.2, Actual: 1.4, Delta: 0.2}, 'pig');
-   testResults.push({Expected: true, Actual: actual, Description: 'Use delta property first'});
+   actual = TestRunner.findFirstFailurePath({Expected: 1.2, Actual: 1.4, Delta: 0.2}, 'pig');
+   testResults.push({Expected: undefined, Actual: actual, Description: 'Use delta property first'});
 
-   actual = TestRunner.doesTestPass({Expected: 1, Actual: 2}, 5);
-   testResults.push({Expected: true, Actual: actual, Description: 'Then use delta arg'});
+   actual = TestRunner.findFirstFailurePath({Expected: 1, Actual: 2}, 5);
+   testResults.push({Expected: undefined, Actual: actual, Description: 'Then use delta arg'});
 
    TestConfig.defaultDelta = 0;
-   actual = TestRunner.doesTestPass({Expected: 1, Actual: (1 + Number.EPSILON)});
-   testResults.push({Expected: false, Actual: actual, Description: 'Then TestConfig.defaultDelta'});
+   actual = TestRunner.findFirstFailurePath({Expected: 1, Actual: (1 + Number.EPSILON)});
+   testResults.push({Expected: '', Actual: actual, Description: 'Then TestConfig.defaultDelta'});
    } catch(e){testResults.push({Error: e, Description: 'Delta order'});}
    TestConfig.defaultDelta = 0;
 
    try{
-   TestRunner.doesTestPass({Expected: 1, Actual: 1.5, Delta: 'ham'});
+   TestRunner.findFirstFailurePath({Expected: 1, Actual: 1.5, Delta: 'ham'});
    TestRunner.failedToThrow(testResults, 'Using invalid delta property');
    }
    catch(e)
@@ -181,7 +181,7 @@ TestSuite.TestRunner.doesTestPass=function(isFirst)
    }
 
    try{
-   TestRunner.doesTestPass({Expected: 1, Actual: 1.5}, 'pig');
+   TestRunner.findFirstFailurePath({Expected: 1, Actual: 1.5}, 'pig');
    TestRunner.failedToThrow(testResults, 'Using invalid delta arg');
    }
    catch(e)
@@ -191,7 +191,7 @@ TestSuite.TestRunner.doesTestPass=function(isFirst)
 
    try{
    TestConfig.defaultDelta = 'pork';
-   TestRunner.doesTestPass({Expected: 1, Actual: 1.5});
+   TestRunner.findFirstFailurePath({Expected: 1, Actual: 1.5});
    TestRunner.failedToThrow(testResults, 'Using invalid TestConfig.defaultDelta');
    }
    catch(e)
@@ -201,32 +201,37 @@ TestSuite.TestRunner.doesTestPass=function(isFirst)
    TestConfig.defaultDelta = 0;
 
    try{
-   actual = TestRunner.doesTestPass({Expected: [1,2], Actual: [1,2]});
-   testResults.push({Expected: true, Actual: actual, Description: 'Least deep equal'});
+   actual = TestRunner.findFirstFailurePath({Expected: [1,2], Actual: [1,2]});
+   testResults.push({Expected: undefined, Actual: actual, Description: 'Least deep equal'});
    } catch(e){testResults.push({Error: e, Description: 'Least deep equal'});}
 
    try{
-   actual = TestRunner.doesTestPass({Expected: {a: 1}, Actual: {a: 2}});
-   testResults.push({Expected: false, Actual: actual, Description: 'Least deep not equal'});
+   actual = TestRunner.findFirstFailurePath({Expected: {a: 1}, Actual: {a: 2}});
+   testResults.push({Expected: '"a"', Actual: actual, Description: 'Least deep not equal'});
    } catch(e){testResults.push({Error: e, Description: 'Least deep not equal'});}
 
    try{
-   actual = TestRunner.doesTestPass({Expected: [1.2, 2.5], Actual: [1.4, 2.55], Delta: 0.2});
-   testResults.push({Expected: true, Actual: actual, Description: 'Delta is global'});
+   actual = TestRunner.findFirstFailurePath({Expected: [1.2, 2.5], Actual: [1.4, 2.55], Delta: 0.2});
+   testResults.push({Expected: undefined, Actual: actual, Description: 'Delta is global'});
    } catch(e){testResults.push({Error: e, Description: 'Delta is global'});}
 
    try{
-   actual = TestRunner.doesTestPass({Expected: [{}, {a: 1}], Actual: [{}, {a: 1, b: 5}]});
-   testResults.push({Expected: false, Actual: actual, Description: 'Deep with unequal keys'});
+   actual = TestRunner.findFirstFailurePath({Expected: [{}, {a: 1}], Actual: [{}, {a: 1, b: 5}]});
+   testResults.push({Expected: '"1"', Actual: actual, Description: 'Deep with unequal keys'});
    } catch(e){testResults.push({Error: e, Description: 'Deep with unequal keys'});}
 
    try{
-   actual = TestRunner.doesTestPass({Expected: {a: undefined}, Actual: {b: 1}});
+   actual = TestRunner.findFirstFailurePath({Expected: {a: undefined}, Actual: {b: 1}});
    //Actual.b exists so that there are the same number of keys (thus edge case)
-   testResults.push({Expected: false, Actual: actual, Description: 'Edge case: undefined vs not exist'});
+   testResults.push({Expected: '"a"', Actual: actual, Description: 'Edge case: undefined vs not exist'});
    } catch(e){testResults.push({Error: e, Description: 'Edge case: undefined vs not exist'});}
 
-   return TestRunner.displayResults('meta: TestRunner.doesTestPass', testResults, isFirst);
+   try{
+   actual = TestRunner.findFirstFailurePath({Expected: {a: 1, b: 2}, Actual: {b: 2, a: 1}});
+   testResults.push({Expected: undefined, Actual: actual, Description: 'Ignore key order'});
+   } catch(e){testResults.push({Error: e, Description: 'Ignore key order'});}
+
+   return TestRunner.displayResults('meta: TestRunner.findFirstFailurePath', testResults, isFirst);
 };
 TestSuite.TestRunner.failedToThrow=function(isFirst)
 {

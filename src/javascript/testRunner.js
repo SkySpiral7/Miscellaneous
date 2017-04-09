@@ -42,51 +42,56 @@ TestRunner.displayResults=function(tableName, testResults, isFirst, testConfig)
    }
    return input;
 };
-/**Returns true if testResult.Expected === testResult.Actual, however this also returns true if both are equal to NaN.
-If Expected and Actual are both (non-null) objects and Expected.equals is a function then it will return the result of Expected.equals(Actual).
+/**This is a simple way to fail when a test was expected to throw but didn't.*/
+TestRunner.failedToThrow=function(testsSoFar, description)
+{
+   testsSoFar.push({Expected: 'throw', Actual: 'return', Description: description});
+};
+/**Returns the path to the first (in no particular order) element in Expected that doesn't equal Actual (or return if there's an Error).
+If Expected and Actual are both (non-null) objects and Expected.equals is a function then it will use the result of Expected.equals(Actual).
 Functions must be the same object for equality in this case, if you want to compare the sources call toString.
+hasOwnProperty is not used: all enumerable properties must match.
+NaN is equal to NaN.
 
-If Expected and Actual are both numbers then testResult.Delta can also be specified (it must be a number).
-Delta is the maximum number that numbers are allowed to differ by to be considered equal (eg 1 and 2 are equal if delta is 1).
+If Expected and Actual are both numbers (or Dates) then testResult.Delta can also be specified (it must be a number).
+Delta is the maximum number that they are allowed to differ by to be considered equal (eg 1 and 2 are equal if delta is 1).
 If Delta is not specified it will default to defaultDelta.
 Delta also applies to Dates which is useful if you'd like to ignore seconds for example.
-@returns {boolean}*/
-TestRunner.doesTestPass=function(testResult, defaultDelta)
+@returns {string} the path to the non-matching element. empty string if the problem is on the root. undefined if the test passes*/
+TestRunner.findFirstFailurePath=function(testResult, defaultDelta)
 {
-   if(undefined !== testResult.Error) return false;
+   if(undefined !== testResult.Error) return '';
 
    var delta = testResult.Delta;
    if(undefined === delta) delta = defaultDelta;
    if(undefined === delta) delta = TestConfig.defaultDelta;
    if('number' !== typeof(delta) || !isFinite(delta)) throw new Error('Test error: illegal delta: ' + delta);
 
-   var remainingComparisons = [{Expected: testResult.Expected, Actual: testResult.Actual}];
+   var remainingComparisons = [{Expected: testResult.Expected, Actual: testResult.Actual, Path: ''}];
    while (remainingComparisons.length > 0)
    {
       var thisComparison = remainingComparisons.pop();  //order doesn't matter
       var shallowResult = TestRunner._shallowEquality(thisComparison.Expected, thisComparison.Actual, delta);
-      if(false === shallowResult) return false;
+      if(false === shallowResult) return thisComparison.Path;
       if (undefined === shallowResult)
       {
          //in addition to being a fast path, checking the key count makes sure Actual doesn't have more keys
-         if(Object.keys(thisComparison.Expected).length !== Object.keys(thisComparison.Actual).length) return false;
+         if(Object.keys(thisComparison.Expected).length !== Object.keys(thisComparison.Actual).length) return thisComparison.Path;
          for (var key in thisComparison.Expected)  //works for both objects and arrays
          {
-             //if(!thisComparison.Expected.hasOwnProperty(key)) continue;  //intentionally not used: all enumerated properties must match
-             if(!(key in thisComparison.Actual)) return false;  //prevents edge case (see test) of key existing undefined vs not existing
-             remainingComparisons.push({Expected: thisComparison.Expected[key], Actual: thisComparison.Actual[key]});
+             var newPath = thisComparison.Path + '.' + JSON.stringify(key);
+             if('.' === newPath[0]) newPath = newPath.substring(1);  //only possible if thisComparison.Path is empty. remove the leading .
+
+             //if(!thisComparison.Expected.hasOwnProperty(key)) continue;  //intentionally not used: all enumerable properties must match
+             if(!(key in thisComparison.Actual)) return newPath;  //prevents edge case (see test) of key existing undefined vs not existing
+             remainingComparisons.push({Expected: thisComparison.Expected[key], Actual: thisComparison.Actual[key], Path: newPath});
          }
       }
       //else (shallowResult === true): ignore it
    }
 
    //all leaves have a shallow equality of true to reach this point
-   return true;
-};
-/**This is a simple way to fail when a test was expected to throw but didn't.*/
-TestRunner.failedToThrow=function(testsSoFar, description)
-{
-    testsSoFar.push({Expected: 'throw', Actual: 'return', Description: description});
+   return undefined;
 };
 /*
 @param {number or Date} startTimeParam date in milliseconds
@@ -112,7 +117,7 @@ Pass and fail counts are counted and added to the grand total and displayed.
 @param {object[][]} suiteResults each assertion for the test suite
 @param {object} testConfig with properties:
    {boolean} hidePassed if false then the assertions within a table that pass won't display (returns only grand total if all pass)
-   {number} defaultDelta passed to TestRunner.doesTestPass
+   {number} defaultDelta passed to TestRunner.findFirstFailurePath
 @returns {string} the a formatted string result*/
 TestRunner.generateResultTable=function(suiteResults, testConfig)
 {
@@ -125,7 +130,8 @@ TestRunner.generateResultTable=function(suiteResults, testConfig)
       var testResults = suiteResults[tableIndex].testResults;
       for (var testIndex = 0; testIndex < testResults.length; ++testIndex)
       {
-         if (TestRunner.doesTestPass(testResults[testIndex], testConfig.defaultDelta))
+         var failPath = TestRunner.findFirstFailurePath(testResults[testIndex], testConfig.defaultDelta);
+         if (undefined === failPath)
          {
             ++tablePassCount;
             if(!testConfig.hidePassed) tableBody += '   Pass: ' + testResults[testIndex].Description + '\n';
@@ -135,15 +141,16 @@ TestRunner.generateResultTable=function(suiteResults, testConfig)
             tableBody += '   Fail: ' + testResults[testIndex].Description + '\n';
             if (undefined !== testResults[testIndex].Error)
             {
-               console.log(testResults[testIndex].Description, testResults[testIndex].Error);
+               console.log(testResults[testIndex].Description, testResults[testIndex].Error);  //failPath is always '' so don't log it
                tableBody += '      Error: ' + testResults[testIndex].Error + '\n';
             }
             else
             {
                console.log(testResults[testIndex].Description, 'expected:', testResults[testIndex].Expected,
-                  'actual:', testResults[testIndex].Actual);
+                  'actual:', testResults[testIndex].Actual, 'location:', failPath);
                tableBody += '      Expected: ' + testResults[testIndex].Expected + '\n' +
                   '      Actual: ' + testResults[testIndex].Actual + '\n';
+                  //failPath isn't useful when looking at the toString
             }
          }
       }
@@ -165,7 +172,7 @@ TestRunner.isPrimitive=function(input)
    var inputType = typeof(input);
    return ('boolean' === inputType || 'number' === inputType || 'string' === inputType
       || 'function' === inputType || 'symbol' === inputType || undefined === input || null === input);
-   //TestRunner.doesTestPass doesn't reach the undefined and null cases
+   //TestRunner._shallowEquality doesn't reach the undefined and null cases
 };
 /**Used to run every test in a suite. This function is assumed to run alone.
 This function calls TestRunner.clearResults and TestRunner.generateResultTable.
@@ -178,7 +185,7 @@ The total time taken is displayed (everything is written to "testResults" text a
 @param {object} an object that contains every test to be run. defaults to TestSuite
 @param {object} an object (defaults to TestConfig) that contains:
    {function} betweenEach if defined it will be called between each test
-   {number} defaultDelta passed to TestRunner.doesTestPass
+   {number} defaultDelta passed to TestRunner.findFirstFailurePath
    {boolean} hidePassed defaults to true and is passed to TestRunner.generateResultTable
 */
 TestRunner.testAll=function(testSuite, testConfig)
@@ -231,7 +238,7 @@ TestRunner.useValueOf=function(input)
       //although RegExp has a valueOf it returns an object so it is pointless to call
       //typeof(new Function()) === 'function' and any subclass would need to have equals
 };
-/**Used internally by TestRunner.doesTestPass. Don't call this directly (delta isn't validated).
+/**Used internally by TestRunner.findFirstFailurePath. Don't call this directly (delta isn't validated).
 @returns true or false based on a shallow equality check or undefined if a deep equality is required.*/
 TestRunner._shallowEquality=function(expected, actual, delta)
 {
@@ -251,10 +258,9 @@ TestRunner._shallowEquality=function(expected, actual, delta)
    //undefined has it's own type so it will return true here or false above
    if(expected === actual) return true;  //base case. if this is true no need to get more advanced
 
-   if (TestRunner.isPrimitive(expected))  //Date objects are considered primitive
+   if (TestRunner.isPrimitive(expected))  //Dates have already been converted to numbers so that they can also use delta
    {
       if(typeof(expected) !== 'number') return false;  //equality was denied at base case
-      //dates will be a number after unboxing so that they can also use delta
       if(isNaN(expected) && isNaN(actual)) return true;
          //NaN is a jerk: NaN === NaN erroneously returns false (x === x is a tautology. the reason the standard returns false no longer applies)
 
