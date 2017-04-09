@@ -52,16 +52,15 @@ The 2 webpages above should be updated to solve the problem not just show it. Sa
 and [Wikipedia](http://en.wikipedia.org/wiki/JSON#JavaScript_eval.28.29).
 But I know there are [more out there](https://www.google.com/search?q=%22Eaeflnr-u%22).
 
-I have tested this code against the known problems and a few others but it is in the untested branch because I have
-not made a unit test file for it.
+I have tested this code against the known problems and a few others.
 
 **Inputs**: string that might be JSON
 
 **Outputs**: a JSON object or undefined
 
 
-#shell js tester.html
-A simple wrapper for testing javascript. Not exactly "untested" but it will remain in this branch.
+#testRunnerExample.html
+A simple wrapper for testing javascript.
 
 **Inputs**: a textarea for eval and a link to run all tests
 

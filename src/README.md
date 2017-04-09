@@ -1,6 +1,6 @@
 #Folders
 The javascript folder has javascript programs and html.
-The html files are self-contained programs (except "shell js tester.html") and the js files are libraries.
+The html files are self-contained programs (except "testRunnerExample.html") and the js files are libraries.
 
 The programs that are in this folder but not a subfolder are not javascript files. They will be described below.
 

@@ -4,15 +4,11 @@ This repository is a holder for stand alone files or very small projects.
 
 This repo largely contains code that has no tests and is possibly half finished.
 The code might have unfinished or buggy functions but every other function worked under my use conditions.
-Although that's assuming I ran the code at all.
 
 
 #Tests
-As expected "src" contains the code and "tests" contain the tests.
-The javascript tests run off of
-[simple tester.js](https://github.com/SkySpiral7/Humans-and-Heroes/blob/wip/2-secret-origins/javascript/simple%20tester.js)
-which is in my
-[Humans & Heroes repository](https://github.com/SkySpiral7/Humans-and-Heroes).
+As expected "main" contains the code and "test" contain the tests.
+The javascript tests run off of the testRunner.js.
 
 
 #Works in progress
@@ -21,11 +17,13 @@ None
 #Finished but Untested
 1. Catch Rate Calculator.html
 2. generate password.html
-3. old json.js
+3. Logger.js
+4. old json.js
 
 #Finished and Tested
 1. advanced rounding.js
+2. testRunner.js
 
 #Finished without anything to test
 1. ascii.cpp
-2. shell js tester.html
+2. testRunnerExample.html
