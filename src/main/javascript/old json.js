@@ -2,9 +2,10 @@ function parseJson(text)
 {
    text += '';  //null safe toString (if symbol exists then use JSON.parse instead)
    var stripped = text.replace(/"(?:\\.|[^"\\])*"/g, '""');  //make all strings empty (for the next couple checks)
-   stripped = stripped.replace(/^[\s\xA0\uFEFF]+|[\s\xA0\uFEFF]+$/g, '');  //trim polyfill, also removes UTF-16 BOM
+   stripped = stripped.replace(/\xA0/g, ' ');  //replace non-breaking space with a regular space
+   stripped = stripped.replace(/^\uFEFF?\s+|\s+$/g, '');  //trim. also removes UTF-16 BOM
    stripped = stripped.replace(/\s*([,:{}[\]])\s*/g, '$1');  //remove whitespace only around places where it is allowed
-   if((/[\s\xA0]/).test(stripped)) return;  //invalid whitespace
+   if((/\s/).test(stripped)) return;  //invalid whitespace
    if((/\{[^"}]/).test(stripped)) return;  //objects must be empty or start with a string
    if((/[^,:[]\[/).test(','+stripped)) return;  //arrays can only come after comma, colon, or open array (or as the whole input)
    if((/[\w.\]}]"/).test(stripped) || (/"[\w.[{]/).test(stripped)) return;  //invalid string location
