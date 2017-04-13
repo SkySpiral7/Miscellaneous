@@ -1,46 +1,7 @@
 var Half_Mode = {Up: {}, Down: {}};
 
-/**precision is the number of decimal places (base 10 after the decimal point) that need to be ensured, any further digits are ignored.
-If necessary this Number is multiplied (this is not changed) by Math.pow(10, precision); then rounded (not truncated) via Half_Down then divided back.
-Therefore ensurePrecision increased accuracy but does not guarantee it.
-So for example precision of 2 means to compare the numbers but ignore any value smaller than 1/100.
-precision of 0 means compare them as whole numbers.
-precision must be a number type and can't be infinite.
-There is no range checking done on precision because I can't ask the browser for the maximum precision (appears to be 15).
-This function is similar to Number(num.toFixed(precision)) except this function uses Half_Down instead of Half_Up.
-This function is not similar to Number.prototype.toPrecision (which returns a string of significant figures via Half_Up).*/
-Number.prototype.ensurePrecision = function(precision)
-{
-    //TODO: replace with a delta check
-    if(!Number.isFinite(this.valueOf())) return this.valueOf();
-    if(typeof(precision) !== 'number' || !Number.isFinite(precision)) return NaN;
-    //Infinity and NaN precision are not allowed (isFinite calls isNaN)
-    //I am allowing people to specify negative precision or ones that are not whole numbers. why and what that means is up to the user
-    if(this.valueOf() === 0) return 0;  //already perfect
-    var resultWhole = Math.floor(this);
-    if(resultWhole > this) return resultWhole;  //in case Math.floor ensured some precision when this is 0.999999 etc
-    resultWhole = simpleTruncate(this);
-       //notice how this is not changed
-    var resultDigits = ((this - resultWhole) * Math.pow(10, precision));
+if(undefined === Math.trunc){Math.trunc = function(x){return x - (x % 1);}}  //~~x fails for 1.7976931348623157e+308
 
-    var savedDigits = simpleTruncate(resultDigits);
-    var digitsInQuestion = Math.abs(resultDigits - savedDigits);
-
-    //if exactly half then truncate. else round away from half
-       //need to round in case of 0.999999999, 0.6666666, or 0.0000001 etc
-    if(digitsInQuestion <= 0.5){}  //remain whole if exactly half or smaller
-    else if(resultWhole > 0) savedDigits++;
-    else savedDigits--;  //step away from 0 if digitsInQuestion > 0.5
-
-    savedDigits /= Math.pow(10, precision);
-    return (resultWhole+savedDigits);
-
-   function simpleTruncate(num)
-   {
-       if(num >= 0) return Math.floor(num);
-       return Math.ceil(num);
-   };
-};
 /**Simply allows using logarithmic functions with bases other than Math.E.
 It is type strict. num is the number to perform the logarithm on and base is the logarithm base.
 EG: Math.logBaseX(100, 10) returns 2 because Math.pow(10, 2) returns 100.
@@ -54,33 +15,6 @@ Math.logBaseX = function(num, base)
     //will also return NaN if either parameter is negative.
     //will return +/-Infinity if num is +/-Infinity
 };
-/*
-Math.logBaseXSum = function(num, base, iterations)
-//somehow the most precise is iterations: 1 (Math.logBaseXSum(0.1, 10, 1) returned -0.9999999999999999)
-//vs Math.logBaseXSum(0.1, 10, 100000000) (100 million) which returned -0.9999999999999994 (same result with iterations: 8)
-//this weird behavior is one reason why this function is not used. the other being it still isn't precise enough
-//I don't have enough math skills (or motivation) to figure out how to make a precise version of Math.logBaseX
-{
-    if(typeof(num) !== 'number' || typeof(base) !== 'number') return NaN;  //type strict
-    if(base <= 0 || base === 1 || !Number.isFinite(base)) return NaN;  //log is impossible for these bases
-    if(Number.isNaN(num) || num < 0) return NaN;
-    if(num === Infinity || num === -Infinity) return num;
-
-    var sum1 = 0, sum2 = 0;  //summations must start at 0
-    //formula: Infinite_Summation((1/(2*n+1)) * Math.pow(((z-1)/(z+1)), (2*n+1))) / Infinite_Summation((1/(2*n+1)) * Math.pow(((y-1)/(y+1)), (2*n+1)))
-       //where n is loop index (to infinity), z is num, and y is base
-    var yGroup = ((base-1) / (base+1));
-    var zGroup = ((num-1) / (num+1));
-    var nLoop;
-   for (var n=0; n < iterations; n++)
-   {
-       nLoop = (2*n+1);
-       sum1 += (Math.pow(zGroup, nLoop) / nLoop);
-       sum2 += (Math.pow(yGroup, nLoop) / nLoop);
-   }
-    return (sum1 / sum2);
-};*/
-
 
 /**RoundingMode creates and returns a function that takes a number and rounds it.
 The number is rounded according to the rules passed into RoundingMode initially.
@@ -96,10 +30,10 @@ magnitude: Given any number this option indicates to round to the nearest number
     divisible and magnitude are exclusive
 half: this is a function that will be called if the number is exactly half way between 2 valid destinations.
     half is passed that number.
-precision: this is an advanced option: under most conditions do not specify this value.
-    this precision will be passed to Number.prototype.ensurePrecision for the return value of Math.logBaseX.
-    this is done to ensure the mathematical correctness of Math.logBaseX which otherwise has below average precision.
-    only specify this option if either you have made Math.logBaseX more precise or if you know that a precision of 14 is not appropriate for your environment.
+delta: this is an advanced option: under most conditions do not specify this value.
+    this number will be passed to closeEnoughToWhole and withinDelta.
+    this is done to ensure the mathematical correctness of Math.logBaseX (and division) which otherwise has below average precision.
+    only specify this option if either you have made Math.logBaseX more precise or if you know that the default delta is not appropriate for your environment.
 
 The returned function takes 1 parameter which is the number to be rounded (type strict).
 And will return that number rounded according to the RoundingMode rules used to create the function or NaN.
@@ -112,7 +46,7 @@ Visual of all 5 rounding directions:
 | (x-1) <-- x (half) --> (x+1) | provide any function for half (including Assert_Away_From_Half)
 
 Random notes:
-precision defaults to 14, everything else defaults to undefined.
+delta defaults to Number.EPSILON * 2, everything else defaults to undefined.
 if half is not undefined (including Assert_Away_From_Half) then it will round away from the half way point
 new RoundingMode(options) === RoundingMode(options)
 
@@ -160,7 +94,7 @@ function RoundingMode(options)
     var divisible = options.divisible;
     var magnitude = options.magnitude;
     var half = options.half;
-    var precision = options.precision;
+    var delta = options.delta;
     /**You may also give customFunction instead of divisible or magnitude. customFunction must take a number and return boolean.
     customFunction(x) returns true if x is an acceptable number to round to.
     Correction: since it is not feasible to count floating point numbers the user would instead need to provide 2 functions:
@@ -173,7 +107,7 @@ function RoundingMode(options)
     if(typeof(away) !== 'number' || Number.isNaN(away)) away = undefined;
     if(typeof(divisible) !== 'number' || !Number.isFinite(divisible)) divisible = undefined;
     if(typeof(magnitude) !== 'number' || !Number.isFinite(magnitude)) magnitude = undefined;
-    if(typeof(precision) !== 'number' || !Number.isFinite(precision)) precision = 14;
+    if(typeof(delta) !== 'number' || !Number.isFinite(delta)) delta = Number.EPSILON * 2;
     if(typeof(half) !== 'function' && half != Half_Mode.Up && half != Half_Mode.Down) half = undefined;
    }  //all values are now valid
 
@@ -208,7 +142,7 @@ function RoundingMode(options)
        errorMessage+=' must be 0, Infinity, or a ';
 
        if(usesDivisible && (destination % divisible) !== 0) errorMessage += 'number divisible by ' + divisible;
-       else if(usesMagnitude && (Math.logBaseX(Math.abs(destination), magnitude).ensurePrecision(precision) % 1) !== 0)
+       else if(usesMagnitude && !closeEnoughToWhole(Math.logBaseX(Math.abs(destination), magnitude), delta))
           errorMessage += 'power of ' + magnitude;
        else errorMessage = undefined;
 
@@ -227,22 +161,24 @@ function RoundingMode(options)
           //because when trying to find the smallest number that is greater it will try to count to -Infinity
        if(usesDivisible && (target % divisible) === 0) return target;  //already rounded
        if(usesMagnitude && target === 1) return target;  //1 is already rounded because anything to the power of 0 is 1 (magnitude can't be 0)
-       if(usesMagnitude && (Math.logBaseX(Math.abs(target), magnitude).ensurePrecision(precision) % 1) === 0) return target;  //already rounded
+       if(usesMagnitude && closeEnoughToWhole(Math.logBaseX(Math.abs(target), magnitude), delta)) return target;  //already rounded
        if(destination === undefined && half === undefined) throw new Error('Assertion failed: The number ' + target + ' is not rounded.');
        var above = findNextUp(target);
-       if(above === target) return target;  //already rounded. this is checked again in case of precision error
+       if(above === target) return target;  //already rounded. this is checked again in case of precision error. I don't know if this is possible
        var below = findNextDown(above);
        var halfWayPoint = (((above - below)/2) + below);  //(above - below) is distance, /2 for half way, and +below for it to be in range
           //below+(divisible/2) only works because the distance is always equal to divisible. this isn't true for magnitude
-       halfWayPoint = halfWayPoint.ensurePrecision(precision);  //in case above and below are 0.1 etc
 
       if (destination === undefined)  //half is defined at this point
       {
           //round away from half if possible
+          if(withinDelta(target, halfWayPoint, delta)) return half(target);  //if not possible then call half
+          //hopefully half is either RoundingMode.Assert_Away_From_Half (assertion failed) or a function made from RoundingMode
+          //need to start with seeing if it is close enough to half so that the other checks can use normal greater/less than
+
           if(target > halfWayPoint || half === Half_Mode.Up) return above;
-          if(target < halfWayPoint || half === Half_Mode.Down) return below;
-          return half(target);  //if not possible then call half
-          //which is hopefully either RoundingMode.Assert_Away_From_Half (assertion failed) or function made from RoundingMode
+          //if(target < halfWayPoint || half === Half_Mode.Down)
+          return below;
       }
        if(towards === Infinity) return above;
        if(away === Infinity) return below;
@@ -255,7 +191,7 @@ function RoundingMode(options)
           1) findNextUp starts at target and counts to Infinity until it reaches a valid result (if target is rounded then above === target)
           2) findNextDown returns the next valid result that is closer to -Infinity than above (and thus -Infinity < below < target <= above < Infinity)
           3) target is not already rounded (and thus below !== target and above !== target therefore -Infinity < below < target < above < Infinity)
-          4) destination is defined
+          4) destination is defined and half is not (so don't round away from half)
           5) destination is a valid number to round to
           6) there are only 2 ways for above and below to have the same distance: if(below < destination < above) or if(above === below)
           #3 proves that above !== below
@@ -300,7 +236,7 @@ function RoundingMode(options)
              //-Infinity < result <= target < 0 (entire thing backwards)
              //example: {magnitude: 10, target: -200} finds result: 10^3 which is 0 < 200 <= 1000 < Infinity
              //but when flipped is: -Infinity < -1000 <= -200 < 0. therefore need /=magnitude to make it be -Infinity < -200 < -10 <= 0 (above is never 0 for magnitude)
-          //I can't use Math.ceil(Math.logBaseX(Math.abs(target), magnitude).ensurePrecision(precision)); because it fails when 0 < Math.abs(target) < 1
+          //I can't use Math.ceil(Math.logBaseX(Math.abs(target), magnitude)); because it fails when 0 < Math.abs(target) < 1
       };
 
       /**This function returns the next valid result that is closer to -Infinity than above (below is never equal to above).
@@ -314,6 +250,19 @@ function RoundingMode(options)
           return (above * magnitude);  //if negative return a number closer to -Infinity
       };
    };
+   /**@returns true if num is within a delta of a whole number.*/
+   function closeEnoughToWhole(num, delta)
+   {
+      var absNum = Math.abs(num);
+      var lowerBound = Math.trunc(absNum);
+      var upperBound = lowerBound + 1;
+      return (withinDelta(absNum, lowerBound, delta) || withinDelta(absNum, upperBound, delta));
+   }
+   /**@returns true if the distance between first and second is a maximum of delta*/
+   function withinDelta(first, second, delta)
+   {
+      return Math.abs(first - second) <= delta;
+   }
 };
 RoundingMode.Assert_Away_From_Half = function(x){throw new Error('Assertion failed: The number ' + x + ' is exactly half way.');};
 RoundingMode.Ceiling = RoundingMode({towards: Infinity, divisible: 1});
@@ -335,4 +284,4 @@ if it had a formula it would be a type of rounding but it is only an estimation 
 and therefore doesn't belong here. The formula from https://what-if.xkcd.com/84/
 is used for 2 joke images but isn't actually used for the numbers in the problem.*/
 
-//TODO: further define Half_Mode and doc it. test Half_Mode
+//TODO: further define Half_Mode and doc it. test Half_Mode. just have half_mode convert into a regular rounding function
