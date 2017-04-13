@@ -1,5 +1,3 @@
-var Half_Mode = {Up: {}, Down: {}};
-
 if(undefined === Math.trunc){Math.trunc = function(x){return x - (x % 1);}}  //~~x fails for 1.7976931348623157e+308
 
 /**Simply allows using logarithmic functions with bases other than Math.E.
@@ -16,6 +14,14 @@ Math.logBaseX = function(num, base)
     //will return +/-Infinity if num is +/-Infinity
 };
 
+//TODO: test Half_Mode and delta
+/**Half_Mode exists for short-hand. Passing it into RoundingMode as half will create a half function that uses
+the same divisible/magnitude (and delta) except rounding up or down.
+Eg:
+new RoundingMode({divisible: 2, half: Half_Mode.Up}) === new RoundingMode({divisible: 2, half: new RoundingMode({divisible: 2, away: 0})})
+*/
+var Half_Mode = {Up: {}, Down: {}};
+
 /**RoundingMode creates and returns a function that takes a number and rounds it.
 The number is rounded according to the rules passed into RoundingMode initially.
 The options should be in a json object passed into RoundingMode. And the options are:
@@ -29,7 +35,7 @@ magnitude: Given any number this option indicates to round to the nearest number
     For example magnitude: 10 might round to 100 or 0.1. magnitude: 2 might round to 2, 0.25, 32, or 1024.
     divisible and magnitude are exclusive
 half: this is a function that will be called if the number is exactly half way between 2 valid destinations.
-    half is passed that number.
+    half is passed that number. half can also be set to a Half_Mode in which case it will be converted into a function.
 delta: this is an advanced option: under most conditions do not specify this value.
     this number will be passed to closeEnoughToWhole and withinDelta.
     this is done to ensure the mathematical correctness of Math.logBaseX (and division) which otherwise has below average precision.
@@ -101,7 +107,7 @@ function RoundingMode(options)
     findNextUp(x) and findNextDown(x) which return numbers that are away: x (this is used by all rounding schemes).
     Since this functionality would require effort it is not programmed at all because I can't think of a reason anyone would use it.*/
 
-   {  //used for grouping. there is no block scope in js
+   {  //defaulting block. used for grouping. there is no block scope in js
     //these are silent changes. invalid values are treated as though they don't exist
     if(typeof(towards) !== 'number' || Number.isNaN(towards)) towards = undefined;
     if(typeof(away) !== 'number' || Number.isNaN(away)) away = undefined;
@@ -109,20 +115,23 @@ function RoundingMode(options)
     if(typeof(magnitude) !== 'number' || !Number.isFinite(magnitude)) magnitude = undefined;
     if(typeof(delta) !== 'number' || !Number.isFinite(delta)) delta = Number.EPSILON * 2;
     if(typeof(half) !== 'function' && half != Half_Mode.Up && half != Half_Mode.Down) half = undefined;
-   }  //all values are now valid
+    else if(Half_Mode.Up === half) half = new RoundingMode({away: 0, divisible: divisible, magnitude: magnitude, delta: delta});
+    else if(Half_Mode.Down === half) half = new RoundingMode({towards: 0, divisible: divisible, magnitude: magnitude, delta: delta});
+   }  //all values are now valid types
 
     var usesDivisible = (divisible !== undefined);  //short hands for readability
     var usesMagnitude = (magnitude !== undefined);
     var destination = towards;
     if(destination === undefined) destination = away;  //if both are defined it will throw
-   {
+
+   {  //conversion block
     if(towards === -Infinity && away === undefined){towards = undefined; destination = away = Infinity;}  //translate these
     else if(away === -Infinity && towards === undefined){away = undefined; destination = towards = Infinity;}  //not explicitly in the doc because it is easier to think in terms of +Infinity
        //check that the other is undefined because if both are defined I want to throw instead
     if(usesMagnitude && magnitude > 0 && magnitude < 1) magnitude = 1/magnitude;  //same result but I need 1 < magnitude for the formulas
        //don't change the number if it is negative so that I can tell the user the invalid number
    }  //the state is now consistent
-   {
+   {  //validation block
     if(!usesDivisible && !usesMagnitude) throw new Error('Impossible to round because divisible is undefined and magnitude is undefined.');
     if(usesDivisible && usesMagnitude) throw new Error('Invalid state: divisible and magnitude cannot both be defined (divisible: ' + divisible + ', magnitude: ' + magnitude + ').');
     if(divisible <= 0) throw new Error('Impossible to round because divisible is 0 or negative. In this case ' + divisible);
@@ -176,8 +185,8 @@ function RoundingMode(options)
           //hopefully half is either RoundingMode.Assert_Away_From_Half (assertion failed) or a function made from RoundingMode
           //need to start with seeing if it is close enough to half so that the other checks can use normal greater/less than
 
-          if(target > halfWayPoint || half === Half_Mode.Up) return above;
-          //if(target < halfWayPoint || half === Half_Mode.Down)
+          if(target > halfWayPoint) return above;
+          //if(target < halfWayPoint)
           return below;
       }
        if(towards === Infinity) return above;
@@ -283,5 +292,3 @@ it's the idea of rounding wildly to estimate a problem (doesn't need to be base 
 if it had a formula it would be a type of rounding but it is only an estimation strategy
 and therefore doesn't belong here. The formula from https://what-if.xkcd.com/84/
 is used for 2 joke images but isn't actually used for the numbers in the problem.*/
-
-//TODO: further define Half_Mode and doc it. test Half_Mode. just have half_mode convert into a regular rounding function
