@@ -264,7 +264,7 @@ TestRunner._shallowEquality=function(expected, actual, delta)
       if(isNaN(expected) && isNaN(actual)) return true;
          //NaN is a jerk: NaN === NaN erroneously returns false (x === x is a tautology. the reason the standard returns false no longer applies)
 
-      return Math.abs(expected - actual) <= delta;
+      return Math.abs(expected - actual) <= delta;  //returns false if expected or actual is NaN
          //numbers are immutable. they are kept the same for the sake of display
    }
 
@@ -298,6 +298,16 @@ TestRunner._shallowEquality=function(expected, actual, delta)
 })();
 Object.freeze(TestRunner);
 
+/*
+Comparing delta to Jasmine:
+delta is safer than what Jasmine did: https://github.com/jasmine/jasmine/blob/master/src/core/matchers/toBeCloseTo.js
+   var pow = Math.pow(10, precision + 1);
+   var delta = Math.abs(expected - actual);
+   var maxDelta = Math.pow(10, -precision) / 2;
+   return (Math.round(delta * pow) / pow <= maxDelta)
+although I can't prove that it's wrong.
+Either way delta works for deep matches not just top level asserts like Jasmine does.
+*/
 /**defaultDelta requires an exact match. To handle imprecise decimals use TestConfig.defaultDelta = Number.EPSILON;*/
 var TestConfig = {betweenEach: function(){}, defaultDelta: 0, hidePassed: undefined};
 var TestSuite = {};

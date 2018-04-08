@@ -49,7 +49,7 @@ I have tested this code against the known problems and a few others.
 
 
 #testRunner.js
-A javascript program that asserts correctness. It is like weight but useful. I maintain it because I like how light weight it is
+A javascript program that asserts correctness. It is lightweight but useful. I maintain it because I like how light weight it is
 and because it accepts a delta for comparing floating point numbers (and dates) which I don't think Jasmine or Q-Unit does.
 
 **Inputs**: a test suite that contains functions that return an array of test assertions.
