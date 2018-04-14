@@ -1,13 +1,12 @@
 //Note that throughout this file the word 'suite' means an object that contains any number of test cases and suites
-//This test runner doesn't support asynchronous test execution because of startTime, endTime, betweenEach
-//This test runner assumes that you have a DOM element #testResults which is a textarea that will have the results put in it
+//This test runner currently doesn't support asynchronous test execution
+//This test runner currently assumes that you have a DOM element #testResults which is a textarea that will have the results put in it
 'use strict';
 
-//TODO: allow asynchronous: have the times in testState, pass around testConfig, Promise.all (if exists). betweenEach redundantly called
+//TODO: allow asynchronous: Promise.all (if exists). betweenEach redundantly called
 //TODO: allow servers: have a testAllForServer etc which returns json results (not table string) and doesn't touch document or location
 const TestRunner = {};
 (function(){
-var _startTime, _endTime;  //private state to avoid pollution and user tampering
 /**Given the DOM's id this function sets the value property equal to valueToSet then calls onchange.
 No validation is done so if the id is not found it will throw an error.
 It will also throw if there is no onchange defined (instead just set .value directly).*/
@@ -17,33 +16,34 @@ TestRunner.changeValue=function(elementId, valueToSet)
    element.value = valueToSet;
    element.onchange();
 };
-/**Will do nothing if isFirst is false (strict). else this function will clear the testing area, start the timer,
-and call testConfig.beforeFirst (if it is defined) which can be used to setup mocks.*/
-TestRunner.clearResults=function(isFirst, testConfig)  //TODO: testConfig is new. update boilerplate and callers
+/**Will do nothing if testState.runningSingleTest is false (strict). else this function will clear the testing area, start the timer,
+and call testState.config.beforeFirst (if it is defined) which can be used to setup mocks.*/
+TestRunner.clearResults=function(testState)
 {
-   if (false !== isFirst)
+   if(undefined === testState) testState = {runningSingleTest: true};
+   if (false !== testState.runningSingleTest)
    {
-      _startTime = Date.now();
+      testState._startTime = Date.now();
       document.getElementById('testResults').value = '';
-      testConfig = _sanitizeConfig(testConfig);
-      testConfig.beforeFirst();
+      testState.config = _sanitizeConfig(testState.config);
+      testState.config.beforeFirst();
    }
 };
-/**if(isFirst) This function clears out then writes the test results to the "testResults" text area and scrolls to it.
-It will call testConfig.afterLast (if it is defined) which can be used to teardown mocks.
-@param {object} testConfig hidePassed defaults to false. if(!isFirst) ignored else it is passed to TestRunner.generateResultTable
+/**if(testState.runningSingleTest) This function clears out then writes the test results to the "testResults" text area and scrolls to it.
+It will call testState.config.afterLast (if it is defined) which can be used to teardown mocks.
+@param {object} testState.config.hidePassed defaults to false. if(!testState.isFirst) ignored else it is passed to TestRunner.generateResultTable
 @returns {object} that can be used by TestRunner.generateResultTable which is used by TestRunner.testAll.*/
-TestRunner.displayResults=function(tableName, testResults, isFirst, testConfig)
+TestRunner.displayResults=function(tableName, testResults, testState)
 {
-   if(false !== isFirst) isFirst = true;
    var input = {tableName: tableName, testResults: testResults};
-   if (isFirst)
+   if(undefined === testState) testState = {runningSingleTest: true};
+   if (false !== testState.runningSingleTest)
    {
-      testConfig = _sanitizeConfig(testConfig, false);
-      var output = TestRunner.generateResultTable([input], testConfig);
-      testConfig.afterLast();
-      _endTime = Date.now();
-      output += 'Time taken: ' + TestRunner.formatTestTime(_startTime, _endTime) + '\n';
+      testState.config = _sanitizeConfig(testState.config, false);
+      var output = TestRunner.generateResultTable([input], testState.config);
+      testState.config.afterLast();
+      testState._endTime = Date.now();
+      output += 'Time taken: ' + TestRunner.formatTestTime(testState._startTime, testState._endTime) + '\n';
       document.getElementById('testResults').value = output;
       location.hash = '#testResults';  //scroll to the results
    }
@@ -100,7 +100,7 @@ TestRunner.findFirstFailurePath=function(testResult, defaultDelta)
    //all leaves have a shallow equality of true to reach this point
    return undefined;
 };
-/*
+/**
 @param {number or Date} startTimeParam date in milliseconds
 @param {number or Date} endTimeParam date in milliseconds
 @returns {string} a string stating the number of seconds (to 3 decimal places) and the number of minutes if applicable
@@ -199,15 +199,15 @@ The total time taken is displayed (everything is written to "testResults" text a
 */
 TestRunner.testAll=function(testSuite, testConfig)
 {
-   _startTime = Date.now();
+   var testState = {_startTime: Date.now()};
    document.getElementById('testResults').value = '';
 
    //testSuite and testConfig defaults can't be self tested
    if(undefined === testSuite) testSuite = TestSuite;
-   testConfig = _sanitizeConfig(testConfig, true);
+   testState.config = _sanitizeConfig(testConfig, true);
 
    var suiteCollection = [testSuite], errorTests = [], resultingList = [], runBetweenEach = false;
-   testConfig.beforeFirst();
+   testState.config.beforeFirst();
    while (0 !== suiteCollection.length)
    {
       testSuite = suiteCollection.shift();
@@ -218,20 +218,20 @@ TestRunner.testAll=function(testSuite, testConfig)
             //null is a jerk: typeof erroneously returns 'object' (null isn't an object because it doesn't inherit Object.prototype)
          else if ('function' === typeof(testSuite[key]))
          {
-            if(runBetweenEach) testConfig.betweenEach();
+            if(runBetweenEach) testState.config.betweenEach();
             else runBetweenEach = true;
-            try{resultingList.push(testSuite[key](false, testConfig));}
+            try{resultingList.push(testSuite[key](testState));}
             catch(e){console.error(e); errorTests.push({Error: e, Description: key});}
             //I could have breadcrumbs instead of key but these shouldn't happen and the stack trace is good enough
          }
       }
    }
    if(0 !== errorTests.length) resultingList.push({tableName: 'TestRunner.testAll', testResults: errorTests});
-   var output = TestRunner.generateResultTable(resultingList, testConfig);
-   testConfig.afterLast();  //after generating results in case you have a temporary equals function
+   var output = TestRunner.generateResultTable(resultingList, testState.config);
+   testState.config.afterLast();  //after generating results in case you have a temporary equals function
 
-   _endTime = Date.now();
-   output += 'Time taken: ' + TestRunner.formatTestTime(_startTime, _endTime) + '\n';
+   testState._endTime = Date.now();
+   output += 'Time taken: ' + TestRunner.formatTestTime(testState._startTime, testState._endTime) + '\n';
 
    document.getElementById('testResults').value = output;
    location.hash = '#testResults';  //scroll to the results
@@ -343,9 +343,9 @@ var TestSuite = {};
 /*example:
 TestSuite.abilityList = {};
 //TestConfig does not need to be changed from defaults
-TestSuite.abilityList.calculateValues=function(isFirst, testConfig)
+TestSuite.abilityList.calculateValues=function(testState={})
 {
-   TestRunner.clearResults(isFirst, testConfig);
+   TestRunner.clearResults(testState);
 
    var testResults=[];
    try{
@@ -368,9 +368,9 @@ TestSuite.abilityList.calculateValues=function(isFirst, testConfig)
    }
 
    //be sure to give the test a name here:
-   return TestRunner.displayResults('TestSuite.abilityList.calculateValues', testResults, isFirst, testConfig);
+   return TestRunner.displayResults('TestSuite.abilityList.calculateValues', testResults, testState);
 };
-TestSuite.abilityList.unfinishedTest=function(isFirst, testConfig)
+TestSuite.abilityList.unfinishedTest=function(testState={})
 {
    return {tableName: 'unmade', testResults: []};  //remove this when actual tests exist. ADD TESTS
 };

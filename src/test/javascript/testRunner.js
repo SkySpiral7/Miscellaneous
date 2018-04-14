@@ -1,8 +1,8 @@
 'use strict';
 TestSuite.TestRunner={};
-TestSuite.TestRunner.changeValue=function(isFirst, testConfig)
+TestSuite.TestRunner.changeValue=function(testState={})
 {
-   TestRunner.clearResults(isFirst, testConfig);
+   TestRunner.clearResults(testState);
 
    var testResults = [], actual;
    var resultBox = document.getElementById('testResults');
@@ -40,21 +40,19 @@ TestSuite.TestRunner.changeValue=function(isFirst, testConfig)
    resultBox.value = '';
    //delete resultBox.onchange;  //not possible so just leave it undefined
 
-   return TestRunner.displayResults('meta: TestRunner.changeValue', testResults, isFirst, testConfig);
+   return TestRunner.displayResults('meta: TestRunner.changeValue', testResults, testState);
 };
-TestSuite.TestRunner.clearResults=function(isFirst, testConfig)
+TestSuite.TestRunner.clearResults=function(testState={})
 {
-   TestRunner.clearResults(isFirst, testConfig);
+   TestRunner.clearResults(testState);
 
    var testResults = [], actual;
 
    var resultBox = document.getElementById('testResults');
-   //this test can only be run in a place where tests can be run...
-   //yeah so it's not an assumption to require testResults to exist
 
    try{
    resultBox.value = 'Test';
-   TestRunner.clearResults(false);
+   TestRunner.clearResults({runningSingleTest: false});
    actual = resultBox.value;
    testResults.push({Expected: 'Test', Actual: actual, Description: 'No clear with false'});
    } catch(e){testResults.push({Error: e, Description: 'No clear with false'});}
@@ -64,23 +62,28 @@ TestSuite.TestRunner.clearResults=function(isFirst, testConfig)
    TestRunner.clearResults();
    actual = resultBox.value;
    testResults.push({Expected: '', Actual: actual, Description: 'Clear with no arg'});
-   } catch(e){testResults.push({Error: e, Description: 'Clear with no arg'});}
+
+   resultBox.value = 'Test';
+   TestRunner.clearResults({});
+   actual = resultBox.value;
+   testResults.push({Expected: '', Actual: actual, Description: 'Clear with empty arg'});
+   } catch(e){testResults.push({Error: e, Description: 'Clear with by default'});}
 
    try{
    resultBox.value = 'Test';
-   TestRunner.clearResults(true);
+   TestRunner.clearResults({runningSingleTest: true});
    actual = resultBox.value;
    testResults.push({Expected: '', Actual: actual, Description: 'Cleared with true'});
    } catch(e){testResults.push({Error: e, Description: 'Cleared with true'});}
 
    try{
-   TestRunner.clearResults(true, {});
+   TestRunner.clearResults({runningSingleTest: true, config: {}});
    testResults.push({Expected: true, Actual: true, Description: 'empty config doesn\'t throw'});
    } catch(e){testResults.push({Error: e, Description: 'empty config doesn\'t throw'});}
 
    try{
    var called = false;
-   TestRunner.clearResults(true, {beforeFirst: function(){called = true;}});
+   TestRunner.clearResults({runningSingleTest: true, config: {beforeFirst: function(){called = true;}}});
    testResults.push({Expected: true, Actual: called, Description: 'beforeFirst is called'});
    } catch(e){testResults.push({Error: e, Description: 'beforeFirst is called'});}
 
@@ -88,11 +91,11 @@ TestSuite.TestRunner.clearResults=function(isFirst, testConfig)
    //these changes to resultBox will be overwritten by the actual results
    //although this specific test also clears out pre-existing text
 
-   return TestRunner.displayResults('meta: TestRunner.clearResults', testResults, isFirst, testConfig);
+   return TestRunner.displayResults('meta: TestRunner.clearResults', testResults, testState);
 };
-TestSuite.TestRunner.displayResults=function(isFirst, testConfig)
+TestSuite.TestRunner.displayResults=function(testState={})
 {
-   TestRunner.clearResults(isFirst, testConfig);
+   TestRunner.clearResults(testState);
 
    var testResults = [], actual, input, expected, inputConfig;
 
@@ -102,47 +105,53 @@ TestSuite.TestRunner.displayResults=function(isFirst, testConfig)
    resultBox.value = 'no change';
    input = [{Expected: true, Actual: true, Description: 'Test name'}];
    expected = {tableName: 'table name', testResults: [{Expected: true, Actual: true, Description: 'Test name'}]};
-   actual = TestRunner.displayResults('table name', input, false);
-   testResults.push({Expected: expected, Actual: actual, Description: 'Not first: return'});
-   testResults.push({Expected: 'no change', Actual: resultBox.value, Description: 'Not first: output'});
-   } catch(e){testResults.push({Error: e, Description: 'Not first'});}
+   actual = TestRunner.displayResults('table name', input, {runningSingleTest: false});
+   testResults.push({Expected: expected, Actual: actual, Description: 'Not runningSingleTest: return'});
+   testResults.push({Expected: 'no change', Actual: resultBox.value, Description: 'Not runningSingleTest: output'});
+   } catch(e){testResults.push({Error: e, Description: 'Not runningSingleTest'});}
 
    try{
    location.hash = '';
    input = [{Expected: true, Actual: true, Description: 'Test name'}];
-   TestRunner.displayResults('table name', input, true);
+   TestRunner.displayResults('table name', input, {runningSingleTest: true});
    expected = '1/1: table name\n   Pass: Test name\n\nGrand total: 1/1\nTime taken: ?\n';
    actual = resultBox.value.replace(/Time taken:.+/, 'Time taken: ?');
-   testResults.push({Expected: expected, Actual: actual, Description: 'First'});
-   testResults.push({Expected: '#testResults', Actual: location.hash, Description: 'First scrolls to testResults'});
-   //return value isn't asserted because it doesn't matter when first
-   } catch(e){testResults.push({Error: e, Description: 'First'});}
+   testResults.push({Expected: expected, Actual: actual, Description: 'runningSingleTest'});
+   testResults.push({Expected: '#testResults', Actual: location.hash, Description: 'runningSingleTest scrolls to testResults'});
+   //return value isn't asserted because it doesn't matter when runningSingleTest
+   } catch(e){testResults.push({Error: e, Description: 'runningSingleTest'});}
 
    try{
    input = [{Expected: true, Actual: true, Description: 'Test name'}];
    TestRunner.displayResults('table name', input);
    expected = '1/1: table name\n   Pass: Test name\n\nGrand total: 1/1\nTime taken: ?\n';
    actual = resultBox.value.replace(/Time taken:.+/, 'Time taken: ?');
-   testResults.push({Expected: expected, Actual: actual, Description: 'First by default'});
-   } catch(e){testResults.push({Error: e, Description: 'First by default'});}
+   testResults.push({Expected: expected, Actual: actual, Description: 'runningSingleTest with no arg'});
+
+   input = [{Expected: true, Actual: true, Description: 'Test name'}];
+   TestRunner.displayResults('table name', input, {});
+   expected = '1/1: table name\n   Pass: Test name\n\nGrand total: 1/1\nTime taken: ?\n';
+   actual = resultBox.value.replace(/Time taken:.+/, 'Time taken: ?');
+   testResults.push({Expected: expected, Actual: actual, Description: 'runningSingleTest with empty arg'});
+   } catch(e){testResults.push({Error: e, Description: 'runningSingleTest by default'});}
 
    try{
    input = [{Expected: true, Actual: true, Description: 'Test name'}];
-   TestRunner.displayResults('table name', input, true);
+   TestRunner.displayResults('table name', input, {runningSingleTest: true});
    expected = '1/1: table name\n   Pass: Test name\n\nGrand total: 1/1\nTime taken: ?\n';
    actual = resultBox.value.replace(/Time taken:.+/, 'Time taken: ?');
    testResults.push({Expected: expected, Actual: actual, Description: 'No testConfig defaults hidePassed to false'});
 
    input = [{Expected: 1, Actual: 2, Description: 'Test name'}];
    inputConfig = {defaultDelta: 5};
-   TestRunner.displayResults('table name', input, true, inputConfig);
+   TestRunner.displayResults('table name', input, {runningSingleTest: true, config: inputConfig});
    expected = '1/1: table name\n   Pass: Test name\n\nGrand total: 1/1\nTime taken: ?\n';
    actual = resultBox.value.replace(/Time taken:.+/, 'Time taken: ?');
    testResults.push({Expected: expected, Actual: actual, Description: 'No hidePassed to false'});
    testResults.push({Expected: {defaultDelta: 5}, Actual: inputConfig, Description: 'without mutating user config'});
 
    input = [{Expected: true, Actual: true, Description: 'Test name'}];
-   TestRunner.displayResults('table name', input, true, {hidePassed: true});
+   TestRunner.displayResults('table name', input, {runningSingleTest: true, config: {hidePassed: true}});
    expected = 'Grand total: 1/1\nTime taken: ?\n';
    actual = resultBox.value.replace(/Time taken:.+/, 'Time taken: ?');
    testResults.push({Expected: expected, Actual: actual, Description: 'hidePassed can be true'});
@@ -152,17 +161,17 @@ TestSuite.TestRunner.displayResults=function(isFirst, testConfig)
    input = [{Expected: true, Actual: true, Description: 'Test name'}];
    var called = false;
    inputConfig = {afterLast: function(){called = true;}};
-   TestRunner.displayResults('table name', input, true, inputConfig);
+   TestRunner.displayResults('table name', input, {runningSingleTest: true, config: inputConfig});
    testResults.push({Expected: true, Actual: called, Description: 'Call afterLast'});
    } catch(e){testResults.push({Error: e, Description: 'Call afterLast'});}
 
    resultBox.value = '';
 
-   return TestRunner.displayResults('meta: TestRunner.displayResults', testResults, isFirst, testConfig);
+   return TestRunner.displayResults('meta: TestRunner.displayResults', testResults, testState);
 };
-TestSuite.TestRunner.findFirstFailurePath=function(isFirst, testConfig)
+TestSuite.TestRunner.findFirstFailurePath=function(testState={})
 {
-   TestRunner.clearResults(isFirst, testConfig);
+   TestRunner.clearResults(testState);
 
    var testResults = [], actual;
 
@@ -250,11 +259,11 @@ TestSuite.TestRunner.findFirstFailurePath=function(isFirst, testConfig)
    testResults.push({Expected: undefined, Actual: actual, Description: 'Ignore key order'});
    } catch(e){testResults.push({Error: e, Description: 'Ignore key order'});}
 
-   return TestRunner.displayResults('meta: TestRunner.findFirstFailurePath', testResults, isFirst, testConfig);
+   return TestRunner.displayResults('meta: TestRunner.findFirstFailurePath', testResults, testState);
 };
-TestSuite.TestRunner.failedToThrow=function(isFirst, testConfig)
+TestSuite.TestRunner.failedToThrow=function(testState={})
 {
-   TestRunner.clearResults(isFirst, testConfig);
+   TestRunner.clearResults(testState);
 
    var testResults = [], actual, expected;
 
@@ -265,11 +274,11 @@ TestSuite.TestRunner.failedToThrow=function(isFirst, testConfig)
    testResults.push({Expected: expected, Actual: actual, Description: 'Happy path'});
    } catch(e){testResults.push({Error: e, Description: 'Happy path'});}
 
-   return TestRunner.displayResults('meta: TestRunner.failedToThrow', testResults, isFirst, testConfig);
+   return TestRunner.displayResults('meta: TestRunner.failedToThrow', testResults, testState);
 };
-TestSuite.TestRunner.formatTestTime=function(isFirst, testConfig)
+TestSuite.TestRunner.formatTestTime=function(testState={})
 {
-   TestRunner.clearResults(isFirst, testConfig);
+   TestRunner.clearResults(testState);
 
    var testResults = [], actual, expected;
 
@@ -291,11 +300,11 @@ TestSuite.TestRunner.formatTestTime=function(isFirst, testConfig)
    testResults.push({Expected: expected, Actual: actual, Description: 'no hours'});
    } catch(e){testResults.push({Error: e, Description: 'no hours'});}
 
-   return TestRunner.displayResults('meta: TestRunner.formatTestTime', testResults, isFirst, testConfig);
+   return TestRunner.displayResults('meta: TestRunner.formatTestTime', testResults, testState);
 };
-TestSuite.TestRunner.generateResultTable=function(isFirst, testConfig)
+TestSuite.TestRunner.generateResultTable=function(testState={})
 {
-   TestRunner.clearResults(isFirst, testConfig);
+   TestRunner.clearResults(testState);
 
    var testResults = [], actual, input, expected;
 
@@ -394,11 +403,11 @@ TestSuite.TestRunner.generateResultTable=function(isFirst, testConfig)
    testResults.push({Expected: 'Grand total: 0/0\n', Actual: actual, Description: 'No tests'});
    } catch(e){testResults.push({Error: e, Description: 'No tests'});}
 
-   return TestRunner.displayResults('meta: TestRunner.generateResultTable', testResults, isFirst, testConfig);
+   return TestRunner.displayResults('meta: TestRunner.generateResultTable', testResults, testState);
 };
-TestSuite.TestRunner.isPrimitive=function(isFirst, testConfig)
+TestSuite.TestRunner.isPrimitive=function(testState={})
 {
-   TestRunner.clearResults(isFirst, testConfig);
+   TestRunner.clearResults(testState);
 
    var testResults = [], actual;
 
@@ -447,11 +456,11 @@ TestSuite.TestRunner.isPrimitive=function(isFirst, testConfig)
    testResults.push({Expected: false, Actual: actual, Description: 'RegExp'});
    } catch(e){testResults.push({Error: e, Description: 'RegExp'});}
 
-   return TestRunner.displayResults('meta: TestRunner.isPrimitive', testResults, isFirst, testConfig);
+   return TestRunner.displayResults('meta: TestRunner.isPrimitive', testResults, testState);
 };
-TestSuite.TestRunner.testAll=function(isFirst, testConfig)
+TestSuite.TestRunner.testAll=function(testState={})
 {
-   TestRunner.clearResults(isFirst, testConfig);
+   TestRunner.clearResults(testState);
 
    var testResults = [], actual, testSuite, expected, beforeFirstCount = 0, betweenCount = 0, afterLastCount = 0, inputConfig = {};
 
@@ -470,7 +479,7 @@ TestSuite.TestRunner.testAll=function(isFirst, testConfig)
    try{
    location.hash = '';
    resultBox.value = 'Override me';
-   testSuite = {testRow: passTest, anotherTest: passTest, lastTest: passTest};
+   testSuite = {testTable1: passTest, testTable2: passTest, testTable3: passTest};
    expected = 'Grand total: 6/6\nTime taken: ?\n';
 
    TestRunner.testAll(testSuite, trackingConfig);
@@ -490,15 +499,15 @@ TestSuite.TestRunner.testAll=function(isFirst, testConfig)
       ]
    };
    testSuite = {
-      testRow1: function () {
+      testTable1: function () {
          orderString += '1';
          return passTable;
       },
-      testRow2: function () {
+      testTable2: function () {
          orderString += '2';
          return passTable;
       },
-      testRow3: function () {
+      testTable3: function () {
          orderString += '3';
          return passTable;
       }
@@ -512,13 +521,13 @@ TestSuite.TestRunner.testAll=function(isFirst, testConfig)
    } catch(e){testResults.push({Error: e, Description: 'verify order'});}
 
    try{
-   testSuite = {testRow: passTest, anotherTest: passTest};
+   testSuite = {testTable1: passTest, testTable2: passTest};
    TestRunner.testAll(testSuite, {});
    testResults.push({Expected: true, Actual: true, Description: 'betweenEach default does nothing'});
    } catch(e){testResults.push({Error: e, Description: 'betweenEach default does nothing'});}
 
    try{
-   testSuite = {testRow: passTest};
+   testSuite = {testTable: passTest};
    inputConfig = {};
    expected = 'Grand total: 2/2\nTime taken: ?\n';
    TestRunner.testAll(testSuite, inputConfig);
@@ -529,7 +538,7 @@ TestSuite.TestRunner.testAll=function(isFirst, testConfig)
 
    try{
    Object.prototype.pollution = function(){};
-   testSuite = {aTest: passTest};
+   testSuite = {testTable: passTest};
    expected = 'Grand total: 2/2\nTime taken: ?\n';
 
    TestRunner.testAll(testSuite, trackingConfig);
@@ -549,9 +558,9 @@ TestSuite.TestRunner.testAll=function(isFirst, testConfig)
 
    try{
    betweenCount = 0;
-   testSuite = {firstTest: errorTest, someTest: failTest};
+   testSuite = {testTable1: errorTest, testTable2: failTest};
    expected = '0/1: Fail table\n   Fail: Desc\n      Expected: true\n      Actual: false\n';
-   expected += '0/1: TestRunner.testAll\n   Fail: firstTest\n      Error: Error: I\'m sorry guys but I just can\'t.\n';
+   expected += '0/1: TestRunner.testAll\n   Fail: testTable1\n      Error: Error: I\'m sorry guys but I just can\'t.\n';
    expected += '\nGrand total: 0/2\nTime taken: ?\n';
 
    TestRunner.testAll(testSuite, trackingConfig);
@@ -561,7 +570,7 @@ TestSuite.TestRunner.testAll=function(isFirst, testConfig)
    } catch(e){testResults.push({Error: e, Description: 'Failure'});}
 
    try{
-   testSuite = {someObject: {someTest: passTest}, anotherTest: passTest};
+   testSuite = {someObject: {testTable1: passTest}, testTable2: passTest};
    expected = 'Grand total: 4/4\nTime taken: ?\n';
 
    TestRunner.testAll(testSuite, trackingConfig);
@@ -571,14 +580,14 @@ TestSuite.TestRunner.testAll=function(isFirst, testConfig)
 
    try{
    betweenCount = 0;
-   testSuite = {someTest: passTest};
+   testSuite = {testTable: passTest};
 
    TestRunner.testAll(testSuite, trackingConfig);
    testResults.push({Expected: 0, Actual: betweenCount, Description: 'No between'});
    } catch(e){testResults.push({Error: e, Description: 'No between'});}
 
    try{
-   testSuite = {testRow: function(){return {tableName: 'Off table', testResults:[
+   testSuite = {testTable: function(){return {tableName: 'Off table', testResults:[
       {Expected: 1, Actual: 5, Description: '4 Off'}
    ]}}};
    expected = 'Grand total: 1/1\nTime taken: ?\n';
@@ -589,7 +598,7 @@ TestSuite.TestRunner.testAll=function(isFirst, testConfig)
    } catch(e){testResults.push({Error: e, Description: 'IT: defaultDelta is passed all the way down'});}
 
    try{
-   testSuite = {testRow: function(){return {tableName: 'Pass table', testResults:[
+   testSuite = {testTable: function(){return {tableName: 'Pass table', testResults:[
       {Expected: true, Actual: true, Description: 'Seems logical'}
    ]}}};
    expected = '1/1: Pass table\n   Pass: Seems logical\n\nGrand total: 1/1\nTime taken: ?\n';
@@ -598,11 +607,11 @@ TestSuite.TestRunner.testAll=function(isFirst, testConfig)
    actual = resultBox.value.replace(/Time taken:.+/, 'Time taken: ?');
    testResults.push({Expected: expected, Actual: actual, Description: 'IT: hidePassed is passed all the way down'});
 
-   testSuite = {firstTest: errorTest, someTest: function(){return {tableName: 'Pass table', testResults:[
+   testSuite = {testTable1: errorTest, testTable2: function(){return {tableName: 'Pass table', testResults:[
       {Expected: true, Actual: true, Description: 'Seems logical'}
    ]}}};
    expected = '1/1: Pass table\n   Pass: Seems logical\n';
-   expected += '0/1: TestRunner.testAll\n   Fail: firstTest\n      Error: Error: I\'m sorry guys but I just can\'t.\n';
+   expected += '0/1: TestRunner.testAll\n   Fail: testTable1\n      Error: Error: I\'m sorry guys but I just can\'t.\n';
    expected += '\nGrand total: 1/2\nTime taken: ?\n';
    TestRunner.testAll(testSuite, {hidePassed: false});
    actual = resultBox.value.replace(/Time taken:.+/, 'Time taken: ?');
@@ -611,11 +620,11 @@ TestSuite.TestRunner.testAll=function(isFirst, testConfig)
 
    resultBox.value = '';
 
-   return TestRunner.displayResults('meta: TestRunner.testAll', testResults, isFirst, testConfig);
+   return TestRunner.displayResults('meta: TestRunner.testAll', testResults, testState);
 };
-TestSuite.TestRunner.useValueOf=function(isFirst, testConfig)
+TestSuite.TestRunner.useValueOf=function(testState={})
 {
-   TestRunner.clearResults(isFirst, testConfig);
+   TestRunner.clearResults(testState);
 
    var testResults = [], actual, input;
 
@@ -657,11 +666,11 @@ TestSuite.TestRunner.useValueOf=function(isFirst, testConfig)
    testResults.push({Expected: false, Actual: actual, Description: 'useValueOf: RegExp'});
    } catch(e){testResults.push({Error: e, Description: 'useValueOf: RegExp'});}
 
-   return TestRunner.displayResults('meta: TestRunner.useValueOf', testResults, isFirst, testConfig);
+   return TestRunner.displayResults('meta: TestRunner.useValueOf', testResults, testState);
 };
-TestSuite.TestRunner._shallowEquality=function(isFirst, testConfig)
+TestSuite.TestRunner._shallowEquality=function(testState={})
 {
-   TestRunner.clearResults(isFirst, testConfig);
+   TestRunner.clearResults(testState);
 
    var testResults = [], actual, input;
 
@@ -810,5 +819,5 @@ TestSuite.TestRunner._shallowEquality=function(isFirst, testConfig)
    testResults.push({Expected: false, Actual: actual, Description: 'RegExp'});
    } catch(e){testResults.push({Error: e, Description: 'RegExp'});}
 
-   return TestRunner.displayResults('meta: TestRunner._shallowEquality', testResults, isFirst, testConfig);
+   return TestRunner.displayResults('meta: TestRunner._shallowEquality', testResults, testState);
 };
