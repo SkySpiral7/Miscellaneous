@@ -1,12 +1,13 @@
 //Note that throughout this file the word 'suite' means an object that contains any number of test cases and suites
 //This test runner doesn't support asynchronous test execution because of startTime, endTime, betweenEach
+//This test runner assumes that you have a DOM element #testResults which is a textarea that will have the results put in it
 'use strict';
 
 //TODO: allow asynchronous: have the times in testState, pass around testConfig, Promise.all (if exists). betweenEach redundantly called
 //TODO: allow servers: have a testAllForServer etc which returns json results (not table string) and doesn't touch document or location
 const TestRunner = {};
 (function(){
-var startTime, endTime;  //private state to avoid pollution and user tampering
+var _startTime, _endTime;  //private state to avoid pollution and user tampering
 /**Given the DOM's id this function sets the value property equal to valueToSet then calls onchange.
 No validation is done so if the id is not found it will throw an error.
 It will also throw if there is no onchange defined (instead just set .value directly).*/
@@ -22,9 +23,10 @@ TestRunner.clearResults=function(isFirst, testConfig)  //TODO: testConfig is new
 {
    if (false !== isFirst)
    {
-      startTime = Date.now();
+      _startTime = Date.now();
       document.getElementById('testResults').value = '';
-      if(undefined !== testConfig && undefined !== testConfig.beforeFirst) testConfig.beforeFirst();
+      testConfig = _sanitizeConfig(testConfig);
+      testConfig.beforeFirst();
    }
 };
 /**if(isFirst) This function clears out then writes the test results to the "testResults" text area and scrolls to it.
@@ -37,14 +39,11 @@ TestRunner.displayResults=function(tableName, testResults, isFirst, testConfig)
    var input = {tableName: tableName, testResults: testResults};
    if (isFirst)
    {
-      if(undefined === testConfig) testConfig = {hidePassed: false};
-      else if(undefined === testConfig.hidePassed) testConfig = {  //new object to avoid mutating the user's config
-         afterLast: testConfig.afterLast, defaultDelta: testConfig.defaultDelta, hidePassed: false
-      };
+      testConfig = _sanitizeConfig(testConfig, false);
       var output = TestRunner.generateResultTable([input], testConfig);
-      if(undefined !== testConfig.afterLast) testConfig.afterLast();
-      endTime = Date.now();
-      output += 'Time taken: ' + TestRunner.formatTestTime(startTime, endTime) + '\n';
+      testConfig.afterLast();
+      _endTime = Date.now();
+      output += 'Time taken: ' + TestRunner.formatTestTime(_startTime, _endTime) + '\n';
       document.getElementById('testResults').value = output;
       location.hash = '#testResults';  //scroll to the results
    }
@@ -65,7 +64,7 @@ If Expected and Actual are both numbers (or Dates) then testResult.Delta can als
 Delta is the maximum number that they are allowed to differ by to be considered equal (eg 1 and 2 are equal if delta is 1).
 If Delta is not specified it will default to defaultDelta.
 Delta also applies to Dates which is useful if you'd like to ignore seconds for example.
-@returns {string} the path to the non-matching element. empty string if the problem is on the root. undefined if the test passes*/
+@returns {?string} the path to the non-matching element. empty string if the problem is on the root. undefined if the test passes*/
 TestRunner.findFirstFailurePath=function(testResult, defaultDelta)
 {
    if(undefined !== testResult.Error) return '';
@@ -174,7 +173,7 @@ TestRunner.generateResultTable=function(suiteResults, testConfig)
    output += 'Grand total: ' + suitePassCount + '/' +  suiteTotalCount + '\n';
    return output;
 };
-/**@returns true if the input should be compared via === when determining equality*/
+/**@returns {boolean} true if the input should be compared via === when determining equality*/
 TestRunner.isPrimitive=function(input)
 {
    var inputType = typeof(input);
@@ -183,7 +182,7 @@ TestRunner.isPrimitive=function(input)
    //TestRunner._shallowEquality doesn't reach the undefined and null cases
 };
 /**Used to run every test in a suite. This function is assumed to run alone.
-This function calls TestRunner.clearResults and TestRunner.generateResultTable.
+This function calls clears the results and calls TestRunner.generateResultTable.
 The main loop enumerates over the testSuite object given and calls each function.
 The loop is deep and all properties that are objects will also be enumerated over.
 It will call testConfig.beforeFirst (if it is defined) before the first test. This can be used to setup mocks.
@@ -200,22 +199,15 @@ The total time taken is displayed (everything is written to "testResults" text a
 */
 TestRunner.testAll=function(testSuite, testConfig)
 {
-   startTime = Date.now();
+   _startTime = Date.now();
    document.getElementById('testResults').value = '';
 
    //testSuite and testConfig defaults can't be self tested
    if(undefined === testSuite) testSuite = TestSuite;
-   if(undefined === testConfig) testConfig = TestConfig;
-
-   if(undefined === testConfig.hidePassed) testConfig = {  //new object to avoid mutating the user's config
-      beforeFirst: testConfig.beforeFirst, betweenEach: testConfig.betweenEach, afterLast: testConfig.afterLast,
-      defaultDelta: testConfig.defaultDelta, hidePassed: true
-   };
-   var betweenEach = testConfig.betweenEach;
-   if(undefined === betweenEach) betweenEach = function(){};  //make no-op here so I don't need to check if it exists during loop
+   testConfig = _sanitizeConfig(testConfig, true);
 
    var suiteCollection = [testSuite], errorTests = [], resultingList = [], runBetweenEach = false;
-   if(undefined !== testConfig.beforeFirst) testConfig.beforeFirst();
+   testConfig.beforeFirst();
    while (0 !== suiteCollection.length)
    {
       testSuite = suiteCollection.shift();
@@ -226,27 +218,26 @@ TestRunner.testAll=function(testSuite, testConfig)
             //null is a jerk: typeof erroneously returns 'object' (null isn't an object because it doesn't inherit Object.prototype)
          else if ('function' === typeof(testSuite[key]))
          {
-            if(runBetweenEach) betweenEach();
+            if(runBetweenEach) testConfig.betweenEach();
             else runBetweenEach = true;
-            try{resultingList.push(testSuite[key](false));}
+            try{resultingList.push(testSuite[key](false, testConfig));}
             catch(e){console.error(e); errorTests.push({Error: e, Description: key});}
             //I could have breadcrumbs instead of key but these shouldn't happen and the stack trace is good enough
          }
       }
    }
-   if(0 !== errorTests.length) resultingList.push(TestRunner.displayResults('TestRunner.testAll', errorTests, false));
-      //testConfig is not needed because !isFirst
+   if(0 !== errorTests.length) resultingList.push({tableName: 'TestRunner.testAll', testResults: errorTests});
    var output = TestRunner.generateResultTable(resultingList, testConfig);
-   if(undefined !== testConfig.afterLast) testConfig.afterLast();  //after generating results in case you have a temporary equals function
+   testConfig.afterLast();  //after generating results in case you have a temporary equals function
 
-   endTime = Date.now();
-   output += 'Time taken: ' + TestRunner.formatTestTime(startTime, endTime) + '\n';
+   _endTime = Date.now();
+   output += 'Time taken: ' + TestRunner.formatTestTime(_startTime, _endTime) + '\n';
 
    document.getElementById('testResults').value = output;
    location.hash = '#testResults';  //scroll to the results
    //return output;  //don't return because a javascript:TestRunner.testAll(); link would cause it to write over the whole page
 };
-/**@returns true if the input should be compared via .valueOf when determining equality*/
+/**@returns {boolean} true if the input should be compared via .valueOf when determining equality*/
 TestRunner.useValueOf=function(input)
 {
    return (input instanceof Boolean || input instanceof Number || input instanceof String
@@ -254,8 +245,26 @@ TestRunner.useValueOf=function(input)
       //although RegExp has a valueOf it returns an object so it is pointless to call
       //typeof(new Function()) === 'function' and any subclass would need to have equals
 };
+function _sanitizeConfig(testConfig, hidePassed)
+{
+   if(undefined === testConfig) testConfig = TestConfig;
+   if(undefined === testConfig.beforeFirst || undefined === testConfig.betweenEach
+      || undefined === testConfig.afterLast || undefined === testConfig.defaultDelta
+      || (undefined === testConfig.hidePassed && undefined !== hidePassed))
+   {
+      testConfig = {beforeFirst: testConfig.beforeFirst, betweenEach: testConfig.betweenEach, afterLast: testConfig.afterLast,
+         defaultDelta: testConfig.defaultDelta, hidePassed: testConfig.hidePassed};
+      var noOp = Function.prototype;
+      if(undefined === testConfig.beforeFirst) testConfig.beforeFirst = noOp;
+      if(undefined === testConfig.betweenEach) testConfig.betweenEach = noOp;
+      if(undefined === testConfig.afterLast) testConfig.afterLast = noOp;
+      if(undefined === testConfig.defaultDelta) testConfig.defaultDelta = 0;
+      if(undefined === testConfig.hidePassed) testConfig.hidePassed = hidePassed;
+   }
+   return testConfig;
+}
 /**Used internally by TestRunner.findFirstFailurePath. Don't call this directly (delta isn't validated).
-@returns true or false based on a shallow equality check or undefined if a deep equality is required.*/
+@returns {?boolean} true or false based on a shallow equality check or undefined if a deep equality is required.*/
 TestRunner._shallowEquality=function(expected, actual, delta)
 {
    if(typeof(expected) !== typeof(actual)) return false;  //testing is type strict
@@ -328,15 +337,15 @@ Either way delta works for deep matches not just top level asserts like Jasmine 
 betweenEach is only called by TestRunner.testAll (see doc there).
 defaultDelta: 0 requires an exact match. To handle imprecise decimals use TestConfig.defaultDelta = Number.EPSILON;
 hidePassed: undefined means that it will hide them during TestRunner.testAll but not when running a single test.*/
-var TestConfig = {beforeFirst: function(){}, betweenEach: function(){}, afterLast: function(){}, defaultDelta: 0, hidePassed: undefined};
+var TestConfig = {beforeFirst: Function.prototype, betweenEach: Function.prototype, afterLast: Function.prototype, defaultDelta: 0, hidePassed: undefined};
 var TestSuite = {};
 
 /*example:
 TestSuite.abilityList = {};
 //TestConfig does not need to be changed from defaults
-TestSuite.abilityList.calculateValues=function(isFirst)
+TestSuite.abilityList.calculateValues=function(isFirst, testConfig)
 {
-   TestRunner.clearResults(isFirst);
+   TestRunner.clearResults(isFirst, testConfig);
 
    var testResults=[];
    try{
@@ -359,9 +368,9 @@ TestSuite.abilityList.calculateValues=function(isFirst)
    }
 
    //be sure to give the test a name here:
-   return TestRunner.displayResults('TestSuite.abilityList.calculateValues', testResults, isFirst);
+   return TestRunner.displayResults('TestSuite.abilityList.calculateValues', testResults, isFirst, testConfig);
 };
-TestSuite.abilityList.unfinishedTest=function(isFirst)
+TestSuite.abilityList.unfinishedTest=function(isFirst, testConfig)
 {
    return {tableName: 'unmade', testResults: []};  //remove this when actual tests exist. ADD TESTS
 };

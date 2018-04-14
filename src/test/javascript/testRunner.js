@@ -1,8 +1,8 @@
 'use strict';
 TestSuite.TestRunner={};
-TestSuite.TestRunner.changeValue=function(isFirst)
+TestSuite.TestRunner.changeValue=function(isFirst, testConfig)
 {
-   TestRunner.clearResults(isFirst);
+   TestRunner.clearResults(isFirst, testConfig);
 
    var testResults = [], actual;
    var resultBox = document.getElementById('testResults');
@@ -40,11 +40,11 @@ TestSuite.TestRunner.changeValue=function(isFirst)
    resultBox.value = '';
    //delete resultBox.onchange;  //not possible so just leave it undefined
 
-   return TestRunner.displayResults('meta: TestRunner.changeValue', testResults, isFirst);
+   return TestRunner.displayResults('meta: TestRunner.changeValue', testResults, isFirst, testConfig);
 };
-TestSuite.TestRunner.clearResults=function(isFirst)
+TestSuite.TestRunner.clearResults=function(isFirst, testConfig)
 {
-   TestRunner.clearResults(isFirst);
+   TestRunner.clearResults(isFirst, testConfig);
 
    var testResults = [], actual;
 
@@ -75,8 +75,8 @@ TestSuite.TestRunner.clearResults=function(isFirst)
 
    try{
    TestRunner.clearResults(true, {});
-   testResults.push({Expected: true, Actual: true, Description: 'no config doesn\'t throw'});
-   } catch(e){testResults.push({Error: e, Description: 'no config doesn\'t throw'});}
+   testResults.push({Expected: true, Actual: true, Description: 'empty config doesn\'t throw'});
+   } catch(e){testResults.push({Error: e, Description: 'empty config doesn\'t throw'});}
 
    try{
    var called = false;
@@ -88,11 +88,11 @@ TestSuite.TestRunner.clearResults=function(isFirst)
    //these changes to resultBox will be overwritten by the actual results
    //although this specific test also clears out pre-existing text
 
-   return TestRunner.displayResults('meta: TestRunner.clearResults', testResults, isFirst);
+   return TestRunner.displayResults('meta: TestRunner.clearResults', testResults, isFirst, testConfig);
 };
-TestSuite.TestRunner.displayResults=function(isFirst)
+TestSuite.TestRunner.displayResults=function(isFirst, testConfig)
 {
-   TestRunner.clearResults(isFirst);
+   TestRunner.clearResults(isFirst, testConfig);
 
    var testResults = [], actual, input, expected, inputConfig;
 
@@ -158,11 +158,11 @@ TestSuite.TestRunner.displayResults=function(isFirst)
 
    resultBox.value = '';
 
-   return TestRunner.displayResults('meta: TestRunner.displayResults', testResults, isFirst);
+   return TestRunner.displayResults('meta: TestRunner.displayResults', testResults, isFirst, testConfig);
 };
-TestSuite.TestRunner.findFirstFailurePath=function(isFirst)
+TestSuite.TestRunner.findFirstFailurePath=function(isFirst, testConfig)
 {
-   TestRunner.clearResults(isFirst);
+   TestRunner.clearResults(isFirst, testConfig);
 
    var testResults = [], actual;
 
@@ -250,11 +250,11 @@ TestSuite.TestRunner.findFirstFailurePath=function(isFirst)
    testResults.push({Expected: undefined, Actual: actual, Description: 'Ignore key order'});
    } catch(e){testResults.push({Error: e, Description: 'Ignore key order'});}
 
-   return TestRunner.displayResults('meta: TestRunner.findFirstFailurePath', testResults, isFirst);
+   return TestRunner.displayResults('meta: TestRunner.findFirstFailurePath', testResults, isFirst, testConfig);
 };
-TestSuite.TestRunner.failedToThrow=function(isFirst)
+TestSuite.TestRunner.failedToThrow=function(isFirst, testConfig)
 {
-   TestRunner.clearResults(isFirst);
+   TestRunner.clearResults(isFirst, testConfig);
 
    var testResults = [], actual, expected;
 
@@ -265,11 +265,11 @@ TestSuite.TestRunner.failedToThrow=function(isFirst)
    testResults.push({Expected: expected, Actual: actual, Description: 'Happy path'});
    } catch(e){testResults.push({Error: e, Description: 'Happy path'});}
 
-   return TestRunner.displayResults('meta: TestRunner.failedToThrow', testResults, isFirst);
+   return TestRunner.displayResults('meta: TestRunner.failedToThrow', testResults, isFirst, testConfig);
 };
-TestSuite.TestRunner.formatTestTime=function(isFirst)
+TestSuite.TestRunner.formatTestTime=function(isFirst, testConfig)
 {
-   TestRunner.clearResults(isFirst);
+   TestRunner.clearResults(isFirst, testConfig);
 
    var testResults = [], actual, expected;
 
@@ -291,11 +291,11 @@ TestSuite.TestRunner.formatTestTime=function(isFirst)
    testResults.push({Expected: expected, Actual: actual, Description: 'no hours'});
    } catch(e){testResults.push({Error: e, Description: 'no hours'});}
 
-   return TestRunner.displayResults('meta: TestRunner.formatTestTime', testResults, isFirst);
+   return TestRunner.displayResults('meta: TestRunner.formatTestTime', testResults, isFirst, testConfig);
 };
-TestSuite.TestRunner.generateResultTable=function(isFirst)
+TestSuite.TestRunner.generateResultTable=function(isFirst, testConfig)
 {
-   TestRunner.clearResults(isFirst);
+   TestRunner.clearResults(isFirst, testConfig);
 
    var testResults = [], actual, input, expected;
 
@@ -394,11 +394,11 @@ TestSuite.TestRunner.generateResultTable=function(isFirst)
    testResults.push({Expected: 'Grand total: 0/0\n', Actual: actual, Description: 'No tests'});
    } catch(e){testResults.push({Error: e, Description: 'No tests'});}
 
-   return TestRunner.displayResults('meta: TestRunner.generateResultTable', testResults, isFirst);
+   return TestRunner.displayResults('meta: TestRunner.generateResultTable', testResults, isFirst, testConfig);
 };
-TestSuite.TestRunner.isPrimitive=function(isFirst)
+TestSuite.TestRunner.isPrimitive=function(isFirst, testConfig)
 {
-   TestRunner.clearResults(isFirst);
+   TestRunner.clearResults(isFirst, testConfig);
 
    var testResults = [], actual;
 
@@ -447,11 +447,11 @@ TestSuite.TestRunner.isPrimitive=function(isFirst)
    testResults.push({Expected: false, Actual: actual, Description: 'RegExp'});
    } catch(e){testResults.push({Error: e, Description: 'RegExp'});}
 
-   return TestRunner.displayResults('meta: TestRunner.isPrimitive', testResults, isFirst);
+   return TestRunner.displayResults('meta: TestRunner.isPrimitive', testResults, isFirst, testConfig);
 };
-TestSuite.TestRunner.testAll=function(isFirst)
+TestSuite.TestRunner.testAll=function(isFirst, testConfig)
 {
-   TestRunner.clearResults(isFirst);
+   TestRunner.clearResults(isFirst, testConfig);
 
    var testResults = [], actual, testSuite, expected, beforeFirstCount = 0, betweenCount = 0, afterLastCount = 0, inputConfig = {};
 
@@ -611,11 +611,11 @@ TestSuite.TestRunner.testAll=function(isFirst)
 
    resultBox.value = '';
 
-   return TestRunner.displayResults('meta: TestRunner.testAll', testResults, isFirst);
+   return TestRunner.displayResults('meta: TestRunner.testAll', testResults, isFirst, testConfig);
 };
-TestSuite.TestRunner.useValueOf=function(isFirst)
+TestSuite.TestRunner.useValueOf=function(isFirst, testConfig)
 {
-   TestRunner.clearResults(isFirst);
+   TestRunner.clearResults(isFirst, testConfig);
 
    var testResults = [], actual, input;
 
@@ -657,11 +657,11 @@ TestSuite.TestRunner.useValueOf=function(isFirst)
    testResults.push({Expected: false, Actual: actual, Description: 'useValueOf: RegExp'});
    } catch(e){testResults.push({Error: e, Description: 'useValueOf: RegExp'});}
 
-   return TestRunner.displayResults('meta: TestRunner.useValueOf', testResults, isFirst);
+   return TestRunner.displayResults('meta: TestRunner.useValueOf', testResults, isFirst, testConfig);
 };
-TestSuite.TestRunner._shallowEquality=function(isFirst)
+TestSuite.TestRunner._shallowEquality=function(isFirst, testConfig)
 {
-   TestRunner.clearResults(isFirst);
+   TestRunner.clearResults(isFirst, testConfig);
 
    var testResults = [], actual, input;
 
@@ -810,5 +810,5 @@ TestSuite.TestRunner._shallowEquality=function(isFirst)
    testResults.push({Expected: false, Actual: actual, Description: 'RegExp'});
    } catch(e){testResults.push({Error: e, Description: 'RegExp'});}
 
-   return TestRunner.displayResults('meta: TestRunner._shallowEquality', testResults, isFirst);
+   return TestRunner.displayResults('meta: TestRunner._shallowEquality', testResults, isFirst, testConfig);
 };
