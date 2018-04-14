@@ -1,28 +1,34 @@
 //Note that throughout this file the word 'suite' means an object that contains any number of test cases and suites
+//This test runner doesn't support asynchronous test execution because of startTime, endTime, betweenEach
 'use strict';
 
+//TODO: allow asynchronous: have the times in testState, pass around testConfig, Promise.all (if exists). betweenEach redundantly called
+//TODO: allow servers: have a testAllForServer etc which returns json results (not table string) and doesn't touch document or location
 const TestRunner = {};
 (function(){
 var startTime, endTime;  //private state to avoid pollution and user tampering
 /**Given the DOM's id this function sets the value property equal to valueToSet then calls onchange.
 No validation is done so if the id is not found it will throw an error.
 It will also throw if there is no onchange defined (instead just set .value directly).*/
-TestRunner.changeValue=function(elementID, valueToSet)
+TestRunner.changeValue=function(elementId, valueToSet)
 {
-   var element = document.getElementById(elementID);
+   var element = document.getElementById(elementId);
    element.value = valueToSet;
    element.onchange();
 };
-/**Will do nothing if isFirst is false (strict). else this function will clear the testing area and start the timer.*/
-TestRunner.clearResults=function(isFirst)
+/**Will do nothing if isFirst is false (strict). else this function will clear the testing area, start the timer,
+and call testConfig.beforeFirst (if it is defined) which can be used to setup mocks.*/
+TestRunner.clearResults=function(isFirst, testConfig)  //TODO: testConfig is new. update boilerplate and callers
 {
    if (false !== isFirst)
    {
-      document.getElementById('testResults').value = '';
       startTime = Date.now();
+      document.getElementById('testResults').value = '';
+      if(undefined !== testConfig && undefined !== testConfig.beforeFirst) testConfig.beforeFirst();
    }
 };
 /**if(isFirst) This function clears out then writes the test results to the "testResults" text area and scrolls to it.
+It will call testConfig.afterLast (if it is defined) which can be used to teardown mocks.
 @param {object} testConfig hidePassed defaults to false. if(!isFirst) ignored else it is passed to TestRunner.generateResultTable
 @returns {object} that can be used by TestRunner.generateResultTable which is used by TestRunner.testAll.*/
 TestRunner.displayResults=function(tableName, testResults, isFirst, testConfig)
@@ -32,9 +38,11 @@ TestRunner.displayResults=function(tableName, testResults, isFirst, testConfig)
    if (isFirst)
    {
       if(undefined === testConfig) testConfig = {hidePassed: false};
-      else if(undefined === testConfig.hidePassed) testConfig = {defaultDelta: testConfig.defaultDelta, hidePassed: false};
-         //new object to avoid mutating the user's config
+      else if(undefined === testConfig.hidePassed) testConfig = {  //new object to avoid mutating the user's config
+         afterLast: testConfig.afterLast, defaultDelta: testConfig.defaultDelta, hidePassed: false
+      };
       var output = TestRunner.generateResultTable([input], testConfig);
+      if(undefined !== testConfig.afterLast) testConfig.afterLast();
       endTime = Date.now();
       output += 'Time taken: ' + TestRunner.formatTestTime(startTime, endTime) + '\n';
       document.getElementById('testResults').value = output;
@@ -178,12 +186,14 @@ TestRunner.isPrimitive=function(input)
 This function calls TestRunner.clearResults and TestRunner.generateResultTable.
 The main loop enumerates over the testSuite object given and calls each function.
 The loop is deep and all properties that are objects will also be enumerated over.
-It will call testConfig.betweenEach (if it is defined) between each test.
+It will call testConfig.beforeFirst (if it is defined) before the first test. This can be used to setup mocks.
+It will call testConfig.betweenEach (if it is defined) between each test. This can be used to reset state.
+It will call testConfig.afterLast (if it is defined) after the last test. This can be used to teardown mocks.
 If the called test function throws, TestRunner.testAll will catch it and display the list of errors when finished
 (and will also send the stack to console.error).
 The total time taken is displayed (everything is written to "testResults" text area) then it scrolls to testResults.
-@param {object} an object that contains every test to be run. defaults to TestSuite
-@param {object} an object (defaults to TestConfig) that contains:
+@param {object} testSuite an object that contains every test to be run. defaults to TestSuite
+@param {object} testConfig an object (defaults to TestConfig) that contains:
    {function} betweenEach if defined it will be called between each test
    {number} defaultDelta passed to TestRunner.findFirstFailurePath
    {boolean} hidePassed defaults to true and is passed to TestRunner.generateResultTable
@@ -191,17 +201,21 @@ The total time taken is displayed (everything is written to "testResults" text a
 TestRunner.testAll=function(testSuite, testConfig)
 {
    startTime = Date.now();
+   document.getElementById('testResults').value = '';
 
    //testSuite and testConfig defaults can't be self tested
    if(undefined === testSuite) testSuite = TestSuite;
    if(undefined === testConfig) testConfig = TestConfig;
 
+   if(undefined === testConfig.hidePassed) testConfig = {  //new object to avoid mutating the user's config
+      beforeFirst: testConfig.beforeFirst, betweenEach: testConfig.betweenEach, afterLast: testConfig.afterLast,
+      defaultDelta: testConfig.defaultDelta, hidePassed: true
+   };
    var betweenEach = testConfig.betweenEach;
-   if(undefined === betweenEach) betweenEach = function(){};
-   if(undefined === testConfig.hidePassed) testConfig = {defaultDelta: testConfig.defaultDelta, hidePassed: true};
-      //new object to avoid mutating the user's config
+   if(undefined === betweenEach) betweenEach = function(){};  //make no-op here so I don't need to check if it exists during loop
 
-   var suiteCollection = [testSuite], errorTests = [], resultingList = [];
+   var suiteCollection = [testSuite], errorTests = [], resultingList = [], runBetweenEach = false;
+   if(undefined !== testConfig.beforeFirst) testConfig.beforeFirst();
    while (0 !== suiteCollection.length)
    {
       testSuite = suiteCollection.shift();
@@ -212,7 +226,8 @@ TestRunner.testAll=function(testSuite, testConfig)
             //null is a jerk: typeof erroneously returns 'object' (null isn't an object because it doesn't inherit Object.prototype)
          else if ('function' === typeof(testSuite[key]))
          {
-            if(0 !== resultingList.length || 0 !== errorTests.length) betweenEach();
+            if(runBetweenEach) betweenEach();
+            else runBetweenEach = true;
             try{resultingList.push(testSuite[key](false));}
             catch(e){console.error(e); errorTests.push({Error: e, Description: key});}
             //I could have breadcrumbs instead of key but these shouldn't happen and the stack trace is good enough
@@ -222,6 +237,7 @@ TestRunner.testAll=function(testSuite, testConfig)
    if(0 !== errorTests.length) resultingList.push(TestRunner.displayResults('TestRunner.testAll', errorTests, false));
       //testConfig is not needed because !isFirst
    var output = TestRunner.generateResultTable(resultingList, testConfig);
+   if(undefined !== testConfig.afterLast) testConfig.afterLast();  //after generating results in case you have a temporary equals function
 
    endTime = Date.now();
    output += 'Time taken: ' + TestRunner.formatTestTime(startTime, endTime) + '\n';
@@ -308,8 +324,11 @@ delta is safer than what Jasmine did: https://github.com/jasmine/jasmine/blob/ma
 although I can't prove that it's wrong.
 Either way delta works for deep matches not just top level asserts like Jasmine does.
 */
-/**defaultDelta requires an exact match. To handle imprecise decimals use TestConfig.defaultDelta = Number.EPSILON;*/
-var TestConfig = {betweenEach: function(){}, defaultDelta: 0, hidePassed: undefined};
+/**beforeFirst and afterLast are called by TestRunner.testAll (see doc there) and by running a single test.
+betweenEach is only called by TestRunner.testAll (see doc there).
+defaultDelta: 0 requires an exact match. To handle imprecise decimals use TestConfig.defaultDelta = Number.EPSILON;
+hidePassed: undefined means that it will hide them during TestRunner.testAll but not when running a single test.*/
+var TestConfig = {beforeFirst: function(){}, betweenEach: function(){}, afterLast: function(){}, defaultDelta: 0, hidePassed: undefined};
 var TestSuite = {};
 
 /*example:

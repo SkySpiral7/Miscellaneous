@@ -4,7 +4,7 @@ TestSuite.TestRunner.changeValue=function(isFirst)
 {
    TestRunner.clearResults(isFirst);
 
-   var testResults = [], actual, input;
+   var testResults = [], actual;
    var resultBox = document.getElementById('testResults');
 
    try{
@@ -46,7 +46,7 @@ TestSuite.TestRunner.clearResults=function(isFirst)
 {
    TestRunner.clearResults(isFirst);
 
-   var testResults = [], actual, input;
+   var testResults = [], actual;
 
    var resultBox = document.getElementById('testResults');
    //this test can only be run in a place where tests can be run...
@@ -73,6 +73,17 @@ TestSuite.TestRunner.clearResults=function(isFirst)
    testResults.push({Expected: '', Actual: actual, Description: 'Cleared with true'});
    } catch(e){testResults.push({Error: e, Description: 'Cleared with true'});}
 
+   try{
+   TestRunner.clearResults(true, {});
+   testResults.push({Expected: true, Actual: true, Description: 'no config doesn\'t throw'});
+   } catch(e){testResults.push({Error: e, Description: 'no config doesn\'t throw'});}
+
+   try{
+   var called = false;
+   TestRunner.clearResults(true, {beforeFirst: function(){called = true;}});
+   testResults.push({Expected: true, Actual: called, Description: 'beforeFirst is called'});
+   } catch(e){testResults.push({Error: e, Description: 'beforeFirst is called'});}
+
    resultBox.value = '';
    //these changes to resultBox will be overwritten by the actual results
    //although this specific test also clears out pre-existing text
@@ -83,7 +94,7 @@ TestSuite.TestRunner.displayResults=function(isFirst)
 {
    TestRunner.clearResults(isFirst);
 
-   var testResults = [], actual, input, expected;
+   var testResults = [], actual, input, expected, inputConfig;
 
    var resultBox = document.getElementById('testResults');
 
@@ -123,12 +134,12 @@ TestSuite.TestRunner.displayResults=function(isFirst)
    testResults.push({Expected: expected, Actual: actual, Description: 'No testConfig defaults hidePassed to false'});
 
    input = [{Expected: 1, Actual: 2, Description: 'Test name'}];
-   var myConfig = {defaultDelta: 5};
-   TestRunner.displayResults('table name', input, true, myConfig);
+   inputConfig = {defaultDelta: 5};
+   TestRunner.displayResults('table name', input, true, inputConfig);
    expected = '1/1: table name\n   Pass: Test name\n\nGrand total: 1/1\nTime taken: ?\n';
    actual = resultBox.value.replace(/Time taken:.+/, 'Time taken: ?');
    testResults.push({Expected: expected, Actual: actual, Description: 'No hidePassed to false'});
-   testResults.push({Expected: {defaultDelta: 5}, Actual: myConfig, Description: 'without mutating user config'});
+   testResults.push({Expected: {defaultDelta: 5}, Actual: inputConfig, Description: 'without mutating user config'});
 
    input = [{Expected: true, Actual: true, Description: 'Test name'}];
    TestRunner.displayResults('table name', input, true, {hidePassed: true});
@@ -136,6 +147,14 @@ TestSuite.TestRunner.displayResults=function(isFirst)
    actual = resultBox.value.replace(/Time taken:.+/, 'Time taken: ?');
    testResults.push({Expected: expected, Actual: actual, Description: 'hidePassed can be true'});
    } catch(e){testResults.push({Error: e, Description: 'hidePassed'});}
+
+   try{
+   input = [{Expected: true, Actual: true, Description: 'Test name'}];
+   var called = false;
+   inputConfig = {afterLast: function(){called = true;}};
+   TestRunner.displayResults('table name', input, true, inputConfig);
+   testResults.push({Expected: true, Actual: called, Description: 'Call afterLast'});
+   } catch(e){testResults.push({Error: e, Description: 'Call afterLast'});}
 
    resultBox.value = '';
 
@@ -145,7 +164,7 @@ TestSuite.TestRunner.findFirstFailurePath=function(isFirst)
 {
    TestRunner.clearResults(isFirst);
 
-   var testResults = [], actual, input;
+   var testResults = [], actual;
 
    try{
    actual = TestRunner.findFirstFailurePath({Error: new Error('Something evil')});
@@ -240,7 +259,7 @@ TestSuite.TestRunner.failedToThrow=function(isFirst)
    var testResults = [], actual, expected;
 
    try{
-   expected = [0, {Expected: 'throw', Actual: 'return', Description: 'Test'}]
+   expected = [0, {Expected: 'throw', Actual: 'return', Description: 'Test'}];
    actual = [0];
    TestRunner.failedToThrow(actual, 'Test');
    testResults.push({Expected: expected, Actual: actual, Description: 'Happy path'});
@@ -281,7 +300,7 @@ TestSuite.TestRunner.generateResultTable=function(isFirst)
    var testResults = [], actual, input, expected;
 
    try{
-   TestRunner.generateResultTable(input, {defaultDelta: 1});
+   TestRunner.generateResultTable([], {defaultDelta: 1});
    TestRunner.failedToThrow(testResults, 'hidePassed is required');
    }
    catch(e)
@@ -381,7 +400,7 @@ TestSuite.TestRunner.isPrimitive=function(isFirst)
 {
    TestRunner.clearResults(isFirst);
 
-   var testResults = [], actual, input;
+   var testResults = [], actual;
 
    try{
    actual = TestRunner.isPrimitive(true);
@@ -434,10 +453,13 @@ TestSuite.TestRunner.testAll=function(isFirst)
 {
    TestRunner.clearResults(isFirst);
 
-   var testResults = [], actual, testSuite, expected, betweenTracker = 0;
+   var testResults = [], actual, testSuite, expected, beforeFirstCount = 0, betweenCount = 0, afterLastCount = 0, inputConfig = {};
 
    var resultBox = document.getElementById('testResults');
-   var trackingConfig = {betweenEach: function(){++betweenTracker;}, defaultDelta: 0, hidePassed: true};
+   var trackingConfig = {
+      beforeFirst: function(){++beforeFirstCount;}, betweenEach: function(){++betweenCount;}, afterLast: function(){++afterLastCount;},
+      defaultDelta: 0, hidePassed: true
+   };
    var passTest = function(){return {tableName: 'Pass table', testResults:[
       {Expected: true, Actual: true, Description: 'Desc 1'},
       {Expected: true, Actual: true, Description: 'Desc 2'}
@@ -448,15 +470,46 @@ TestSuite.TestRunner.testAll=function(isFirst)
    try{
    location.hash = '';
    resultBox.value = 'Override me';
-   testSuite = {testRow: passTest, anotherTest: passTest};
-   expected = 'Grand total: 4/4\nTime taken: ?\n';
+   testSuite = {testRow: passTest, anotherTest: passTest, lastTest: passTest};
+   expected = 'Grand total: 6/6\nTime taken: ?\n';
 
    TestRunner.testAll(testSuite, trackingConfig);
    actual = resultBox.value.replace(/Time taken:.+/, 'Time taken: ?');
    testResults.push({Expected: expected, Actual: actual, Description: 'Happy path: output'});
-   testResults.push({Expected: 1, Actual: betweenTracker, Description: 'Happy path: betweenTracker'});
+   testResults.push({Expected: 1, Actual: beforeFirstCount, Description: 'Happy path: beforeFirstCount'});
+   testResults.push({Expected: 2, Actual: betweenCount, Description: 'Happy path: betweenCount'});
+   testResults.push({Expected: 1, Actual: afterLastCount, Description: 'Happy path: afterLastCount'});
    testResults.push({Expected: '#testResults', Actual: location.hash, Description: 'Happy path: scrolls to testResults'});
    } catch(e){testResults.push({Error: e, Description: 'Happy path'});}
+
+   try{
+   var orderString = '';
+   var passTable = {
+      tableName: 'Pass table', testResults: [
+         {Expected: true, Actual: true, Description: 'Desc'}
+      ]
+   };
+   testSuite = {
+      testRow1: function () {
+         orderString += '1';
+         return passTable;
+      },
+      testRow2: function () {
+         orderString += '2';
+         return passTable;
+      },
+      testRow3: function () {
+         orderString += '3';
+         return passTable;
+      }
+   };
+   inputConfig = {
+      beforeFirst: function(){orderString += 'F';}, betweenEach: function(){orderString += 'E';}, afterLast: function(){orderString += 'L';}
+   };
+
+   TestRunner.testAll(testSuite, inputConfig);
+   testResults.push({Expected: 'F1E2E3L', Actual: orderString, Description: 'verify order'});
+   } catch(e){testResults.push({Error: e, Description: 'verify order'});}
 
    try{
    testSuite = {testRow: passTest, anotherTest: passTest};
@@ -466,12 +519,12 @@ TestSuite.TestRunner.testAll=function(isFirst)
 
    try{
    testSuite = {testRow: passTest};
-   var myConfig = {};
+   inputConfig = {};
    expected = 'Grand total: 2/2\nTime taken: ?\n';
-   TestRunner.testAll(testSuite, myConfig);
+   TestRunner.testAll(testSuite, inputConfig);
    actual = resultBox.value.replace(/Time taken:.+/, 'Time taken: ?');
    testResults.push({Expected: expected, Actual: actual, Description: 'hidePassed defaults to true'});
-   testResults.push({Expected: {}, Actual: myConfig, Description: 'without mutating user config'});
+   testResults.push({Expected: {}, Actual: inputConfig, Description: 'without mutating user config'});
    } catch(e){testResults.push({Error: e, Description: 'hidePassed'});}
 
    try{
@@ -495,7 +548,7 @@ TestSuite.TestRunner.testAll=function(isFirst)
    } catch(e){testResults.push({Error: e, Description: 'Ignore non-tests'});}
 
    try{
-   betweenTracker = 0;
+   betweenCount = 0;
    testSuite = {firstTest: errorTest, someTest: failTest};
    expected = '0/1: Fail table\n   Fail: Desc\n      Expected: true\n      Actual: false\n';
    expected += '0/1: TestRunner.testAll\n   Fail: firstTest\n      Error: Error: I\'m sorry guys but I just can\'t.\n';
@@ -504,7 +557,7 @@ TestSuite.TestRunner.testAll=function(isFirst)
    TestRunner.testAll(testSuite, trackingConfig);
    actual = resultBox.value.replace(/Time taken:.+/, 'Time taken: ?');
    testResults.push({Expected: expected, Actual: actual, Description: 'Failure: output'});
-   testResults.push({Expected: 1, Actual: betweenTracker, Description: 'Failure: betweenTracker'});
+   testResults.push({Expected: 1, Actual: betweenCount, Description: 'Failure: betweenCount'});
    } catch(e){testResults.push({Error: e, Description: 'Failure'});}
 
    try{
@@ -517,11 +570,11 @@ TestSuite.TestRunner.testAll=function(isFirst)
    } catch(e){testResults.push({Error: e, Description: 'Nesting'});}
 
    try{
-   betweenTracker = 0;
+   betweenCount = 0;
    testSuite = {someTest: passTest};
 
    TestRunner.testAll(testSuite, trackingConfig);
-   testResults.push({Expected: 0, Actual: betweenTracker, Description: 'No between'});
+   testResults.push({Expected: 0, Actual: betweenCount, Description: 'No between'});
    } catch(e){testResults.push({Error: e, Description: 'No between'});}
 
    try{
@@ -648,7 +701,7 @@ TestSuite.TestRunner._shallowEquality=function(isFirst)
    } catch(e){testResults.push({Error: e, Description: 'Happy path: pass'});}
 
    try{
-   var input = Symbol();
+   input = Symbol();
    actual = TestRunner._shallowEquality(input, input, 0);
    testResults.push({Expected: true, Actual: actual, Description: 'Same symbol'});
    } catch(e){testResults.push({Error: e, Description: 'Same symbol'});}
