@@ -3,7 +3,7 @@
 //This test runner currently assumes that you have a DOM element #testResults which is a textarea that will have the results put in it
 'use strict';
 
-//TODO: allow asynchronous: Promise.all (if exists). betweenEach redundantly called
+//TODO: allow asynchronous: Promise.all (if exists). betweenEach redundantly called. couldn't figure out how to support both in 1 func
 //TODO: allow servers: have a testAllForServer etc which returns json results (not table string) and doesn't touch document or location
 const TestRunner = {};
 (function(){
@@ -101,8 +101,8 @@ TestRunner.findFirstFailurePath=function(testResult, defaultDelta)
    return undefined;
 };
 /**
-@param {number or Date} startTimeParam date in milliseconds
-@param {number or Date} endTimeParam date in milliseconds
+@param {number || Date} startTimeParam date in milliseconds
+@param {number || Date} endTimeParam date in milliseconds
 @returns {string} a string stating the number of seconds (to 3 decimal places) and the number of minutes if applicable
 */
 TestRunner.formatTestTime=function(startTimeParam, endTimeParam)
