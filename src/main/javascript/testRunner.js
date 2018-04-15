@@ -199,7 +199,7 @@ The total time taken is displayed (everything is written to "testResults" text a
 */
 TestRunner.testAll=function(testSuite, testConfig)
 {
-   var testState = {_startTime: Date.now()};
+   var testState = {_startTime: Date.now(), runningSingleTest: false};
    document.getElementById('testResults').value = '';
 
    //testSuite and testConfig defaults can't be self tested
