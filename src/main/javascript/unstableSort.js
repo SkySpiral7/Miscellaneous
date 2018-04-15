@@ -9,19 +9,19 @@ stability or doesn't care.
 function unstableSort(input, compare)
 {
    //this is a bubble sort that has been modified to be unstable
-   var swapped;
+   var swapped, temp;
    do {
       swapped = false;
       for (var i=0; i < input.length-1; i++) {
          var result = compare(input[i], input[i+1]);
          if (result === 1) {
-            var temp = input[i];
+            temp = input[i];
             input[i] = input[i+1];
             input[i+1] = temp;
             swapped = true;
          }
          else if (result === 0) {  //if equal then swap them anyway to make it unstable
-            var temp = input[i];
+            temp = input[i];
             input[i] = input[i+1];
             input[i+1] = temp;
             //if swapped=true then this loop will never end (if any 2 are equal)

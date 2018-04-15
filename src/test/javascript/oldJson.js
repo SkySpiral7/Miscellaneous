@@ -110,5 +110,5 @@ TestSuite.parseJson=function(isFirst)
    testResults.push({Expected: undefined, Actual: actual, Description: 'Rejects invalid structure'});
    } catch(e){testResults.push({Error: e, Description: 'Rejects invalid structure'});}
 
-   return TestRunner.displayResults('old json: parseJson', testResults, isFirst);
+   return TestRunner.displayResults('oldJson: parseJson', testResults, isFirst);
 };

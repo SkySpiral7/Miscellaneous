@@ -1,6 +1,6 @@
 File descriptions
 =================
-#advanced rounding.js
+#advancedRounding.js
 The function RoundingMode creates and returns a function that is used to round numbers in any way desired.
 Some examples: RoundingMode({away: Infinity, divisible: 1})(-1.5) returns -2 and RoundingMode({magnitude: 10, towards: 0})(99.9) returns 10.
 
@@ -10,7 +10,7 @@ See RoundingMode's jsdoc for details (the block comment above where RoundingMode
 **Outputs**: A function which takes a number and returns a number (which is rounded).
 
 
-#generate password.html
+#generatePassword.html
 Generates a random text that makes a good password. It uses javascript only (is purely off-line, no AJAX) so nothing nefarious is going on here.
 
 I created this because I was unsatisfied with the options that other password generators had (or rather lacked).
@@ -23,7 +23,7 @@ Space. Specific Exclusions, option to allow repeating characters or leading/ tra
 **Outputs**: random text of the specified length meeting the requirements indicated
 
 
-#old json.js
+#oldJson.js
 A single function that parses JSON no matter how old the javascript engine is.
 It will validate to ensure that eval does not run injected code.
 

@@ -8,11 +8,11 @@ The tests run off of the testRunner.js.
 None
 
 #Finished but Untested
-1. generate password.html
-2. old json.js (somewhat tested)
+1. generatePassword.html
+2. oldJson.js (somewhat tested)
 
 #Finished and Tested
-1. advanced rounding.js
+1. advancedRounding.js
 2. testRunner.js
 
 #Finished without anything to test
