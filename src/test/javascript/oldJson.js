@@ -1,7 +1,7 @@
 'use strict';
-TestSuite.parseJson=function(isFirst)
+TestSuite.parseJson=function(testState={})
 {
-   TestRunner.clearResults(isFirst);
+   TestRunner.clearResults(testState);
 
    var testResults = [], expected, actual, input;
 
@@ -110,5 +110,5 @@ TestSuite.parseJson=function(isFirst)
    testResults.push({Expected: undefined, Actual: actual, Description: 'Rejects invalid structure'});
    } catch(e){testResults.push({Error: e, Description: 'Rejects invalid structure'});}
 
-   return TestRunner.displayResults('oldJson: parseJson', testResults, isFirst);
+   return TestRunner.displayResults('oldJson: parseJson', testResults, testState);
 };

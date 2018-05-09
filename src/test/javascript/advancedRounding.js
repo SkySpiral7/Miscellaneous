@@ -1,6 +1,7 @@
-TestSuite.errors=function(isFirst)
+'use strict';
+TestSuite.errors=function(testState={})
 {
-    TestRunner.clearResults(isFirst);
+    TestRunner.clearResults(testState);
 
     var testResults=[];
     try{
@@ -147,11 +148,11 @@ TestSuite.errors=function(isFirst)
        testResults.push({Expected: new Error('The value of towards must be 0, Infinity, or a power of 10 but was 5 instead.'), Actual: e, Description: 'towards was 5 and magnitude: 10 (no half)'});
    }
 
-    return TestRunner.displayResults('RoundingMode errors', testResults, isFirst);
+    return TestRunner.displayResults('RoundingMode errors', testResults, testState);
 };
-TestSuite.silentChanges=function(isFirst)
+TestSuite.silentChanges=function(testState={})
 {
-    TestRunner.clearResults(isFirst);
+    TestRunner.clearResults(testState);
 
     var testResults=[], round;
 
@@ -184,11 +185,11 @@ TestSuite.silentChanges=function(isFirst)
     testResults.push({Expected: -4, Actual: round(-6), Description: 'magnitude: 0.5, towards: 0 given -6'});
     } catch(e){testResults.push({Error: e, Description: '1/magnitude'});}
 
-    return TestRunner.displayResults('RoundingMode silentChanges', testResults, isFirst);
+    return TestRunner.displayResults('RoundingMode silentChanges', testResults, testState);
 };
-TestSuite.miscellaneous=function(isFirst)
+TestSuite.miscellaneous=function(testState={})
 {
-    TestRunner.clearResults(isFirst);
+    TestRunner.clearResults(testState);
 
     var testResults=[], round;
 
@@ -220,11 +221,11 @@ TestSuite.miscellaneous=function(isFirst)
        testResults.push({Expected: new Error('Assertion failed: The number 5 is exactly half way.'), Actual: e, Description: 'divisible: 10, half: Assert_Away_From_Half given 5.'});
    }
 
-    return TestRunner.displayResults('RoundingMode miscellaneous', testResults, isFirst);
+    return TestRunner.displayResults('RoundingMode miscellaneous', testResults, testState);
 };
-TestSuite.destinations=function(isFirst)
+TestSuite.destinations=function(testState={})
 {
-    TestRunner.clearResults(isFirst);
+    TestRunner.clearResults(testState);
 
     var testResults=[], round;
 
@@ -260,12 +261,12 @@ TestSuite.destinations=function(isFirst)
     testResults.push({Expected: -20, Actual: round(-15), Description: 'divisible: 10, away: 10 given -15'});
     } catch(e){testResults.push({Error: e, Description: 'A: 10'});}
 
-    return TestRunner.displayResults('RoundingMode destinations', testResults, isFirst);
+    return TestRunner.displayResults('RoundingMode destinations', testResults, testState);
 };
 //need divisible/magnitude towards/away Infinity in order to completely test findNextUp and findNextDown
-TestSuite.divisibleToInfinity=function(isFirst)
+TestSuite.divisibleToInfinity=function(testState={})
 {
-    TestRunner.clearResults(isFirst);
+    TestRunner.clearResults(testState);
 
     var testResults=[];
     var mode = {divisible: undefined, towards: Infinity, toString: function(x){return 'divisible: '+this.divisible+', towards: '+this.towards+' given '+x;}};
@@ -299,11 +300,11 @@ TestSuite.divisibleToInfinity=function(isFirst)
     testResults.push({Expected: -4.5, Actual: round(-6.75), Description: mode.toString(-6.75)});  //half
     testResults.push({Expected: -4.5, Actual: round(-8.99), Description: mode.toString(-8.99)});
 
-    return TestRunner.displayResults('RoundingMode divisibleToInfinity', testResults, isFirst);
+    return TestRunner.displayResults('RoundingMode divisibleToInfinity', testResults, testState);
 };
-TestSuite.magnitudeToInfinity=function(isFirst)
+TestSuite.magnitudeToInfinity=function(testState={})
 {
-    TestRunner.clearResults(isFirst);
+    TestRunner.clearResults(testState);
 
     var testResults=[];
     var round = RoundingMode({magnitude: 10, towards: Infinity});
@@ -353,11 +354,11 @@ TestSuite.magnitudeToInfinity=function(isFirst)
     testResults.push({Expected: -0.01384083044982699, Actual: round(-0.06574394463667815), Description: 'magnitude: 8.5, towards: Infinity given -0.0657439446366782 (half)'});
     testResults.push({Expected: -0.01384083044982699, Actual: round(-0.08), Description: 'magnitude: 8.5, towards: Infinity given -0.08'});
 
-    return TestRunner.displayResults('RoundingMode magnitudeToInfinity', testResults, isFirst);
+    return TestRunner.displayResults('RoundingMode magnitudeToInfinity', testResults, testState);
 };
-TestSuite.divisibleAwayInfinity=function(isFirst)
+TestSuite.divisibleAwayInfinity=function(testState={})
 {
-    TestRunner.clearResults(isFirst);
+    TestRunner.clearResults(testState);
 
     var testResults=[];
     var mode = {divisible: undefined, away: Infinity, toString: function(x){return 'divisible: '+this.divisible+', away: '+this.away+' given '+x;}};
@@ -391,11 +392,11 @@ TestSuite.divisibleAwayInfinity=function(isFirst)
     testResults.push({Expected: -9, Actual: round(-6.75), Description: mode.toString(-6.75)});
     testResults.push({Expected: -9, Actual: round(-8.99), Description: mode.toString(-8.99)});
 
-    return TestRunner.displayResults('RoundingMode divisibleAwayInfinity', testResults, isFirst);
+    return TestRunner.displayResults('RoundingMode divisibleAwayInfinity', testResults, testState);
 };
-TestSuite.magnitudeAwayInfinity=function(isFirst)
+TestSuite.magnitudeAwayInfinity=function(testState={})
 {
-    TestRunner.clearResults(isFirst);
+    TestRunner.clearResults(testState);
 
     var testResults=[];
     var mode = {magnitude: undefined, away: Infinity, toString: function(){return 'magnitude: '+this.magnitude+', away: '+this.away+' given ';}};
@@ -449,11 +450,11 @@ TestSuite.magnitudeAwayInfinity=function(isFirst)
     testResults.push({Expected: -0.11764705882352941, Actual: round(-0.06574394463667815), Description: mode+'-0.0657439446366782 (half)'});
     testResults.push({Expected: -0.11764705882352941, Actual: round(-0.08), Description: mode+'-0.08'});
 
-    return TestRunner.displayResults('RoundingMode magnitudeAwayInfinity', testResults, isFirst);
+    return TestRunner.displayResults('RoundingMode magnitudeAwayInfinity', testResults, testState);
 };
-TestSuite.provided=function(isFirst)
+TestSuite.provided=function(testState={})
 {
-    TestRunner.clearResults(isFirst);
+    TestRunner.clearResults(testState);
 
     var testResults=[];
     var input = [5.5, 2.5, 1.6, 1.1, 1, -1, -1.1, -1.6, -2.5, -5.5];
@@ -499,5 +500,5 @@ TestSuite.provided=function(isFirst)
        testResults.push({Expected: new Error('Assertion failed: The number 0 is exactly half way.'), Actual: e, Description: 'RoundingMode.Assert_Away_From_Half given 0.'});
    }
 
-    return TestRunner.displayResults('RoundingMode provided', testResults, isFirst);
+    return TestRunner.displayResults('RoundingMode provided', testResults, testState);
 };
