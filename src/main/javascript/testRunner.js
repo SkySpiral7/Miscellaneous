@@ -7,6 +7,8 @@
 //TODO: allow servers: have a testAllForServer etc which returns json results (not table string) and doesn't touch document or location
 const TestRunner = {};
 (function(){
+const _hasDom = (typeof window === 'object' && undefined !== window.document);
+
 /**Given the DOM's id this function sets the value property equal to valueToSet then calls onchange.
 No validation is done so if the id is not found it will throw an error.
 It will also throw if there is no onchange defined (instead just set .value directly).*/
@@ -24,7 +26,7 @@ TestRunner.clearResults=function(testState)
    if (false !== testState.runningSingleTest)
    {
       testState._startTime = Date.now();
-      document.getElementById('testResults').value = '';
+      if(_hasDom && null !== document.getElementById('testResults')) document.getElementById('testResults').value = '';
       testState.config = _sanitizeConfig(testState.config);
       testState.config.beforeFirst();
    }
@@ -44,11 +46,17 @@ TestRunner.displayResults=function(tableName, testResults, testState)
       testState.config.afterLast();
       testState._endTime = Date.now();
       output += 'Time taken: ' + TestRunner.formatTestTime(testState._startTime, testState._endTime) + '\n';
-      document.getElementById('testResults').value = output;
-      location.hash = '#testResults';  //scroll to the results
+      if (_hasDom && null !== document.getElementById('testResults'))
+      {
+         //TODO: have it format into string here. above should return json
+         document.getElementById('testResults').value = output;
+         location.hash = '#testResults';  //scroll to the results
+      }
    }
    return input;
 };
+//I could have testState have testResults and methods: assert, assertAll, failedToThrow, error.
+//But that would make testState={} difficult (which every test has) I'd rather not testState=new TestState()
 /**This is a simple way to fail when a test was expected to throw but didn't.*/
 TestRunner.failedToThrow=function(testsSoFar, description)
 {
@@ -200,7 +208,7 @@ The total time taken is displayed (everything is written to "testResults" text a
 TestRunner.testAll=function(testSuite, testConfig)
 {
    var testState = {_startTime: Date.now(), runningSingleTest: false};
-   document.getElementById('testResults').value = '';
+   if(_hasDom && null !== document.getElementById('testResults')) document.getElementById('testResults').value = '';
 
    //testSuite and testConfig defaults can't be self tested
    if(undefined === testSuite) testSuite = TestSuite;
@@ -233,9 +241,14 @@ TestRunner.testAll=function(testSuite, testConfig)
    testState._endTime = Date.now();
    output += 'Time taken: ' + TestRunner.formatTestTime(testState._startTime, testState._endTime) + '\n';
 
-   document.getElementById('testResults').value = output;
-   location.hash = '#testResults';  //scroll to the results
-   //return output;  //don't return because a javascript:TestRunner.testAll(); link would cause it to write over the whole page
+   if (_hasDom && null !== document.getElementById('testResults'))
+   {
+      document.getElementById('testResults').value = output;
+      location.hash = '#testResults';  //scroll to the results
+      //return output;  //don't return because a javascript:TestRunner.testAll(); link would cause it to write over the whole page
+   }
+   //TODO: the whole point was to return JSON results rather than a string (although there could also be a function for string without dom)
+   else return output;
 };
 /**@returns {boolean} true if the input should be compared via .valueOf when determining equality*/
 TestRunner.useValueOf=function(input)
