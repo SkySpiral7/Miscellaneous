@@ -1,12 +1,27 @@
-//Note that throughout this file the word 'suite' means an object that contains any number of test cases and suites
-//This test runner currently doesn't support asynchronous test execution
-//This test runner currently assumes that you have a DOM element #testResults which is a textarea that will have the results put in it
 'use strict';
+/*
+Terms:
+'suite': an object that contains any number of tests and suites
+'test': a function (generally defined under the TestSuite object) that creates assertions
+'assertion': an object with Expected/Actual (or Error), if it has an Outcome then it has already been determined if it passes
 
-//TODO: allow asynchronous: Promise.all (if exists). betweenEach redundantly called. couldn't figure out how to support both in 1 func
-//TODO: allow servers: have a testAllForServer etc which returns json results (not table string) and doesn't touch document or location
+This test runner currently doesn't support asynchronous test execution
+This test runner currently expects you to have a DOM element textarea#testResults that will have the results put in it
+   if you don't have that DOM then the a string table will be returned instead
+*/
+
+//TODO: allow asynchronous: Promise.all (if exists). betweenEach redundantly called. see branch
+/*TODO: allow servers: do in order:
+add start/end times to jsonResults and generateResultTable
+   git commit -am "add start/end times to jsonResults and generateResultTable"
+have toString of json be generateResultTable
+return json or set string based on dom
+git commit -am "TestRunner.testAll either sets DOM or returns JSON"
+done (test with node later)
+ */
 const TestRunner = {};
 (function(){
+/**This is a private global because the value doesn't change.*/
 const _hasDom = (typeof window === 'object' && undefined !== window.document);
 
 /**Given the DOM's id this function sets the value property equal to valueToSet then calls onchange.
@@ -18,8 +33,8 @@ TestRunner.changeValue=function(elementId, valueToSet)
    element.value = valueToSet;
    element.onchange();
 };
-/**Will do nothing if testState.runningSingleTest is false (strict). else this function will clear the testing area, start the timer,
-and call testState.config.beforeFirst (if it is defined) which can be used to setup mocks.*/
+/**Will do nothing if testState.runningSingleTest is false (strict). else this function will clear #testResults (if exists),
+start the timer, and call testState.config.beforeFirst (if it is defined) which can be used to setup mocks.*/
 TestRunner.clearResults=function(testState)
 {
    if(undefined === testState) testState = {runningSingleTest: true};
@@ -31,31 +46,36 @@ TestRunner.clearResults=function(testState)
       testState.config.beforeFirst();
    }
 };
-/**if(testState.runningSingleTest) This function clears out then writes the test results to the "testResults" text area and scrolls to it.
+/**if(testState.runningSingleTest) This function clears out then writes the test results to #testResults and scrolls to it.
 It will call testState.config.afterLast (if it is defined) which can be used to teardown mocks.
-@param {object} testState.config.hidePassed defaults to false. if(!testState.isFirst) ignored else it is passed to TestRunner.generateResultTable
-@returns {object} that can be used by TestRunner.generateResultTable which is used by TestRunner.testAll.*/
-TestRunner.displayResults=function(tableName, testResults, testState)
+@param {string} name the display name of the test
+@param {array} assertions an array of assertions created by the test
+@param {object} testState testState.config.hidePassed defaults to false
+@returns {object || string} if(!testState.runningSingleTest) return object that can be used by TestRunner.processAssertions
+   which is used by TestRunner.testAll.
+   else if DOM exists return undefined
+   else return a string of the test results*/
+TestRunner.displayResults=function(name, assertions, testState)
 {
-   var input = {tableName: tableName, testResults: testResults};
+   var input = {name: name, assertions: assertions};
    if(undefined === testState) testState = {runningSingleTest: true};
    if (false !== testState.runningSingleTest)
    {
       testState.config = _sanitizeConfig(testState.config, false);
-      var output = TestRunner.generateResultTable([input], testState.config);
+      var output = TestRunner.generateResultTable(TestRunner.processAssertions([input], testState.config));
       testState.config.afterLast();
       testState._endTime = Date.now();
       output += 'Time taken: ' + TestRunner.formatTestTime(testState._startTime, testState._endTime) + '\n';
       if (_hasDom && null !== document.getElementById('testResults'))
       {
-         //TODO: have it format into string here. above should return json
          document.getElementById('testResults').value = output;
          location.hash = '#testResults';  //scroll to the results
       }
+      else return output;
    }
    return input;
 };
-//I could have testState have testResults and methods: assert, assertAll, failedToThrow, error.
+//I could have testState contain assertions and methods: assert, assertAll, failedToThrow, error.
 //But that would make testState={} difficult (which every test has) I'd rather not testState=new TestState()
 /**This is a simple way to fail when a test was expected to throw but didn't.*/
 TestRunner.failedToThrow=function(testsSoFar, description)
@@ -127,58 +147,105 @@ TestRunner.formatTestTime=function(startTimeParam, endTimeParam)
    return '' + minutes + ' minutes and ' + seconds.toFixed(3) +' seconds';
    //yes I know that it would display "1 minutes" etc. so change it if you care so much
 };
-/**This function creates the (text) table used to display the test results of a suite.
-Pass and fail counts are counted and added to the grand total and displayed.
-@param {object[][]} suiteResults each assertion for the test suite
-@param {object} testConfig with properties:
-   {boolean} hidePassed if false then the assertions within a table that pass won't display (returns only grand total if all pass)
-   {number} defaultDelta passed to TestRunner.findFirstFailurePath
+/**This function creates a string table used to display the test results of a suite.
+@param {object} resultJson the output of TestRunner.processAssertions
 @returns {string} the a formatted string result*/
-TestRunner.generateResultTable=function(suiteResults, testConfig)
+TestRunner.generateResultTable=function(resultJson)
 {
-   var output = '', suitePassCount = 0, suiteTotalCount = 0;
-   if(true !== testConfig.hidePassed && false !== testConfig.hidePassed)
-      throw new Error('Test error: illegal testConfig.hidePassed: ' + testConfig.hidePassed);
-   for (var tableIndex = 0; tableIndex < suiteResults.length; ++tableIndex)
+   var indentation = '   ';  //3 spaces
+   var output = '';
+   for (var tableIndex = 0; tableIndex < resultJson.tests.length; ++tableIndex)
    {
-      var tablePassCount = 0, tableBody = '';
-      var testResults = suiteResults[tableIndex].testResults;
-      for (var testIndex = 0; testIndex < testResults.length; ++testIndex)
+      var tableBody = '';
+      var thisTable = resultJson.tests[tableIndex];
+      output += '' + thisTable.passCount + '/' + thisTable.total + ': ' + thisTable.name + '\n';
+      for (var testIndex = 0; testIndex < thisTable.assertions.length; ++testIndex)
       {
-         var failPath = TestRunner.findFirstFailurePath(testResults[testIndex], testConfig.defaultDelta);
-         if (undefined === failPath)
+         var thisResult = thisTable.assertions[testIndex];
+         if ('Pass' === thisResult.Outcome)  //thisResult wouldn't exist if config hidePassed
          {
-            ++tablePassCount;
-            if(!testConfig.hidePassed) tableBody += '   Pass: ' + testResults[testIndex].Description + '\n';
+            tableBody += indentation + 'Pass: ' + thisResult.Description + '\n';
          }
          else
          {
-            tableBody += '   Fail: ' + testResults[testIndex].Description + '\n';
-            if (undefined !== testResults[testIndex].Error)
+            tableBody += indentation + 'Fail: ' + thisResult.Description + '\n';
+            if ('Error' === thisResult.Outcome)
             {
-               console.log(testResults[testIndex].Description, testResults[testIndex].Error);  //failPath is always '' so don't log it
-               tableBody += '      Error: ' + testResults[testIndex].Error + '\n';
+               console.log(thisResult.Description, thisResult.Error);  //failPath is always '' so don't log it
+               tableBody += indentation + indentation + 'Error: ' + thisResult.Error + '\n';
             }
             else
             {
-               console.log(testResults[testIndex].Description, 'expected:', testResults[testIndex].Expected,
-                  'actual:', testResults[testIndex].Actual, 'location:', failPath);
-               tableBody += '      Expected: ' + testResults[testIndex].Expected + '\n' +
-                  '      Actual: ' + testResults[testIndex].Actual + '\n';
-                  //failPath isn't useful when looking at the toString
+               console.log(thisResult.Description, 'expected:', thisResult.Expected,
+                  'actual:', thisResult.Actual, 'location:', thisResult.FailPath);
+               tableBody += indentation + indentation + 'Expected: ' + thisResult.Expected + '\n';
+               tableBody += indentation + indentation + 'Actual: ' + thisResult.Actual + '\n';
+               //failPath isn't useful when looking at the toString so don't include in tableBody
+               //TODO: have: Path: a.b Exp: 4 Act: 2
             }
          }
       }
-      if (!testConfig.hidePassed || testResults.length !== tablePassCount)
-      {
-         var tableHeader = '' + tablePassCount + '/' + testResults.length + ': ' + suiteResults[tableIndex].tableName + '\n';
-         output += tableHeader + tableBody;
-      }
-      suitePassCount += tablePassCount;
-      suiteTotalCount += testResults.length;
+      output += tableBody;
    }
    if('' !== output) output += '\n';
-   output += 'Grand total: ' + suitePassCount + '/' +  suiteTotalCount + '\n';
+   output += 'Grand total: ' + resultJson.passCount + '/' +  resultJson.total + '\n';
+   return output;
+};
+/**This function creates a json table which are the processed outcome of suiteResults.
+Pass and fail counts are counted and added to the grand total.
+Note that the totals will not match array lengths when testConfig.hidePassed (and an assertion passes)
+@param {object[]} suiteResults an array of testResults which contains an array of assertions
+@param {object} testConfig with properties:
+{boolean} hidePassed if false then the assertions within a table that pass won't display (returns only grand total if all pass)
+{number} defaultDelta passed to TestRunner.findFirstFailurePath
+@returns {object} the processed results. Will include Outcomes and counts. if(hidePassed) will not include assertions that pass.*/
+TestRunner.processAssertions=function(suiteResults, testConfig)
+{
+   var output = {tests: [], passCount: 0, total: 0};
+   if(true !== testConfig.hidePassed && false !== testConfig.hidePassed)
+      throw new Error('Test error: illegal testConfig.hidePassed: ' + testConfig.hidePassed);
+   for (var testIndex = 0; testIndex < suiteResults.length; ++testIndex)
+   {
+      var passCount = 0, outputAssertions = [];
+      var thisTest = suiteResults[testIndex];
+      for (var assertionIndex = 0; assertionIndex < thisTest.assertions.length; ++assertionIndex)
+      {
+         var thisAssertion = thisTest.assertions[assertionIndex];
+         var failPath = TestRunner.findFirstFailurePath(thisAssertion, testConfig.defaultDelta);
+         if (undefined === failPath)
+         {
+            ++passCount;
+            if (!testConfig.hidePassed)
+            {
+               thisAssertion.Outcome = 'Pass';
+               outputAssertions.push(thisAssertion);
+            }
+         }
+         else if (undefined !== thisAssertion.Error)
+         {
+            thisAssertion.Outcome = 'Error';
+            //failPath is always '' so don't bother including it
+            outputAssertions.push(thisAssertion);
+         }
+         else
+         {
+            thisAssertion.Outcome = 'Fail';
+            thisAssertion.FailPath = failPath;
+            outputAssertions.push(thisAssertion);
+         }
+      }
+      if (!testConfig.hidePassed || thisTest.assertions.length !== passCount)
+      {
+         output.tests.push({
+            passCount: passCount,
+            total: thisTest.assertions.length,
+            name: thisTest.name,
+            assertions: outputAssertions
+         });
+      }
+      output.passCount += passCount;
+      output.total += thisTest.assertions.length;
+   }
    return output;
 };
 /**@returns {boolean} true if the input should be compared via === when determining equality*/
@@ -198,7 +265,9 @@ It will call testConfig.betweenEach (if it is defined) between each test. This c
 It will call testConfig.afterLast (if it is defined) after the last test. This can be used to teardown mocks.
 If the called test function throws, TestRunner.testAll will catch it and display the list of errors when finished
 (and will also send the stack to console.error).
-The total time taken is displayed (everything is written to "testResults" text area) then it scrolls to testResults.
+The total time taken is displayed.
+if(DOM exists) everything is written to #testResults then it scrolls to it
+else returns string of test results
 @param {object} testSuite an object that contains every test to be run. defaults to TestSuite
 @param {object} testConfig an object (defaults to TestConfig) that contains:
    {function} betweenEach if defined it will be called between each test
@@ -234,8 +303,8 @@ TestRunner.testAll=function(testSuite, testConfig)
          }
       }
    }
-   if(0 !== errorTests.length) resultingList.push({tableName: 'TestRunner.testAll', testResults: errorTests});
-   var output = TestRunner.generateResultTable(resultingList, testState.config);
+   if(0 !== errorTests.length) resultingList.push({name: 'TestRunner.testAll', assertions: errorTests});
+   var output = TestRunner.generateResultTable(TestRunner.processAssertions(resultingList, testState.config));
    testState.config.afterLast();  //after generating results in case you have a temporary equals function
 
    testState._endTime = Date.now();
@@ -247,7 +316,6 @@ TestRunner.testAll=function(testSuite, testConfig)
       location.hash = '#testResults';  //scroll to the results
       //return output;  //don't return because a javascript:TestRunner.testAll(); link would cause it to write over the whole page
    }
-   //TODO: the whole point was to return JSON results rather than a string (although there could also be a function for string without dom)
    else return output;
 };
 /**@returns {boolean} true if the input should be compared via .valueOf when determining equality*/
@@ -360,31 +428,31 @@ TestSuite.abilityList.calculateValues=function(testState={})
 {
    TestRunner.clearResults(testState);
 
-   var testResults=[];
+   var assertions=[];
    try{
    TestRunner.changeValue('input', 5);
-   testResults.push({Expected: 5, Actual: document.getElementById('output').value, Description: 'input is copied over on change'});
-   } catch(e){testResults.push({Error: e, Description: 'input is copied over on change'});}  //not expecting an error to be thrown but it was. fail instead of crash
+   assertions.push({Expected: 5, Actual: document.getElementById('output').value, Description: 'input is copied over on change'});
+   } catch(e){assertions.push({Error: e, Description: 'input is copied over on change'});}  //not expecting an error to be thrown but it was. fail instead of crash
 
    try{
-   testResults.push({Expected: NaN, Actual: Math.factorial('Not a number'), Description: 'Math.factorial when passed NaN'});
-   } catch(e){testResults.push({Error: e, Description: 'Math.factorial when passed NaN'});}
+   assertions.push({Expected: NaN, Actual: Math.factorial('Not a number'), Description: 'Math.factorial when passed NaN'});
+   } catch(e){assertions.push({Error: e, Description: 'Math.factorial when passed NaN'});}
 
    try{
    Validator.nonNull(null);
-   TestRunner.failedToThrow(testResults, 'Validator.nonNull did not throw given null.');
+   TestRunner.failedToThrow(assertions, 'Validator.nonNull did not throw given null.');
    }
    catch(e)
    {
-      testResults.push({Expected: new TypeError('Illegal argument: object can\'t be null.'), Actual: e,
+      assertions.push({Expected: new TypeError('Illegal argument: object can\'t be null.'), Actual: e,
          Description: 'Validator.nonNull threw the correct type and message.'});
    }
 
    //be sure to give the test a name here:
-   return TestRunner.displayResults('TestSuite.abilityList.calculateValues', testResults, testState);
+   return TestRunner.displayResults('TestSuite.abilityList.calculateValues', assertions, testState);
 };
 TestSuite.abilityList.unfinishedTest=function(testState={})
 {
-   return {tableName: 'unmade', testResults: []};  //remove this when actual tests exist. ADD TESTS
+   return {name: 'unmade', assertions: []};  //remove this when actual tests exist. ADD TESTS
 };
 */
