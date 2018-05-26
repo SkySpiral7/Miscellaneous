@@ -103,18 +103,18 @@ TestSuite.TestRunner.displayResults=function(testState={})
 
    try{
    resultBox.value = 'no change';
-   input = [{Expected: true, Actual: true, Description: 'Test name'}];
-   expected = {name: 'table name', assertions: [{Expected: true, Actual: true, Description: 'Test name'}]};
-   actual = TestRunner.displayResults('table name', input, {runningSingleTest: false});
+   input = [{Expected: true, Actual: true, Description: 'assertion description'}];
+   expected = {name: 'test name', assertions: [{Expected: true, Actual: true, Description: 'assertion description'}]};
+   actual = TestRunner.displayResults('test name', input, {runningSingleTest: false});
    assertions.push({Expected: expected, Actual: actual, Description: 'Not runningSingleTest: return'});
    assertions.push({Expected: 'no change', Actual: resultBox.value, Description: 'Not runningSingleTest: output'});
    } catch(e){assertions.push({Error: e, Description: 'Not runningSingleTest'});}
 
    try{
    location.hash = '';
-   input = [{Expected: true, Actual: true, Description: 'Test name'}];
-   TestRunner.displayResults('table name', input, {runningSingleTest: true});
-   expected = '1/1: table name\n   Pass: Test name\n\nGrand total: 1/1\nTime taken: ?\n';
+   input = [{Expected: true, Actual: true, Description: 'assertion description'}];
+   TestRunner.displayResults('test name', input, {runningSingleTest: true});
+   expected = '1/1: test name\n   Pass: assertion description\n\nGrand total: 1/1\nTime taken: ?\n';
    actual = resultBox.value.replace(/Time taken:.+/, 'Time taken: ?');
    assertions.push({Expected: expected, Actual: actual, Description: 'runningSingleTest'});
    assertions.push({Expected: '#testResults', Actual: location.hash, Description: 'runningSingleTest scrolls to testResults'});
@@ -122,46 +122,46 @@ TestSuite.TestRunner.displayResults=function(testState={})
    } catch(e){assertions.push({Error: e, Description: 'runningSingleTest'});}
 
    try{
-   input = [{Expected: true, Actual: true, Description: 'Test name'}];
-   TestRunner.displayResults('table name', input);
-   expected = '1/1: table name\n   Pass: Test name\n\nGrand total: 1/1\nTime taken: ?\n';
+   input = [{Expected: true, Actual: true, Description: 'assertion description'}];
+   TestRunner.displayResults('test name', input);
+   expected = '1/1: test name\n   Pass: assertion description\n\nGrand total: 1/1\nTime taken: ?\n';
    actual = resultBox.value.replace(/Time taken:.+/, 'Time taken: ?');
    assertions.push({Expected: expected, Actual: actual, Description: 'runningSingleTest with no arg'});
 
-   input = [{Expected: true, Actual: true, Description: 'Test name'}];
-   TestRunner.displayResults('table name', input, {});
-   expected = '1/1: table name\n   Pass: Test name\n\nGrand total: 1/1\nTime taken: ?\n';
+   input = [{Expected: true, Actual: true, Description: 'assertion description'}];
+   TestRunner.displayResults('test name', input, {});
+   expected = '1/1: test name\n   Pass: assertion description\n\nGrand total: 1/1\nTime taken: ?\n';
    actual = resultBox.value.replace(/Time taken:.+/, 'Time taken: ?');
    assertions.push({Expected: expected, Actual: actual, Description: 'runningSingleTest with empty arg'});
    } catch(e){assertions.push({Error: e, Description: 'runningSingleTest by default'});}
 
    try{
-   input = [{Expected: true, Actual: true, Description: 'Test name'}];
-   TestRunner.displayResults('table name', input, {runningSingleTest: true});
-   expected = '1/1: table name\n   Pass: Test name\n\nGrand total: 1/1\nTime taken: ?\n';
+   input = [{Expected: true, Actual: true, Description: 'assertion description'}];
+   TestRunner.displayResults('test name', input, {runningSingleTest: true});
+   expected = '1/1: test name\n   Pass: assertion description\n\nGrand total: 1/1\nTime taken: ?\n';
    actual = resultBox.value.replace(/Time taken:.+/, 'Time taken: ?');
    assertions.push({Expected: expected, Actual: actual, Description: 'No testConfig defaults hidePassed to false'});
 
-   input = [{Expected: 1, Actual: 2, Description: 'Test name'}];
+   input = [{Expected: 1, Actual: 2, Description: 'assertion description'}];
    inputConfig = {defaultDelta: 5};
-   TestRunner.displayResults('table name', input, {runningSingleTest: true, config: inputConfig});
-   expected = '1/1: table name\n   Pass: Test name\n\nGrand total: 1/1\nTime taken: ?\n';
+   TestRunner.displayResults('test name', input, {runningSingleTest: true, config: inputConfig});
+   expected = '1/1: test name\n   Pass: assertion description\n\nGrand total: 1/1\nTime taken: ?\n';
    actual = resultBox.value.replace(/Time taken:.+/, 'Time taken: ?');
    assertions.push({Expected: expected, Actual: actual, Description: 'No hidePassed to false'});
    assertions.push({Expected: {defaultDelta: 5}, Actual: inputConfig, Description: 'without mutating user config'});
 
-   input = [{Expected: true, Actual: true, Description: 'Test name'}];
-   TestRunner.displayResults('table name', input, {runningSingleTest: true, config: {hidePassed: true}});
+   input = [{Expected: true, Actual: true, Description: 'assertion description'}];
+   TestRunner.displayResults('test name', input, {runningSingleTest: true, config: {hidePassed: true}});
    expected = 'Grand total: 1/1\nTime taken: ?\n';
    actual = resultBox.value.replace(/Time taken:.+/, 'Time taken: ?');
    assertions.push({Expected: expected, Actual: actual, Description: 'hidePassed can be true'});
    } catch(e){assertions.push({Error: e, Description: 'hidePassed'});}
 
    try{
-   input = [{Expected: true, Actual: true, Description: 'Test name'}];
+   input = [{Expected: true, Actual: true, Description: 'assertion description'}];
    var called = false;
    inputConfig = {afterLast: function(){called = true;}};
-   TestRunner.displayResults('table name', input, {runningSingleTest: true, config: inputConfig});
+   TestRunner.displayResults('test name', input, {runningSingleTest: true, config: inputConfig});
    assertions.push({Expected: true, Actual: called, Description: 'Call afterLast'});
    } catch(e){assertions.push({Error: e, Description: 'Call afterLast'});}
 
@@ -319,17 +319,17 @@ TestSuite.TestRunner.generateResultTable=function(testState={})
             {
                passCount: 1,
                total: 1,
-               name: 'Table name',
+               name: 'test name',
                assertions: [
-                  {Expected: true, Actual: true, Description: 'Test name', Outcome: 'Pass'}
+                  {Expected: true, Actual: true, Description: 'assertion description', Outcome: 'Pass'}
                ]
             }
          ],
          passCount: 1,
          total: 1
       };
-   expected  = '1/1: Table name\n';
-   expected += '   Pass: Test name\n';
+   expected  = '1/1: test name\n';
+   expected += '   Pass: assertion description\n';
    expected += '\n';
    expected += 'Grand total: 1/1\n';
    actual = TestRunner.generateResultTable(input);
@@ -342,17 +342,17 @@ TestSuite.TestRunner.generateResultTable=function(testState={})
             {
                passCount: 0,
                total: 1,
-               name: 'Table name',
+               name: 'test name',
                assertions: [
-                  {Error: new TypeError('something bad happened'), Description: 'Test name', Outcome: 'Error'}
+                  {Error: new TypeError('something bad happened'), Description: 'assertion description', Outcome: 'Error'}
                ]
             }
          ],
          passCount: 0,
          total: 1
       };
-      expected  = '0/1: Table name\n';
-      expected += '   Fail: Test name\n';
+      expected  = '0/1: test name\n';
+      expected += '   Fail: assertion description\n';
       expected += '      Error: TypeError: something bad happened\n';
       expected += '\n';
       expected += 'Grand total: 0/1\n';
@@ -366,21 +366,21 @@ TestSuite.TestRunner.generateResultTable=function(testState={})
             {
                passCount: 0,
                total: 2,
-               name: 'Table name',
+               name: 'test name',
                assertions: [
-                  {Expected: {a: 1}, Actual: {a: 2}, Description: 'Test name 3', Outcome: 'Fail', FailPath: '"a"'},
-                  {Expected: /d/, Actual: /f/, Description: 'Test name 2', Outcome: 'Fail', FailPath: ''}
+                  {Expected: {a: 1}, Actual: {a: 2}, Description: 'assertion description 1', Outcome: 'Fail', FailPath: '"a"'},
+                  {Expected: /d/, Actual: /f/, Description: 'assertion description 2', Outcome: 'Fail', FailPath: ''}
                ]
             }
          ],
          passCount: 0,
          total: 2
       };
-      expected  = '0/2: Table name\n';
-      expected += '   Fail: Test name 3\n';
+      expected  = '0/2: test name\n';
+      expected += '   Fail: assertion description 1\n';
       expected += '      Expected: [object Object]\n';
       expected += '      Actual: [object Object]\n';
-      expected += '   Fail: Test name 2\n';
+      expected += '   Fail: assertion description 2\n';
       expected += '      Expected: /d/\n';
       expected += '      Actual: /f/\n';
       expected += '\n';
@@ -395,35 +395,35 @@ TestSuite.TestRunner.generateResultTable=function(testState={})
             {
                passCount: 1,
                total: 2,
-               name: 'table 1',
+               name: 'test 1',
                assertions: [
-                  {Expected: true, Actual: true, Description: 'Test name 1', Outcome: 'Pass'},
-                  {Expected: /2/, Actual: /2.1/, Description: 'Test name 2', Outcome: 'Fail', FailPath: ''}
+                  {Expected: true, Actual: true, Description: 'assertion description 1', Outcome: 'Pass'},
+                  {Expected: /2/, Actual: /2.1/, Description: 'assertion description 2', Outcome: 'Fail', FailPath: ''}
                ]
             },
             {
                passCount: 1,
                total: 2,
-               name: 'table 2',
+               name: 'test 2',
                assertions: [
-                  {Expected: {a: 1}, Actual: {a: 2}, Description: 'Test name 3', Outcome: 'Fail', FailPath: '"a"'},
-                  {Expected: false, Actual: false, Description: 'Test name 4', Outcome: 'Pass'}
+                  {Expected: {a: 1}, Actual: {a: 2}, Description: 'assertion description 3', Outcome: 'Fail', FailPath: '"a"'},
+                  {Expected: false, Actual: false, Description: 'assertion description 4', Outcome: 'Pass'}
                ]
             }
          ],
          passCount: 2,
          total: 4
       };
-      expected  = '1/2: table 1\n';
-      expected += '   Pass: Test name 1\n';
-      expected += '   Fail: Test name 2\n';
+      expected  = '1/2: test 1\n';
+      expected += '   Pass: assertion description 1\n';
+      expected += '   Fail: assertion description 2\n';
       expected += '      Expected: /2/\n';
       expected += '      Actual: /2.1/\n';
-      expected += '1/2: table 2\n';
-      expected += '   Fail: Test name 3\n';
+      expected += '1/2: test 2\n';
+      expected += '   Fail: assertion description 3\n';
       expected += '      Expected: [object Object]\n';
       expected += '      Actual: [object Object]\n';
-      expected += '   Pass: Test name 4\n';
+      expected += '   Pass: assertion description 4\n';
       expected += '\n';
       expected += 'Grand total: 2/4\n';
       actual = TestRunner.generateResultTable(input);
@@ -469,16 +469,16 @@ TestSuite.TestRunner.processAssertions=function(testState={})
    }
 
    try{
-      input = [{name: 'Table name'}];
-      input[0].assertions = [{Expected: true, Actual: true, Description: 'Test name'}];
+      input = [{name: 'test name'}];
+      input[0].assertions = [{Expected: true, Actual: true, Description: 'assertion description'}];
       expected = {
          tests: [
             {
                passCount: 1,
                total: 1,
-               name: 'Table name',
+               name: 'test name',
                assertions: [
-                  {Expected: true, Actual: true, Description: 'Test name', Outcome: 'Pass'}
+                  {Expected: true, Actual: true, Description: 'assertion description', Outcome: 'Pass'}
                ]
             }
          ],
@@ -490,8 +490,8 @@ TestSuite.TestRunner.processAssertions=function(testState={})
    } catch(e){assertions.push({Error: e, Description: 'Happy path: !hidePassed && assertions.length === passCount'});}
 
    try{
-      input = [{name: 'Table name'}];
-      input[0].assertions = [{Expected: true, Actual: true, Description: 'Test name'}];
+      input = [{name: 'test name'}];
+      input[0].assertions = [{Expected: true, Actual: true, Description: 'assertion description'}];
       expected = {
          tests: [],
          passCount: 1,
@@ -502,17 +502,17 @@ TestSuite.TestRunner.processAssertions=function(testState={})
    } catch(e){assertions.push({Error: e, Description: 'hidePassed && assertions.length === passCount'});}
 
    try{
-      input = [{name: 'Table name',
-         assertions: [{Error: new TypeError('something bad happened'), Description: 'Test name'}]
+      input = [{name: 'test name',
+         assertions: [{Error: new TypeError('something bad happened'), Description: 'assertion description'}]
       }];
       expected = {
          tests: [
             {
                passCount: 0,
                total: 1,
-               name: 'Table name',
+               name: 'test name',
                assertions: [
-                  {Error: new TypeError('something bad happened'), Description: 'Test name', Outcome: 'Error'}
+                  {Error: new TypeError('something bad happened'), Description: 'assertion description', Outcome: 'Error'}
                ]
             }
          ],
@@ -524,20 +524,20 @@ TestSuite.TestRunner.processAssertions=function(testState={})
    } catch(e){assertions.push({Error: e, Description: 'has Error'});}
 
    try{
-      input = [{name: 'Table name',
+      input = [{name: 'test name',
          assertions: [
-            {Expected: {a: 1}, Actual: {a: 2}, Description: 'Test name 3'},
-            {Expected: /d/, Actual: /f/, Description: 'Test name 2'}
+            {Expected: {a: 1}, Actual: {a: 2}, Description: 'assertion description 1'},
+            {Expected: /d/, Actual: /f/, Description: 'assertion description 2'}
          ]}];
       expected = {
          tests: [
             {
                passCount: 0,
                total: 2,
-               name: 'Table name',
+               name: 'test name',
                assertions: [
-                  {Expected: {a: 1}, Actual: {a: 2}, Description: 'Test name 3', Outcome: 'Fail', FailPath: '"a"'},
-                  {Expected: /d/, Actual: /f/, Description: 'Test name 2', Outcome: 'Fail', FailPath: ''}
+                  {Expected: {a: 1}, Actual: {a: 2}, Description: 'assertion description 1', Outcome: 'Fail', FailPath: '"a"'},
+                  {Expected: /d/, Actual: /f/, Description: 'assertion description 2', Outcome: 'Fail', FailPath: ''}
                ]
             }
          ],
@@ -549,20 +549,20 @@ TestSuite.TestRunner.processAssertions=function(testState={})
    } catch(e){assertions.push({Error: e, Description: 'has failure'});}
 
    try{
-      input = [{name: 'Table name',
+      input = [{name: 'test name',
          assertions: [
-            {Expected: true, Actual: true, Description: 'Test name 1'},
-            {Expected: /d/, Actual: /f/, Description: 'Test name 2'}
+            {Expected: true, Actual: true, Description: 'assertion description 1'},
+            {Expected: /d/, Actual: /f/, Description: 'assertion description 2'}
          ]}];
       expected = {
          tests: [
             {
                passCount: 1,
                total: 2,
-               name: 'Table name',
+               name: 'test name',
                assertions: [
-                  {Expected: true, Actual: true, Description: 'Test name 1', Outcome: 'Pass'},
-                  {Expected: /d/, Actual: /f/, Description: 'Test name 2', Outcome: 'Fail', FailPath: ''}
+                  {Expected: true, Actual: true, Description: 'assertion description 1', Outcome: 'Pass'},
+                  {Expected: /d/, Actual: /f/, Description: 'assertion description 2', Outcome: 'Fail', FailPath: ''}
                ]
             }
          ],
@@ -574,19 +574,19 @@ TestSuite.TestRunner.processAssertions=function(testState={})
    } catch(e){assertions.push({Error: e, Description: '!hidePassed && assertions.length !== passCount'});}
 
    try{
-      input = [{name: 'Table name',
+      input = [{name: 'test name',
          assertions: [
-            {Expected: true, Actual: true, Description: 'Test name 1'},
-            {Expected: /d/, Actual: /f/, Description: 'Test name 2'}
+            {Expected: true, Actual: true, Description: 'assertion description 1'},
+            {Expected: /d/, Actual: /f/, Description: 'assertion description 2'}
          ]}];
       expected = {
          tests: [
             {
                passCount: 1,
                total: 2,
-               name: 'Table name',
+               name: 'test name',
                assertions: [
-                  {Expected: /d/, Actual: /f/, Description: 'Test name 2', Outcome: 'Fail', FailPath: ''}
+                  {Expected: /d/, Actual: /f/, Description: 'assertion description 2', Outcome: 'Fail', FailPath: ''}
                ]
             }
          ],
@@ -600,17 +600,17 @@ TestSuite.TestRunner.processAssertions=function(testState={})
    try{
       input = [
          {
-            name: 'table 1',
+            name: 'test 1',
             assertions: [
-               {Expected: true, Actual: true, Description: 'Test name 1'},
-               {Expected: /2/, Actual: /2.1/, Description: 'Test name 2'}
+               {Expected: true, Actual: true, Description: 'assertion description 1'},
+               {Expected: /2/, Actual: /2.1/, Description: 'assertion description 2'}
             ]
          },
          {
-            name: 'table 2',
+            name: 'test 2',
             assertions: [
-               {Expected: {a: 1}, Actual: {a: 2}, Description: 'Test name 3'},
-               {Expected: false, Actual: false, Description: 'Test name 4'}
+               {Expected: {a: 1}, Actual: {a: 2}, Description: 'assertion description 3'},
+               {Expected: false, Actual: false, Description: 'assertion description 4'}
             ]
          }
       ];
@@ -619,19 +619,19 @@ TestSuite.TestRunner.processAssertions=function(testState={})
             {
                passCount: 1,
                total: 2,
-               name: 'table 1',
+               name: 'test 1',
                assertions: [
-                  {Expected: true, Actual: true, Description: 'Test name 1', Outcome: 'Pass'},
-                  {Expected: /2/, Actual: /2.1/, Description: 'Test name 2', Outcome: 'Fail', FailPath: ''}
+                  {Expected: true, Actual: true, Description: 'assertion description 1', Outcome: 'Pass'},
+                  {Expected: /2/, Actual: /2.1/, Description: 'assertion description 2', Outcome: 'Fail', FailPath: ''}
                ]
             },
             {
                passCount: 1,
                total: 2,
-               name: 'table 2',
+               name: 'test 2',
                assertions: [
-                  {Expected: {a: 1}, Actual: {a: 2}, Description: 'Test name 3', Outcome: 'Fail', FailPath: '"a"'},
-                  {Expected: false, Actual: false, Description: 'Test name 4', Outcome: 'Pass'}
+                  {Expected: {a: 1}, Actual: {a: 2}, Description: 'assertion description 3', Outcome: 'Fail', FailPath: '"a"'},
+                  {Expected: false, Actual: false, Description: 'assertion description 4', Outcome: 'Pass'}
                ]
             }
          ],
@@ -718,11 +718,11 @@ TestSuite.TestRunner.testAll=function(testState={})
       beforeFirst: function(){++beforeFirstCount;}, betweenEach: function(){++betweenCount;}, afterLast: function(){++afterLastCount;},
       defaultDelta: 0, hidePassed: true
    };
-   var passTest = function(){return {name: 'Pass table', assertions:[
+   var passTest = function(){return {name: 'Pass test', assertions:[
       {Expected: true, Actual: true, Description: 'Desc 1'},
       {Expected: true, Actual: true, Description: 'Desc 2'}
    ]}};
-   var failTest = function(){return {name: 'Fail table', assertions: [{Expected: true, Actual: false, Description: 'Desc'}]}};
+   var failTest = function(){return {name: 'Fail test', assertions: [{Expected: true, Actual: false, Description: 'Desc'}]}};
    var errorTest = function(){throw new Error('I\'m sorry guys but I just can\'t.');};
 
    try{
@@ -743,7 +743,7 @@ TestSuite.TestRunner.testAll=function(testState={})
    try{
    var orderString = '';
    var passTable = {
-      name: 'Pass table', assertions: [
+      name: 'Pass test', assertions: [
          {Expected: true, Actual: true, Description: 'Desc'}
       ]
    };
@@ -808,7 +808,7 @@ TestSuite.TestRunner.testAll=function(testState={})
    try{
    betweenCount = 0;
    testSuite = {testTable1: errorTest, testTable2: failTest};
-   expected = '0/1: Fail table\n   Fail: Desc\n      Expected: true\n      Actual: false\n';
+   expected = '0/1: Fail test\n   Fail: Desc\n      Expected: true\n      Actual: false\n';
    expected += '0/1: TestRunner.testAll\n   Fail: testTable1\n      Error: Error: I\'m sorry guys but I just can\'t.\n';
    expected += '\nGrand total: 0/2\nTime taken: ?\n';
 
@@ -836,7 +836,7 @@ TestSuite.TestRunner.testAll=function(testState={})
    } catch(e){assertions.push({Error: e, Description: 'No between'});}
 
    try{
-   testSuite = {testTable: function(){return {name: 'Off table', assertions:[
+   testSuite = {testTable: function(){return {name: 'Off test', assertions:[
       {Expected: 1, Actual: 5, Description: '4 Off'}
    ]}}};
    expected = 'Grand total: 1/1\nTime taken: ?\n';
@@ -847,19 +847,19 @@ TestSuite.TestRunner.testAll=function(testState={})
    } catch(e){assertions.push({Error: e, Description: 'IT: defaultDelta is passed all the way down'});}
 
    try{
-   testSuite = {testTable: function(){return {name: 'Pass table', assertions:[
+   testSuite = {testTable: function(){return {name: 'Pass test', assertions:[
       {Expected: true, Actual: true, Description: 'Seems logical'}
    ]}}};
-   expected = '1/1: Pass table\n   Pass: Seems logical\n\nGrand total: 1/1\nTime taken: ?\n';
+   expected = '1/1: Pass test\n   Pass: Seems logical\n\nGrand total: 1/1\nTime taken: ?\n';
 
    TestRunner.testAll(testSuite, {hidePassed: false});
    actual = resultBox.value.replace(/Time taken:.+/, 'Time taken: ?');
    assertions.push({Expected: expected, Actual: actual, Description: 'IT: hidePassed is passed all the way down'});
 
-   testSuite = {testTable1: errorTest, testTable2: function(){return {name: 'Pass table', assertions:[
+   testSuite = {testTable1: errorTest, testTable2: function(){return {name: 'Pass test', assertions:[
       {Expected: true, Actual: true, Description: 'Seems logical'}
    ]}}};
-   expected = '1/1: Pass table\n   Pass: Seems logical\n';
+   expected = '1/1: Pass test\n   Pass: Seems logical\n';
    expected += '0/1: TestRunner.testAll\n   Fail: testTable1\n      Error: Error: I\'m sorry guys but I just can\'t.\n';
    expected += '\nGrand total: 1/2\nTime taken: ?\n';
    TestRunner.testAll(testSuite, {hidePassed: false});
