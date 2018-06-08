@@ -512,12 +512,20 @@ TestSuite.TestRunner.processResults=function(testState={})
          total: 1,
          startTime: 123,
          endTime: 0,
-         duration: 0
+         duration: 45
       };
+      var expectedString  = '1/1: test name\n';
+      expectedString += '   Pass: assertion description\n';
+      expectedString += '\n';
+      expectedString += 'Grand total: 1/1\n';
+      expectedString += 'Time taken: 0.045 seconds\n';
       actual = TestRunner.processResults(input, {config: {hidePassed: false}, _startTime: 123});
       actual.endTime = 0;
-      actual.duration = 0;
+      actual.duration = 45;
+      var actualString = actual.toString();
+      delete actual.toString;
       assertions.push({Expected: expected, Actual: actual, Description: 'Happy path: !hidePassed && assertions.length === passCount'});
+      assertions.push({Expected: expectedString, Actual: actualString, Description: 'Happy path: toString()'});
    } catch(e){assertions.push({Error: e, Description: 'Happy path: !hidePassed && assertions.length === passCount'});}
 
    try{
@@ -534,6 +542,7 @@ TestSuite.TestRunner.processResults=function(testState={})
       actual = TestRunner.processResults(input, {config: {hidePassed: true}, _startTime: 123});
       actual.endTime = 0;
       actual.duration = 0;
+      delete actual.toString;
       assertions.push({Expected: expected, Actual: actual, Description: 'hidePassed && assertions.length === passCount'});
    } catch(e){assertions.push({Error: e, Description: 'hidePassed && assertions.length === passCount'});}
 
@@ -561,6 +570,7 @@ TestSuite.TestRunner.processResults=function(testState={})
       actual = TestRunner.processResults(input, {config: {hidePassed: false}, _startTime: 123});
       actual.endTime = 0;
       actual.duration = 0;
+      delete actual.toString;
       assertions.push({Expected: expected, Actual: actual, Description: 'has Error'});
    } catch(e){assertions.push({Error: e, Description: 'has Error'});}
 
@@ -591,6 +601,7 @@ TestSuite.TestRunner.processResults=function(testState={})
       actual = TestRunner.processResults(input, {config: {hidePassed: true}, _startTime: 123});
       actual.endTime = 0;
       actual.duration = 0;
+      delete actual.toString;
       assertions.push({Expected: expected, Actual: actual, Description: 'has failure'});
    } catch(e){assertions.push({Error: e, Description: 'has failure'});}
 
@@ -621,6 +632,7 @@ TestSuite.TestRunner.processResults=function(testState={})
       actual = TestRunner.processResults(input, {config: {hidePassed: false}, _startTime: 123});
       actual.endTime = 0;
       actual.duration = 0;
+      delete actual.toString;
       assertions.push({Expected: expected, Actual: actual, Description: '!hidePassed && assertions.length !== passCount'});
    } catch(e){assertions.push({Error: e, Description: '!hidePassed && assertions.length !== passCount'});}
 
@@ -650,6 +662,7 @@ TestSuite.TestRunner.processResults=function(testState={})
       actual = TestRunner.processResults(input, {config: {hidePassed: true}, _startTime: 123});
       actual.endTime = 0;
       actual.duration = 0;
+      delete actual.toString;
       assertions.push({Expected: expected, Actual: actual, Description: 'hidePassed && assertions.length !== passCount'});
    } catch(e){assertions.push({Error: e, Description: 'hidePassed && assertions.length !== passCount'});}
 
@@ -700,6 +713,7 @@ TestSuite.TestRunner.processResults=function(testState={})
       actual = TestRunner.processResults(input, {config: {hidePassed: false}, _startTime: 123});
       actual.endTime = 0;
       actual.duration = 0;
+      delete actual.toString;
       assertions.push({Expected: expected, Actual: actual, Description: 'loops: 2 tests of 2 assertions'});
    } catch(e){assertions.push({Error: e, Description: 'loops: 2 tests of 2 assertions'});}
 
@@ -715,6 +729,7 @@ TestSuite.TestRunner.processResults=function(testState={})
       actual = TestRunner.processResults([], {config: {hidePassed: false}, _startTime: 25});
       actual.endTime = 0;
       actual.duration = 0;
+      delete actual.toString;
       assertions.push({Expected: expected, Actual: actual, Description: 'No tests'});
    } catch(e){assertions.push({Error: e, Description: 'No tests'});}
 

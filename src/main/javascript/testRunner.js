@@ -6,17 +6,12 @@ Terms:
 'assertion': an object with Expected/Actual (or Error), if it has an Outcome then it has already been determined if it passes
 
 This test runner currently doesn't support asynchronous test execution
-This test runner currently expects you to have a DOM element textarea#testResults that will have the results put in it
-   if you don't have that DOM then the a string table will be returned instead
+If you have a DOM element textarea#testResults that will have the results put in it
+   if you don't have that DOM then the json results will be returned instead
 */
 
 //TODO: allow asynchronous: Promise.all (if exists). betweenEach redundantly called. see branch
-/*TODO: allow servers: do in order:
-have toString of json be generateResultTable
-return json or set string based on dom
-git commit -am "TestRunner.testAll either sets DOM or returns JSON"
-done (test with node later)
- */
+//TODO: test with node to confirm that it works for servers
 const TestRunner = {};
 (function(){
 /**This is a private global because the value doesn't change.*/
@@ -60,12 +55,12 @@ TestRunner.displayResults=function(name, assertions, testState)
    if (false !== testState.runningSingleTest)
    {
       testState.config = _sanitizeConfig(testState.config, false);
-      var output = TestRunner.generateResultTable(TestRunner.processResults([input], testState));
+      var output = TestRunner.processResults([input], testState);
       //afterLast should be run after processResults so that equals functions could be removed
       testState.config.afterLast();
       if (_hasDom && null !== document.getElementById('testResults'))
       {
-         document.getElementById('testResults').value = output;
+         document.getElementById('testResults').value = output.toString();
          location.hash = '#testResults';  //scroll to the results
       }
       else return output;
@@ -247,6 +242,7 @@ TestRunner.processResults=function(suiteResults, testState)
    output.startTime = testState._startTime;
    output.endTime = testState._endTime;
    output.duration = (testState._endTime - testState._startTime);
+   output.toString=function(){return TestRunner.generateResultTable(this);};
    return output;
 };
 /**@returns {boolean} true if the input should be compared via === when determining equality*/
@@ -305,13 +301,13 @@ TestRunner.testAll=function(testSuite, testConfig)
       }
    }
    if(0 !== errorTests.length) resultingList.push({name: 'TestRunner.testAll', assertions: errorTests});
-   var output = TestRunner.generateResultTable(TestRunner.processResults(resultingList, testState));
+   var output = TestRunner.processResults(resultingList, testState);
    //afterLast should be run after processResults so that equals functions could be removed
    testState.config.afterLast();
 
    if (_hasDom && null !== document.getElementById('testResults'))
    {
-      document.getElementById('testResults').value = output;
+      document.getElementById('testResults').value = output.toString();
       location.hash = '#testResults';  //scroll to the results
       //return output;  //don't return because a javascript:TestRunner.testAll(); link would cause it to write over the whole page
    }
