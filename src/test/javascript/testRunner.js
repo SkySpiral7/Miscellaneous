@@ -289,19 +289,19 @@ TestSuite.TestRunner.formatTestTime=function(testState={})
 
    try{
    expected = '0.100 seconds';
-   actual = TestRunner.formatTestTime(20, 120);
+   actual = TestRunner.formatTestTime(100);
    assertions.push({Expected: expected, Actual: actual, Description: 'milliseconds only'});
    } catch(e){assertions.push({Error: e, Description: 'milliseconds only'});}
 
    try{
    expected = '1 minutes and 3.123 seconds';
-   actual = TestRunner.formatTestTime(0, 63123);
+   actual = TestRunner.formatTestTime(63123);
    assertions.push({Expected: expected, Actual: actual, Description: 'each'});
    } catch(e){assertions.push({Error: e, Description: 'each'});}
 
    try{
    expected = '61 minutes and 0.000 seconds';
-   actual = TestRunner.formatTestTime(0, 3660000);
+   actual = TestRunner.formatTestTime(3660000);
    assertions.push({Expected: expected, Actual: actual, Description: 'no hours'});
    } catch(e){assertions.push({Error: e, Description: 'no hours'});}
 
@@ -326,12 +326,16 @@ TestSuite.TestRunner.generateResultTable=function(testState={})
             }
          ],
          passCount: 1,
-         total: 1
+         total: 1,
+         startTime: 0,
+         endTime: 0,
+         duration: 123
       };
    expected  = '1/1: test name\n';
    expected += '   Pass: assertion description\n';
    expected += '\n';
    expected += 'Grand total: 1/1\n';
+   expected += 'Time taken: 0.123 seconds\n';
    actual = TestRunner.generateResultTable(input);
    assertions.push({Expected: expected, Actual: actual, Description: 'Happy path: 1 pass'});
    } catch(e){assertions.push({Error: e, Description: 'Happy path: 1 pass'});}
@@ -349,13 +353,17 @@ TestSuite.TestRunner.generateResultTable=function(testState={})
             }
          ],
          passCount: 0,
-         total: 1
+         total: 1,
+         startTime: 0,
+         endTime: 0,
+         duration: 123
       };
       expected  = '0/1: test name\n';
       expected += '   Fail: assertion description\n';
       expected += '      Error: TypeError: something bad happened\n';
       expected += '\n';
       expected += 'Grand total: 0/1\n';
+      expected += 'Time taken: 0.123 seconds\n';
       actual = TestRunner.generateResultTable(input);
       assertions.push({Expected: expected, Actual: actual, Description: 'has Error'});
    } catch(e){assertions.push({Error: e, Description: 'has Error'});}
@@ -374,7 +382,10 @@ TestSuite.TestRunner.generateResultTable=function(testState={})
             }
          ],
          passCount: 0,
-         total: 2
+         total: 2,
+         startTime: 0,
+         endTime: 0,
+         duration: 123
       };
       expected  = '0/2: test name\n';
       expected += '   Fail: assertion description 1\n';
@@ -385,6 +396,7 @@ TestSuite.TestRunner.generateResultTable=function(testState={})
       expected += '      Actual: /f/\n';
       expected += '\n';
       expected += 'Grand total: 0/2\n';
+      expected += 'Time taken: 0.123 seconds\n';
       actual = TestRunner.generateResultTable(input);
       assertions.push({Expected: expected, Actual: actual, Description: 'has failure'});
    } catch(e){assertions.push({Error: e, Description: 'has failure'});}
@@ -412,7 +424,10 @@ TestSuite.TestRunner.generateResultTable=function(testState={})
             }
          ],
          passCount: 2,
-         total: 4
+         total: 4,
+         startTime: 0,
+         endTime: 0,
+         duration: 123
       };
       expected  = '1/2: test 1\n';
       expected += '   Pass: assertion description 1\n';
@@ -426,6 +441,7 @@ TestSuite.TestRunner.generateResultTable=function(testState={})
       expected += '   Pass: assertion description 4\n';
       expected += '\n';
       expected += 'Grand total: 2/4\n';
+      expected += 'Time taken: 0.123 seconds\n';
       actual = TestRunner.generateResultTable(input);
       assertions.push({Expected: expected, Actual: actual, Description: 'loops: 2 tests of 2 assertions'});
    } catch(e){assertions.push({Error: e, Description: 'loops: 2 tests of 2 assertions'});}
@@ -434,32 +450,42 @@ TestSuite.TestRunner.generateResultTable=function(testState={})
       input = {
          tests: [],
          passCount: 16,
-         total: 16
+         total: 16,
+         startTime: 0,
+         endTime: 0,
+         duration: 123
       };
       actual = TestRunner.generateResultTable(input);
-      assertions.push({Expected: 'Grand total: 16/16\n', Actual: actual, Description: 'All tests hidden'});
+      expected  = 'Grand total: 16/16\n';
+      expected += 'Time taken: 0.123 seconds\n';
+      assertions.push({Expected: expected, Actual: actual, Description: 'All tests hidden'});
    } catch(e){assertions.push({Error: e, Description: 'All tests hidden'});}
 
    try{
       input = {
          tests: [],
          passCount: 0,
-         total: 0
+         total: 0,
+         startTime: 0,
+         endTime: 0,
+         duration: 61100
       };
    actual = TestRunner.generateResultTable(input);
-   assertions.push({Expected: 'Grand total: 0/0\n', Actual: actual, Description: 'No tests'});
+   expected  = 'Grand total: 0/0\n';
+   expected += 'Time taken: 1 minutes and 1.100 seconds\n';
+   assertions.push({Expected: expected, Actual: actual, Description: 'No tests'});
    } catch(e){assertions.push({Error: e, Description: 'No tests'});}
 
    return TestRunner.displayResults('meta: TestRunner.generateResultTable', assertions, testState);
 };
-TestSuite.TestRunner.processAssertions=function(testState={})
+TestSuite.TestRunner.processResults=function(testState={})
 {
    TestRunner.clearResults(testState);
 
    var assertions = [], actual, input, expected;
 
    try{
-      TestRunner.processAssertions([], {defaultDelta: 1});
+      TestRunner.processResults([], {config: {defaultDelta: 1}});
       TestRunner.failedToThrow(assertions, 'hidePassed is required');
    }
    catch(e)
@@ -483,9 +509,14 @@ TestSuite.TestRunner.processAssertions=function(testState={})
             }
          ],
          passCount: 1,
-         total: 1
+         total: 1,
+         startTime: 123,
+         endTime: 0,
+         duration: 0
       };
-      actual = TestRunner.processAssertions(input, {hidePassed: false});
+      actual = TestRunner.processResults(input, {config: {hidePassed: false}, _startTime: 123});
+      actual.endTime = 0;
+      actual.duration = 0;
       assertions.push({Expected: expected, Actual: actual, Description: 'Happy path: !hidePassed && assertions.length === passCount'});
    } catch(e){assertions.push({Error: e, Description: 'Happy path: !hidePassed && assertions.length === passCount'});}
 
@@ -495,9 +526,14 @@ TestSuite.TestRunner.processAssertions=function(testState={})
       expected = {
          tests: [],
          passCount: 1,
-         total: 1
+         total: 1,
+         startTime: 123,
+         endTime: 0,
+         duration: 0
       };
-      actual = TestRunner.processAssertions(input, {hidePassed: true});
+      actual = TestRunner.processResults(input, {config: {hidePassed: true}, _startTime: 123});
+      actual.endTime = 0;
+      actual.duration = 0;
       assertions.push({Expected: expected, Actual: actual, Description: 'hidePassed && assertions.length === passCount'});
    } catch(e){assertions.push({Error: e, Description: 'hidePassed && assertions.length === passCount'});}
 
@@ -517,9 +553,14 @@ TestSuite.TestRunner.processAssertions=function(testState={})
             }
          ],
          passCount: 0,
-         total: 1
+         total: 1,
+         startTime: 123,
+         endTime: 0,
+         duration: 0
       };
-      actual = TestRunner.processAssertions(input, {hidePassed: false});
+      actual = TestRunner.processResults(input, {config: {hidePassed: false}, _startTime: 123});
+      actual.endTime = 0;
+      actual.duration = 0;
       assertions.push({Expected: expected, Actual: actual, Description: 'has Error'});
    } catch(e){assertions.push({Error: e, Description: 'has Error'});}
 
@@ -542,9 +583,14 @@ TestSuite.TestRunner.processAssertions=function(testState={})
             }
          ],
          passCount: 0,
-         total: 2
+         total: 2,
+         startTime: 123,
+         endTime: 0,
+         duration: 0
       };
-      actual = TestRunner.processAssertions(input, {hidePassed: true});
+      actual = TestRunner.processResults(input, {config: {hidePassed: true}, _startTime: 123});
+      actual.endTime = 0;
+      actual.duration = 0;
       assertions.push({Expected: expected, Actual: actual, Description: 'has failure'});
    } catch(e){assertions.push({Error: e, Description: 'has failure'});}
 
@@ -567,9 +613,14 @@ TestSuite.TestRunner.processAssertions=function(testState={})
             }
          ],
          passCount: 1,
-         total: 2
+         total: 2,
+         startTime: 123,
+         endTime: 0,
+         duration: 0
       };
-      actual = TestRunner.processAssertions(input, {hidePassed: false});
+      actual = TestRunner.processResults(input, {config: {hidePassed: false}, _startTime: 123});
+      actual.endTime = 0;
+      actual.duration = 0;
       assertions.push({Expected: expected, Actual: actual, Description: '!hidePassed && assertions.length !== passCount'});
    } catch(e){assertions.push({Error: e, Description: '!hidePassed && assertions.length !== passCount'});}
 
@@ -591,9 +642,14 @@ TestSuite.TestRunner.processAssertions=function(testState={})
             }
          ],
          passCount: 1,
-         total: 2
+         total: 2,
+         startTime: 123,
+         endTime: 0,
+         duration: 0
       };
-      actual = TestRunner.processAssertions(input, {hidePassed: true});
+      actual = TestRunner.processResults(input, {config: {hidePassed: true}, _startTime: 123});
+      actual.endTime = 0;
+      actual.duration = 0;
       assertions.push({Expected: expected, Actual: actual, Description: 'hidePassed && assertions.length !== passCount'});
    } catch(e){assertions.push({Error: e, Description: 'hidePassed && assertions.length !== passCount'});}
 
@@ -636,9 +692,14 @@ TestSuite.TestRunner.processAssertions=function(testState={})
             }
          ],
          passCount: 2,
-         total: 4
+         total: 4,
+         startTime: 123,
+         endTime: 0,
+         duration: 0
       };
-      actual = TestRunner.processAssertions(input, {hidePassed: false});
+      actual = TestRunner.processResults(input, {config: {hidePassed: false}, _startTime: 123});
+      actual.endTime = 0;
+      actual.duration = 0;
       assertions.push({Expected: expected, Actual: actual, Description: 'loops: 2 tests of 2 assertions'});
    } catch(e){assertions.push({Error: e, Description: 'loops: 2 tests of 2 assertions'});}
 
@@ -646,13 +707,18 @@ TestSuite.TestRunner.processAssertions=function(testState={})
       expected = {
          tests: [],
          passCount: 0,
-         total: 0
+         total: 0,
+         startTime: 25,
+         endTime: 0,
+         duration: 0
       };
-      actual = TestRunner.processAssertions([], {hidePassed: false});
+      actual = TestRunner.processResults([], {config: {hidePassed: false}, _startTime: 25});
+      actual.endTime = 0;
+      actual.duration = 0;
       assertions.push({Expected: expected, Actual: actual, Description: 'No tests'});
    } catch(e){assertions.push({Error: e, Description: 'No tests'});}
 
-   return TestRunner.displayResults('meta: TestRunner.processAssertions', assertions, testState);
+   return TestRunner.displayResults('meta: TestRunner.processResults', assertions, testState);
 };
 TestSuite.TestRunner.isPrimitive=function(testState={})
 {

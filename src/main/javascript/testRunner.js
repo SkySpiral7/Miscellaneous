@@ -12,8 +12,6 @@ This test runner currently expects you to have a DOM element textarea#testResult
 
 //TODO: allow asynchronous: Promise.all (if exists). betweenEach redundantly called. see branch
 /*TODO: allow servers: do in order:
-add start/end times to jsonResults and generateResultTable
-   git commit -am "add start/end times to jsonResults and generateResultTable"
 have toString of json be generateResultTable
 return json or set string based on dom
 git commit -am "TestRunner.testAll either sets DOM or returns JSON"
@@ -51,7 +49,7 @@ It will call testState.config.afterLast (if it is defined) which can be used to 
 @param {string} name the display name of the test
 @param {array} assertions an array of assertions created by the test
 @param {object} testState testState.config.hidePassed defaults to false
-@returns {object || string} if(!testState.runningSingleTest) return object that can be used by TestRunner.processAssertions
+@returns {object || string} if(!testState.runningSingleTest) return object that can be used by TestRunner.processResults
    which is used by TestRunner.testAll.
    else if DOM exists return undefined
    else return a string of the test results*/
@@ -62,10 +60,9 @@ TestRunner.displayResults=function(name, assertions, testState)
    if (false !== testState.runningSingleTest)
    {
       testState.config = _sanitizeConfig(testState.config, false);
-      var output = TestRunner.generateResultTable(TestRunner.processAssertions([input], testState.config));
+      var output = TestRunner.generateResultTable(TestRunner.processResults([input], testState));
+      //afterLast should be run after processResults so that equals functions could be removed
       testState.config.afterLast();
-      testState._endTime = Date.now();
-      output += 'Time taken: ' + TestRunner.formatTestTime(testState._startTime, testState._endTime) + '\n';
       if (_hasDom && null !== document.getElementById('testResults'))
       {
          document.getElementById('testResults').value = output;
@@ -129,15 +126,13 @@ TestRunner.findFirstFailurePath=function(testResult, defaultDelta)
    return undefined;
 };
 /**
-@param {number || Date} startTimeParam date in milliseconds
-@param {number || Date} endTimeParam date in milliseconds
+@param {number} millisecondsTaken time taken in milliseconds
 @returns {string} a string stating the number of seconds (to 3 decimal places) and the number of minutes if applicable
 */
-TestRunner.formatTestTime=function(startTimeParam, endTimeParam)
+TestRunner.formatTestTime=function(millisecondsTaken)
 {
    //I could use new Date(diff).getUTCMilliseconds etc but that wouldn't give me everything above minutes as minutes
-   var milliseconds = (endTimeParam - startTimeParam);
-   var seconds = (milliseconds / 1000);
+   var seconds = (millisecondsTaken / 1000);
    var minutes = Math.floor(seconds / 60);
    seconds -= (minutes * 60);
    //Chrome kills js after 30 seconds so minutes are likely not possible in a browser
@@ -148,7 +143,7 @@ TestRunner.formatTestTime=function(startTimeParam, endTimeParam)
    //yes I know that it would display "1 minutes" etc. so change it if you care so much
 };
 /**This function creates a string table used to display the test results of a suite.
-@param {object} resultJson the output of TestRunner.processAssertions
+@param {object} resultJson the output of TestRunner.processResults
 @returns {string} the a formatted string result*/
 TestRunner.generateResultTable=function(resultJson)
 {
@@ -189,18 +184,20 @@ TestRunner.generateResultTable=function(resultJson)
    }
    if('' !== output) output += '\n';
    output += 'Grand total: ' + resultJson.passCount + '/' +  resultJson.total + '\n';
+   output += 'Time taken: ' + TestRunner.formatTestTime(resultJson.duration) + '\n';
    return output;
 };
 /**This function creates a json table which are the processed outcome of suiteResults.
 Pass and fail counts are counted and added to the grand total.
 Note that the totals will not match array lengths when testConfig.hidePassed (and an assertion passes)
 @param {object[]} suiteResults an array of testResults which contains an array of assertions
-@param {object} testConfig with properties:
+@param {object} testState with _startTime and config properties:
 {boolean} hidePassed if false then the assertions within a table that pass won't display (returns only grand total if all pass)
 {number} defaultDelta passed to TestRunner.findFirstFailurePath
 @returns {object} the processed results. Will include Outcomes and counts. if(hidePassed) will not include assertions that pass.*/
-TestRunner.processAssertions=function(suiteResults, testConfig)
+TestRunner.processResults=function(suiteResults, testState)
 {
+   var testConfig = testState.config;
    var output = {tests: [], passCount: 0, total: 0};
    if(true !== testConfig.hidePassed && false !== testConfig.hidePassed)
       throw new Error('Test error: illegal testConfig.hidePassed: ' + testConfig.hidePassed);
@@ -246,6 +243,10 @@ TestRunner.processAssertions=function(suiteResults, testConfig)
       output.passCount += passCount;
       output.total += thisTest.assertions.length;
    }
+   testState._endTime = Date.now();
+   output.startTime = testState._startTime;
+   output.endTime = testState._endTime;
+   output.duration = (testState._endTime - testState._startTime);
    return output;
 };
 /**@returns {boolean} true if the input should be compared via === when determining equality*/
@@ -304,11 +305,9 @@ TestRunner.testAll=function(testSuite, testConfig)
       }
    }
    if(0 !== errorTests.length) resultingList.push({name: 'TestRunner.testAll', assertions: errorTests});
-   var output = TestRunner.generateResultTable(TestRunner.processAssertions(resultingList, testState.config));
-   testState.config.afterLast();  //after generating results in case you have a temporary equals function
-
-   testState._endTime = Date.now();
-   output += 'Time taken: ' + TestRunner.formatTestTime(testState._startTime, testState._endTime) + '\n';
+   var output = TestRunner.generateResultTable(TestRunner.processResults(resultingList, testState));
+   //afterLast should be run after processResults so that equals functions could be removed
+   testState.config.afterLast();
 
    if (_hasDom && null !== document.getElementById('testResults'))
    {
