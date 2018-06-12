@@ -11,7 +11,6 @@ If you have a DOM element textarea#testResults that will have the results put in
 */
 
 //TODO: allow asynchronous: Promise.all (if exists). betweenEach redundantly called. see branch
-//TODO: test with node to confirm that it works for servers
 const TestRunner = {};
 (function(){
 /**This is a private global because the value doesn't change.*/
@@ -34,7 +33,11 @@ TestRunner.clearResults=function(testState)
    if (false !== testState.runningSingleTest)
    {
       testState._startTime = Date.now();
-      if(_hasDom && null !== document.getElementById('testResults')) document.getElementById('testResults').value = '';
+      if (_hasDom)
+      {
+         var testResults = document.getElementById('testResults');
+         if(null !== testResults) testResults.value = '';
+      }
       testState.config = _sanitizeConfig(testState.config);
       testState.config.beforeFirst();
    }
@@ -58,10 +61,15 @@ TestRunner.displayResults=function(name, assertions, testState)
       var output = TestRunner.processResults([input], testState);
       //afterLast should be run after processResults so that equals functions could be removed
       testState.config.afterLast();
-      if (_hasDom && null !== document.getElementById('testResults'))
+      if (_hasDom)
       {
-         document.getElementById('testResults').value = output.toString();
-         location.hash = '#testResults';  //scroll to the results
+         var testResults = document.getElementById('testResults');
+         if (null !== testResults)
+         {
+            testResults.value = output.toString();
+            location.hash = '#testResults';  //scroll to the results
+         }
+         else return output;
       }
       else return output;
    }
@@ -273,8 +281,12 @@ else returns string of test results
 */
 TestRunner.testAll=function(testSuite, testConfig)
 {
-   var testState = {_startTime: Date.now(), runningSingleTest: false};
-   if(_hasDom && null !== document.getElementById('testResults')) document.getElementById('testResults').value = '';
+   var testState = {_startTime: Date.now(), runningSingleTest: false}, testResults;
+   if (_hasDom)
+   {
+      testResults = document.getElementById('testResults');
+      if(null !== testResults) testResults.value = '';
+   }
 
    //testSuite and testConfig defaults can't be self tested
    if(undefined === testSuite) testSuite = TestSuite;
@@ -305,11 +317,16 @@ TestRunner.testAll=function(testSuite, testConfig)
    //afterLast should be run after processResults so that equals functions could be removed
    testState.config.afterLast();
 
-   if (_hasDom && null !== document.getElementById('testResults'))
+   if (_hasDom)
    {
-      document.getElementById('testResults').value = output.toString();
-      location.hash = '#testResults';  //scroll to the results
-      //return output;  //don't return because a javascript:TestRunner.testAll(); link would cause it to write over the whole page
+      testResults = document.getElementById('testResults');
+      if (null !== testResults)
+      {
+         testResults.value = output.toString();
+         location.hash = '#testResults';  //scroll to the results
+         //return output;  //don't return because a javascript:TestRunner.testAll(); link would cause it to write over the whole page
+      }
+      else return output;
    }
    else return output;
 };
