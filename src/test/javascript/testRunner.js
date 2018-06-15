@@ -875,7 +875,7 @@ TestSuite.TestRunner.testAll=function(testState={})
    actual = resultBox.value.replace(/Time taken:.+/, 'Time taken: ?');
    assertions.push({Expected: expected, Actual: actual, Description: 'Checks hasOwnProperty'});
    } catch(e){assertions.push({Error: e, Description: 'Checks hasOwnProperty'});}
-   delete Object.prototype.polution;
+   delete Object.prototype.pollution;
 
    try{
    testSuite = {notATest: 0, stillNot: null};
@@ -890,7 +890,7 @@ TestSuite.TestRunner.testAll=function(testState={})
    betweenCount = 0;
    testSuite = {testTable1: errorTest, testTable2: failTest};
    expected = '0/1: Fail test\n   Fail: Desc\n      Expected: true\n      Actual: false\n';
-   expected += '0/1: TestRunner.testAll\n   Fail: testTable1\n      Error: Error: I\'m sorry guys but I just can\'t.\n';
+   expected += '0/1: TestRunner.testAll\n   Fail: "TestSuite"."testTable1"\n      Error: Error: I\'m sorry guys but I just can\'t.\n';
    expected += '\nGrand total: 0/2\nTime taken: ?\n';
 
    TestRunner.testAll(testSuite, trackingConfig);
@@ -907,6 +907,16 @@ TestSuite.TestRunner.testAll=function(testState={})
    actual = resultBox.value.replace(/Time taken:.+/, 'Time taken: ?');
    assertions.push({Expected: expected, Actual: actual, Description: 'Nesting'});
    } catch(e){assertions.push({Error: e, Description: 'Nesting'});}
+
+   try{
+   testSuite = {someObject: {testTable1: errorTest}};
+   expected = '0/1: TestRunner.testAll\n   Fail: "TestSuite"."someObject"."testTable1"\n      Error: Error: I\'m sorry guys but I just can\'t.\n';
+   expected += '\nGrand total: 0/1\nTime taken: ?\n';
+
+   TestRunner.testAll(testSuite, trackingConfig);
+   actual = resultBox.value.replace(/Time taken:.+/, 'Time taken: ?');
+   assertions.push({Expected: expected, Actual: actual, Description: 'Throw breadcrumbs'});
+   } catch(e){assertions.push({Error: e, Description: 'Throw breadcrumbs'});}
 
    try{
    betweenCount = 0;
@@ -941,7 +951,7 @@ TestSuite.TestRunner.testAll=function(testState={})
       {Expected: true, Actual: true, Description: 'Seems logical'}
    ]}}};
    expected = '1/1: Pass test\n   Pass: Seems logical\n';
-   expected += '0/1: TestRunner.testAll\n   Fail: testTable1\n      Error: Error: I\'m sorry guys but I just can\'t.\n';
+   expected += '0/1: TestRunner.testAll\n   Fail: "TestSuite"."testTable1"\n      Error: Error: I\'m sorry guys but I just can\'t.\n';
    expected += '\nGrand total: 1/2\nTime taken: ?\n';
    TestRunner.testAll(testSuite, {hidePassed: false});
    actual = resultBox.value.replace(/Time taken:.+/, 'Time taken: ?');

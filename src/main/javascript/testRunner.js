@@ -292,22 +292,29 @@ TestRunner.testAll=function(testSuite, testConfig)
    if(undefined === testSuite) testSuite = TestSuite;
    testState.config = _sanitizeConfig(testConfig, true);
 
-   var suiteCollection = [testSuite], errorTests = [], resultingList = [], runBetweenEach = false;
+   //TestSuite is quoted so that it looks the same as the rest.
+   //Always start with this because I don't any other name.
+   var suiteCollection = [{breadcrumb: '"TestSuite"', object: testSuite}], errorTests = [], resultingList = [], runBetweenEach = false;
    testState.config.beforeFirst();
    while (0 !== suiteCollection.length)
    {
-      testSuite = suiteCollection.shift();
+      var thisHistory = suiteCollection.shift();
+      testSuite = thisHistory.object;
       for (var key in testSuite)
       {
          if(!testSuite.hasOwnProperty(key)) continue;  //"for in" loops are always risky and therefore require sanitizing
-         else if('object' === typeof(testSuite[key]) && null !== testSuite[key]) suiteCollection.push(testSuite[key]);
+         var thisPath = thisHistory.breadcrumb + '.' + JSON.stringify(key);
+         if('object' === typeof(testSuite[key]) && null !== testSuite[key])
+         {
             //null is a jerk: typeof erroneously returns 'object' (null isn't an object because it doesn't inherit Object.prototype)
+            suiteCollection.push({breadcrumb: thisPath, object: testSuite[key]});
+         }
          else if ('function' === typeof(testSuite[key]))
          {
             if(runBetweenEach) testState.config.betweenEach();
             else runBetweenEach = true;
             try{resultingList.push(testSuite[key](testState));}
-            catch(e){console.error(e); errorTests.push({Error: e, Description: key});}
+            catch(e){console.error(e); errorTests.push({Error: e, Description: thisPath});}
             //I could have breadcrumbs instead of key but these shouldn't happen and the stack trace is good enough
          }
       }
