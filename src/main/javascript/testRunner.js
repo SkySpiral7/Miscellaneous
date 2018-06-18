@@ -446,24 +446,24 @@ TestSuite.abilityList = {};
 TestSuite.abilityList.calculateValues=function(testState={})
 {
    TestRunner.clearResults(testState);
-
    var assertions=[];
-   try{
-   TestRunner.changeValue('input', 5);
-   assertions.push({Expected: 5, Actual: document.getElementById('output').value, Description: 'input is copied over on change'});
-   } catch(e){assertions.push({Error: e, Description: 'input is copied over on change'});}  //not expecting an error to be thrown but it was. fail instead of crash
 
-   try{
    assertions.push({Expected: NaN, Actual: Math.factorial('Not a number'), Description: 'Math.factorial when passed NaN'});
-   } catch(e){assertions.push({Error: e, Description: 'Math.factorial when passed NaN'});}
+   //A basic assertion that assumes no error will be thrown. Easy to do but not as useful.
 
    try{
-   Validator.nonNull(null);
-   TestRunner.failedToThrow(assertions, 'Validator.nonNull did not throw given null.');
+      TestRunner.changeValue('input', 5);
+      assertions.push({Expected: 5, Actual: document.getElementById('output').value, Description: 'input is copied over on change'});
+   } catch(e){assertions.push({Error: e, Description: 'input is copied over on change'});}
+   //not expecting an error to be thrown but it was. fail instead of crashing
+
+   try{
+      Validator.nonNull(null);
+      TestRunner.failedToThrow(assertions, 'Validator.nonNull did not throw given null.');
    }
-   catch(e)
+   catch(actualError)
    {
-      assertions.push({Expected: new TypeError('Illegal argument: object can\'t be null.'), Actual: e,
+      assertions.push({Expected: new TypeError('Illegal argument: object can\'t be null.'), Actual: actualError,
          Description: 'Validator.nonNull threw the correct type and message.'});
    }
 
@@ -472,6 +472,13 @@ TestSuite.abilityList.calculateValues=function(testState={})
 };
 TestSuite.abilityList.unfinishedTest=function(testState={})
 {
-   return {name: 'unmade', assertions: []};  //remove this when actual tests exist. ADD TESTS
+   TestRunner.clearResults(testState);
+   var assertions=[];
+
+   //Tests that have 0 assertions do nothing.
+   //This can be used to display the name to show there are no tests (if TestConfig.hidePassed=false)
+
+   //be sure to copy the name here:
+   return TestRunner.displayResults('TestSuite.abilityList.unfinishedTest', assertions, testState);
 };
 */
