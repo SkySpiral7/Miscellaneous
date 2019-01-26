@@ -322,6 +322,7 @@ TestRunner.testAll=function(testSuite, testConfig)
                   (function(copyOfThisPath){
                      unprocessedList.push(testReturnValue
                         .then(function(value){return {status: 'resolved', value: value}})
+                        //logging will be done later for errors
                         .catch(function(errorCaught){return {status: 'rejected', value: {Error: errorCaught, Description: copyOfThisPath}}})
                      );
                   })(thisPath);
@@ -330,7 +331,6 @@ TestRunner.testAll=function(testSuite, testConfig)
             }
             catch (errorCaught)
             {
-               //TODO: update current self-tests
                //when a non-async test throws
                //logging will be done later
                unprocessedList.push({status: 'rejected', value: {Error: errorCaught, Description: thisPath}});
@@ -343,7 +343,6 @@ TestRunner.testAll=function(testSuite, testConfig)
    return Promise.all(unprocessedList)
    .then(function(promiseResults)
    {
-      //TODO: update current self-tests
       var errorTests = [], resolvedTests = [];
       for (var i=0; i < promiseResults.length; ++i)
       {

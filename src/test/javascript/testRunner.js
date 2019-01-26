@@ -1,6 +1,6 @@
 'use strict';
 TestSuite.TestRunner={};
-TestSuite.TestRunner.changeValue=function(testState={})
+TestSuite.TestRunner.changeValue=async function(testState={})
 {
    TestRunner.clearResults(testState);
 
@@ -42,7 +42,7 @@ TestSuite.TestRunner.changeValue=function(testState={})
 
    return TestRunner.displayResults('meta: TestRunner.changeValue', assertions, testState);
 };
-TestSuite.TestRunner.clearResults=function(testState={})
+TestSuite.TestRunner.clearResults=async function(testState={})
 {
    TestRunner.clearResults(testState);
 
@@ -93,7 +93,7 @@ TestSuite.TestRunner.clearResults=function(testState={})
 
    return TestRunner.displayResults('meta: TestRunner.clearResults', assertions, testState);
 };
-TestSuite.TestRunner.displayResults=function(testState={})
+TestSuite.TestRunner.displayResults=async function(testState={})
 {
    TestRunner.clearResults(testState);
 
@@ -169,7 +169,7 @@ TestSuite.TestRunner.displayResults=function(testState={})
 
    return TestRunner.displayResults('meta: TestRunner.displayResults', assertions, testState);
 };
-TestSuite.TestRunner.findFirstFailurePath=function(testState={})
+TestSuite.TestRunner.findFirstFailurePath=async function(testState={})
 {
    TestRunner.clearResults(testState);
 
@@ -266,7 +266,7 @@ TestSuite.TestRunner.findFirstFailurePath=function(testState={})
 
    return TestRunner.displayResults('meta: TestRunner.findFirstFailurePath', assertions, testState);
 };
-TestSuite.TestRunner.failedToThrow=function(testState={})
+TestSuite.TestRunner.failedToThrow=async function(testState={})
 {
    TestRunner.clearResults(testState);
 
@@ -281,7 +281,7 @@ TestSuite.TestRunner.failedToThrow=function(testState={})
 
    return TestRunner.displayResults('meta: TestRunner.failedToThrow', assertions, testState);
 };
-TestSuite.TestRunner.formatTestTime=function(testState={})
+TestSuite.TestRunner.formatTestTime=async function(testState={})
 {
    TestRunner.clearResults(testState);
 
@@ -307,7 +307,7 @@ TestSuite.TestRunner.formatTestTime=function(testState={})
 
    return TestRunner.displayResults('meta: TestRunner.formatTestTime', assertions, testState);
 };
-TestSuite.TestRunner.generateResultTable=function(testState={})
+TestSuite.TestRunner.generateResultTable=async function(testState={})
 {
    TestRunner.clearResults(testState);
 
@@ -478,7 +478,7 @@ TestSuite.TestRunner.generateResultTable=function(testState={})
 
    return TestRunner.displayResults('meta: TestRunner.generateResultTable', assertions, testState);
 };
-TestSuite.TestRunner.processResults=function(testState={})
+TestSuite.TestRunner.processResults=async function(testState={})
 {
    TestRunner.clearResults(testState);
 
@@ -735,7 +735,7 @@ TestSuite.TestRunner.processResults=function(testState={})
 
    return TestRunner.displayResults('meta: TestRunner.processResults', assertions, testState);
 };
-TestSuite.TestRunner.isPrimitive=function(testState={})
+TestSuite.TestRunner.isPrimitive=async function(testState={})
 {
    TestRunner.clearResults(testState);
 
@@ -788,7 +788,7 @@ TestSuite.TestRunner.isPrimitive=function(testState={})
 
    return TestRunner.displayResults('meta: TestRunner.isPrimitive', assertions, testState);
 };
-TestSuite.TestRunner.testAll=function(testState={})
+TestSuite.TestRunner.testAll=async function(testState={})
 {
    TestRunner.clearResults(testState);
 
@@ -812,7 +812,7 @@ TestSuite.TestRunner.testAll=function(testState={})
    testSuite = {testTable1: passTest, testTable2: passTest, testTable3: passTest};
    expected = 'Grand total: 6/6\nTime taken: ?\n';
 
-   TestRunner.testAll(testSuite, trackingConfig);
+   await TestRunner.testAll(testSuite, trackingConfig);
    actual = resultBox.value.replace(/Time taken:.+/, 'Time taken: ?');
    assertions.push({Expected: expected, Actual: actual, Description: 'Happy path: output'});
    assertions.push({Expected: 1, Actual: beforeFirstCount, Description: 'Happy path: beforeFirstCount'});
@@ -846,13 +846,13 @@ TestSuite.TestRunner.testAll=function(testState={})
       beforeFirst: function(){orderString += 'F';}, betweenEach: function(){orderString += 'E';}, afterLast: function(){orderString += 'L';}
    };
 
-   TestRunner.testAll(testSuite, inputConfig);
+   await TestRunner.testAll(testSuite, inputConfig);
    assertions.push({Expected: 'F1E2E3L', Actual: orderString, Description: 'verify order'});
    } catch(e){assertions.push({Error: e, Description: 'verify order'});}
 
    try{
    testSuite = {testTable1: passTest, testTable2: passTest};
-   TestRunner.testAll(testSuite, {});
+   await TestRunner.testAll(testSuite, {});
    assertions.push({Expected: true, Actual: true, Description: 'betweenEach default does nothing'});
    } catch(e){assertions.push({Error: e, Description: 'betweenEach default does nothing'});}
 
@@ -860,7 +860,7 @@ TestSuite.TestRunner.testAll=function(testState={})
    testSuite = {testTable: passTest};
    inputConfig = {};
    expected = 'Grand total: 2/2\nTime taken: ?\n';
-   TestRunner.testAll(testSuite, inputConfig);
+   await TestRunner.testAll(testSuite, inputConfig);
    actual = resultBox.value.replace(/Time taken:.+/, 'Time taken: ?');
    assertions.push({Expected: expected, Actual: actual, Description: 'hidePassed defaults to true'});
    assertions.push({Expected: {}, Actual: inputConfig, Description: 'without mutating user config'});
@@ -871,7 +871,7 @@ TestSuite.TestRunner.testAll=function(testState={})
    testSuite = {testTable: passTest};
    expected = 'Grand total: 2/2\nTime taken: ?\n';
 
-   TestRunner.testAll(testSuite, trackingConfig);
+   await TestRunner.testAll(testSuite, trackingConfig);
    actual = resultBox.value.replace(/Time taken:.+/, 'Time taken: ?');
    assertions.push({Expected: expected, Actual: actual, Description: 'Checks hasOwnProperty'});
    } catch(e){assertions.push({Error: e, Description: 'Checks hasOwnProperty'});}
@@ -881,7 +881,7 @@ TestSuite.TestRunner.testAll=function(testState={})
    testSuite = {notATest: 0, stillNot: null};
    expected = 'Grand total: 0/0\nTime taken: ?\n';
 
-   TestRunner.testAll(testSuite, trackingConfig);
+   await TestRunner.testAll(testSuite, trackingConfig);
    actual = resultBox.value.replace(/Time taken:.+/, 'Time taken: ?');
    assertions.push({Expected: expected, Actual: actual, Description: 'Ignore non-tests'});
    } catch(e){assertions.push({Error: e, Description: 'Ignore non-tests'});}
@@ -893,7 +893,7 @@ TestSuite.TestRunner.testAll=function(testState={})
    expected += '0/1: TestRunner.testAll\n   Fail: "TestSuite"."testTable1"\n      Error: Error: I\'m sorry guys but I just can\'t.\n';
    expected += '\nGrand total: 0/2\nTime taken: ?\n';
 
-   TestRunner.testAll(testSuite, trackingConfig);
+   await TestRunner.testAll(testSuite, trackingConfig);
    actual = resultBox.value.replace(/Time taken:.+/, 'Time taken: ?');
    assertions.push({Expected: expected, Actual: actual, Description: 'Failure: output'});
    assertions.push({Expected: 1, Actual: betweenCount, Description: 'Failure: betweenCount'});
@@ -903,7 +903,7 @@ TestSuite.TestRunner.testAll=function(testState={})
    testSuite = {someObject: {testTable1: passTest}, testTable2: passTest};
    expected = 'Grand total: 4/4\nTime taken: ?\n';
 
-   TestRunner.testAll(testSuite, trackingConfig);
+   await TestRunner.testAll(testSuite, trackingConfig);
    actual = resultBox.value.replace(/Time taken:.+/, 'Time taken: ?');
    assertions.push({Expected: expected, Actual: actual, Description: 'Nesting'});
    } catch(e){assertions.push({Error: e, Description: 'Nesting'});}
@@ -913,7 +913,7 @@ TestSuite.TestRunner.testAll=function(testState={})
    expected = '0/1: TestRunner.testAll\n   Fail: "TestSuite"."someObject"."testTable1"\n      Error: Error: I\'m sorry guys but I just can\'t.\n';
    expected += '\nGrand total: 0/1\nTime taken: ?\n';
 
-   TestRunner.testAll(testSuite, trackingConfig);
+   await TestRunner.testAll(testSuite, trackingConfig);
    actual = resultBox.value.replace(/Time taken:.+/, 'Time taken: ?');
    assertions.push({Expected: expected, Actual: actual, Description: 'Throw breadcrumbs'});
    } catch(e){assertions.push({Error: e, Description: 'Throw breadcrumbs'});}
@@ -922,7 +922,7 @@ TestSuite.TestRunner.testAll=function(testState={})
    betweenCount = 0;
    testSuite = {testTable: passTest};
 
-   TestRunner.testAll(testSuite, trackingConfig);
+   await TestRunner.testAll(testSuite, trackingConfig);
    assertions.push({Expected: 0, Actual: betweenCount, Description: 'No between'});
    } catch(e){assertions.push({Error: e, Description: 'No between'});}
 
@@ -932,7 +932,7 @@ TestSuite.TestRunner.testAll=function(testState={})
    ]}}};
    expected = 'Grand total: 1/1\nTime taken: ?\n';
 
-   TestRunner.testAll(testSuite, {defaultDelta: 100});
+   await TestRunner.testAll(testSuite, {defaultDelta: 100});
    actual = resultBox.value.replace(/Time taken:.+/, 'Time taken: ?');
    assertions.push({Expected: expected, Actual: actual, Description: 'IT: defaultDelta is passed all the way down'});
    } catch(e){assertions.push({Error: e, Description: 'IT: defaultDelta is passed all the way down'});}
@@ -943,7 +943,7 @@ TestSuite.TestRunner.testAll=function(testState={})
    ]}}};
    expected = '1/1: Pass test\n   Pass: Seems logical\n\nGrand total: 1/1\nTime taken: ?\n';
 
-   TestRunner.testAll(testSuite, {hidePassed: false});
+   await TestRunner.testAll(testSuite, {hidePassed: false});
    actual = resultBox.value.replace(/Time taken:.+/, 'Time taken: ?');
    assertions.push({Expected: expected, Actual: actual, Description: 'IT: hidePassed is passed all the way down'});
 
@@ -953,7 +953,7 @@ TestSuite.TestRunner.testAll=function(testState={})
    expected = '1/1: Pass test\n   Pass: Seems logical\n';
    expected += '0/1: TestRunner.testAll\n   Fail: "TestSuite"."testTable1"\n      Error: Error: I\'m sorry guys but I just can\'t.\n';
    expected += '\nGrand total: 1/2\nTime taken: ?\n';
-   TestRunner.testAll(testSuite, {hidePassed: false});
+   await TestRunner.testAll(testSuite, {hidePassed: false});
    actual = resultBox.value.replace(/Time taken:.+/, 'Time taken: ?');
    assertions.push({Expected: expected, Actual: actual, Description: 'IT: hidePassed is used for throwing tests too'});
    } catch(e){assertions.push({Error: e, Description: 'IT: hidePassed is passed all the way down'});}
@@ -962,7 +962,7 @@ TestSuite.TestRunner.testAll=function(testState={})
 
    return TestRunner.displayResults('meta: TestRunner.testAll', assertions, testState);
 };
-TestSuite.TestRunner.useValueOf=function(testState={})
+TestSuite.TestRunner.useValueOf=async function(testState={})
 {
    TestRunner.clearResults(testState);
 
@@ -1008,7 +1008,7 @@ TestSuite.TestRunner.useValueOf=function(testState={})
 
    return TestRunner.displayResults('meta: TestRunner.useValueOf', assertions, testState);
 };
-TestSuite.TestRunner._shallowEquality=function(testState={})
+TestSuite.TestRunner._shallowEquality=async function(testState={})
 {
    TestRunner.clearResults(testState);
 
