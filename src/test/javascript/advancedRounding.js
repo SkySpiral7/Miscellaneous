@@ -1,5 +1,5 @@
 'use strict';
-TestSuite.errors=function(testState={})
+TestSuite.errors=async function(testState={})
 {
     TestRunner.clearResults(testState);
 
@@ -150,7 +150,7 @@ TestSuite.errors=function(testState={})
 
     return TestRunner.displayResults('RoundingMode errors', testResults, testState);
 };
-TestSuite.silentChanges=function(testState={})
+TestSuite.silentChanges=async function(testState={})
 {
     TestRunner.clearResults(testState);
 
@@ -187,7 +187,7 @@ TestSuite.silentChanges=function(testState={})
 
     return TestRunner.displayResults('RoundingMode silentChanges', testResults, testState);
 };
-TestSuite.miscellaneous=function(testState={})
+TestSuite.miscellaneous=async function(testState={})
 {
     TestRunner.clearResults(testState);
 
@@ -223,7 +223,7 @@ TestSuite.miscellaneous=function(testState={})
 
     return TestRunner.displayResults('RoundingMode miscellaneous', testResults, testState);
 };
-TestSuite.destinations=function(testState={})
+TestSuite.destinations=async function(testState={})
 {
     TestRunner.clearResults(testState);
 
@@ -264,7 +264,7 @@ TestSuite.destinations=function(testState={})
     return TestRunner.displayResults('RoundingMode destinations', testResults, testState);
 };
 //need divisible/magnitude towards/away Infinity in order to completely test findNextUp and findNextDown
-TestSuite.divisibleToInfinity=function(testState={})
+TestSuite.divisibleToInfinity=async function(testState={})
 {
     TestRunner.clearResults(testState);
 
@@ -302,7 +302,7 @@ TestSuite.divisibleToInfinity=function(testState={})
 
     return TestRunner.displayResults('RoundingMode divisibleToInfinity', testResults, testState);
 };
-TestSuite.magnitudeToInfinity=function(testState={})
+TestSuite.magnitudeToInfinity=async function(testState={})
 {
     TestRunner.clearResults(testState);
 
@@ -356,7 +356,7 @@ TestSuite.magnitudeToInfinity=function(testState={})
 
     return TestRunner.displayResults('RoundingMode magnitudeToInfinity', testResults, testState);
 };
-TestSuite.divisibleAwayInfinity=function(testState={})
+TestSuite.divisibleAwayInfinity=async function(testState={})
 {
     TestRunner.clearResults(testState);
 
@@ -394,7 +394,7 @@ TestSuite.divisibleAwayInfinity=function(testState={})
 
     return TestRunner.displayResults('RoundingMode divisibleAwayInfinity', testResults, testState);
 };
-TestSuite.magnitudeAwayInfinity=function(testState={})
+TestSuite.magnitudeAwayInfinity=async function(testState={})
 {
     TestRunner.clearResults(testState);
 
@@ -452,7 +452,7 @@ TestSuite.magnitudeAwayInfinity=function(testState={})
 
     return TestRunner.displayResults('RoundingMode magnitudeAwayInfinity', testResults, testState);
 };
-TestSuite.provided=function(testState={})
+TestSuite.provided=async function(testState={})
 {
     TestRunner.clearResults(testState);
 

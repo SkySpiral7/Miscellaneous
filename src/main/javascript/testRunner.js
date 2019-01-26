@@ -293,7 +293,7 @@ TestRunner.testAll=function(testSuite, testConfig)
 
    //TestSuite is quoted so that it looks the same as the rest.
    //Always start with this because I don't any other name.
-   var suiteCollection = [{breadcrumb: '"TestSuite"', object: testSuite}], errorTests = [], resultingList = [], runBetweenEach = false;
+   var suiteCollection = [{breadcrumb: '"TestSuite"', object: testSuite}], unprocessedList = [], runBetweenEach = false;
    testState.config.beforeFirst();
    while (0 !== suiteCollection.length)
    {
@@ -312,27 +312,78 @@ TestRunner.testAll=function(testSuite, testConfig)
          {
             if(runBetweenEach) testState.config.betweenEach();
             else runBetweenEach = true;
-            try{resultingList.push(testSuite[key](testState));}
-            catch(e){console.error(e); errorTests.push({Error: e, Description: thisPath});}
-            //I could have breadcrumbs instead of key but these shouldn't happen and the stack trace is good enough
+            try
+            {
+               var testReturnValue = testSuite[key](testState);
+               if (testReturnValue instanceof Promise)
+               {
+                  //TODO: self-test if possible
+                  //TODO: update dice, time, async, time
+                  (function(copyOfThisPath){
+                     unprocessedList.push(testReturnValue
+                        .then(function(value){return {status: 'resolved', value: value}})
+                        .catch(function(errorCaught){return {status: 'rejected', value: {Error: errorCaught, Description: copyOfThisPath}}})
+                     );
+                  })(thisPath);
+               }
+               else unprocessedList.push({status: 'resolved', value: testReturnValue});
+            }
+            catch (errorCaught)
+            {
+               //TODO: update current self-tests
+               //when a non-async test throws
+               //logging will be done later
+               unprocessedList.push({status: 'rejected', value: {Error: errorCaught, Description: thisPath}});
+            }
          }
       }
    }
-   if(0 !== errorTests.length) resultingList.push({name: 'TestRunner.testAll', assertions: errorTests});
-   var output = TestRunner.processResults(resultingList, testState);
-   //afterLast should be run after processResults so that equals functions could be removed
-   testState.config.afterLast();
-
-   if (_hasDom)
+   //TODO: update doc
+   //javascript:TestRunner.testAll(); link won't override the page if it returns a promise
+   return Promise.all(unprocessedList)
+   .then(function(promiseResults)
    {
-      testResults = document.getElementById('testResults');
-      if (null !== testResults)
+      //TODO: update current self-tests
+      var errorTests = [], resolvedTests = [];
+      for (var i=0; i < promiseResults.length; ++i)
       {
-         testResults.value = output.toString();
-         location.hash = '#testResults';  //scroll to the results
+         if('resolved' === promiseResults[i].status) resolvedTests.push(promiseResults[i].value);
+         else errorTests.push(promiseResults[i].value);
       }
-   }
-   return output;  //output is an object (not a string) so a javascript:TestRunner.testAll(); link won't override the page
+      if(0 !== errorTests.length) resolvedTests.push({name: 'TestRunner.testAll', assertions: errorTests});
+
+      var output = TestRunner.processResults(resolvedTests, testState);
+      //afterLast should be run after processResults so that equals functions could be removed
+      testState.config.afterLast();
+
+      if (_hasDom)
+      {
+         testResults = document.getElementById('testResults');
+         if (null !== testResults)
+         {
+            testResults.value = output.toString();
+            location.hash = '#testResults';  //scroll to the results
+         }
+      }
+      return output;
+   })
+   .catch(function(problem)
+   {
+      //when runner throws (shouldn't) or equals throws
+      //TODO: self-test if possible (by an equals throw)
+      //TODO: bug? equals isn't called if diff types and other cases
+      var message = 'Test runner failed. Did an equals function throw?';
+      console.error(message, problem);
+      if (_hasDom)
+      {
+         testResults = document.getElementById('testResults');
+         if (null !== testResults)
+         {
+            testResults.value = message + '\n' + problem.toString();
+            location.hash = '#testResults';  //scroll to the results
+         }
+      }
+   });
 };
 /**@returns {boolean} true if the input should be compared via .valueOf when determining equality*/
 TestRunner.useValueOf=function(input)
