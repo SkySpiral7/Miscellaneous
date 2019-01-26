@@ -47,10 +47,9 @@ It will call testState.config.afterLast (if it is defined) which can be used to 
 @param {string} name the display name of the test
 @param {array} assertions an array of assertions created by the test
 @param {object} testState testState.config.hidePassed defaults to false
-@returns {object || string} if(!testState.runningSingleTest) return object that can be used by TestRunner.processResults
+@returns {object} if(!testState.runningSingleTest) return object that can be used by TestRunner.processResults
    which is used by TestRunner.testAll.
-   else if DOM exists return undefined
-   else return a string of the test results*/
+   else return a json object of test results*/
 TestRunner.displayResults=function(name, assertions, testState)
 {
    var input = {name: name, assertions: assertions};
@@ -69,9 +68,8 @@ TestRunner.displayResults=function(name, assertions, testState)
             testResults.value = output.toString();
             location.hash = '#testResults';  //scroll to the results
          }
-         else return output;
       }
-      else return output;
+      return output;  //output is an object (not a string) so a link to a test won't override the page
    }
    return input;
 };
@@ -278,6 +276,7 @@ else returns string of test results
    {function} betweenEach if defined it will be called between each test
    {number} defaultDelta passed to TestRunner.findFirstFailurePath
    {boolean} hidePassed defaults to true and is passed to TestRunner.generateResultTable
+@returns {object} a json object of test results
 */
 TestRunner.testAll=function(testSuite, testConfig)
 {
@@ -331,11 +330,9 @@ TestRunner.testAll=function(testSuite, testConfig)
       {
          testResults.value = output.toString();
          location.hash = '#testResults';  //scroll to the results
-         //return output;  //don't return because a javascript:TestRunner.testAll(); link would cause it to write over the whole page
       }
-      else return output;
    }
-   else return output;
+   return output;  //output is an object (not a string) so a javascript:TestRunner.testAll(); link won't override the page
 };
 /**@returns {boolean} true if the input should be compared via .valueOf when determining equality*/
 TestRunner.useValueOf=function(input)
