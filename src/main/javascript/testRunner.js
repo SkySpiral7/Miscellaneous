@@ -49,7 +49,6 @@ My runner can do {Expected: {a: 1.01}, Actual: {a: 2}, Delta: 1} and pass.
 But Jasmine's toBeCloseTo only takes in numbers making large object/array comparisons impractical.
 */
 
-//TODO: add underscores to everything that isn't clearResults, displayResults, failedToThrow, testAll
 var TestRunner = {};
 (function(){
 /**This is a private global because the value doesn't change.*/
@@ -78,17 +77,17 @@ TestRunner.clearResults=function(testState)
          var testResults = document.getElementById('testResults');
          if(null !== testResults) testResults.value = '';
       }
-      testState.config = _sanitizeConfig(testState.config);
+      testState.config = TestRunner._defaultConfigValues(testState.config);
       testState.config.beforeFirst();
    }
 };
 /**if(testState.runningSingleTest) This function clears out then writes the test results to #testResults and scrolls to it.
-After calling processResults it will call testState.config.afterLast (if it is defined) which can be used to teardown mocks
+After calling TestRunner._processResults it will call testState.config.afterLast (if it is defined) which can be used to teardown mocks
 (including deleting equals functions).
 @param {string} name the display name of the test
 @param {array} assertions an array of assertions created by the test
 @param {object} testState testState.config.hidePassed defaults to false
-@returns {object} if(!testState.runningSingleTest) return object that can be used by TestRunner.processResults
+@returns {object} if(!testState.runningSingleTest) return object that can be used by TestRunner._processResults
    which is used by TestRunner.testAll.
    else return a json object of test results*/
 TestRunner.displayResults=function(name, assertions, testState)
@@ -97,9 +96,9 @@ TestRunner.displayResults=function(name, assertions, testState)
    if(undefined === testState) testState = {runningSingleTest: true};
    if (false !== testState.runningSingleTest)
    {
-      testState.config = _sanitizeConfig(testState.config, false);
-      var output = TestRunner.processResults([input], testState);
-      //afterLast should be run after processResults so that equals functions could be removed
+      testState.config = TestRunner._defaultConfigValues(testState.config, false);
+      var output = TestRunner._processResults([input], testState);
+      //afterLast should be run after TestRunner._processResults so that equals functions could be removed
       testState.config.afterLast();
       if (_hasDom)
       {
@@ -133,7 +132,7 @@ Delta is the maximum number that they are allowed to differ by to be considered 
 If Delta is not specified it will default to defaultDelta.
 Delta also applies to Dates which is useful if you'd like to ignore seconds for example.
 @returns {?string} the path to the non-matching element. empty string if the problem is on the root. undefined if the test passes*/
-TestRunner.findFirstFailurePath=function(testResult, defaultDelta)
+TestRunner._findFirstFailurePath=function(testResult, defaultDelta)
 {
    if(undefined !== testResult.Error) return '';
 
@@ -172,7 +171,7 @@ TestRunner.findFirstFailurePath=function(testResult, defaultDelta)
 @param {number} millisecondsTaken time taken in milliseconds
 @returns {string} a string stating the number of seconds (to 3 decimal places) and the number of minutes if applicable
 */
-TestRunner.formatTestTime=function(millisecondsTaken)
+TestRunner._formatTestTime=function(millisecondsTaken)
 {
    //I could use new Date(diff).getUTCMilliseconds etc but that wouldn't give me everything above minutes as minutes
    var seconds = (millisecondsTaken / 1000);
@@ -186,9 +185,9 @@ TestRunner.formatTestTime=function(millisecondsTaken)
    //yes I know that it would display "1 minutes" etc. so change it if you care so much
 };
 /**This function creates a string table used to display the test results of a suite.
-@param {object} resultJson the output of TestRunner.processResults
+@param {object} resultJson the output of TestRunner._processResults
 @returns {string} the a formatted string result*/
-TestRunner.generateResultTable=function(resultJson)
+TestRunner._generateResultTable=function(resultJson)
 {
    var indentation = '   ';  //3 spaces
    var output = '';
@@ -227,7 +226,7 @@ TestRunner.generateResultTable=function(resultJson)
    }
    if('' !== output) output += '\n';
    output += 'Grand total: ' + resultJson.passCount + '/' +  resultJson.total + '\n';
-   output += 'Time taken: ' + TestRunner.formatTestTime(resultJson.duration) + '\n';
+   output += 'Time taken: ' + TestRunner._formatTestTime(resultJson.duration) + '\n';
    return output;
 };
 /**This function creates a json table (with a toString) which are the processed outcome of suiteResults.
@@ -236,9 +235,9 @@ Note that the totals will not match array lengths when testConfig.hidePassed (an
 @param {object[]} suiteResults an array of assertions which contains an array of assertions
 @param {object} testState with _startTime and config properties:
 {boolean} hidePassed if false then the assertions within a table that pass won't display (returns only grand total if all pass)
-{number} defaultDelta passed to TestRunner.findFirstFailurePath
+{number} defaultDelta passed to TestRunner._findFirstFailurePath
 @returns {object} the processed results. Will include Outcomes and counts. if(hidePassed) will not include assertions that pass.*/
-TestRunner.processResults=function(suiteResults, testState)
+TestRunner._processResults=function(suiteResults, testState)
 {
    var testConfig = testState.config;
    var output = {tests: [], passCount: 0, total: 0};
@@ -251,7 +250,7 @@ TestRunner.processResults=function(suiteResults, testState)
       for (var assertionIndex = 0; assertionIndex < thisTest.assertions.length; ++assertionIndex)
       {
          var thisAssertion = thisTest.assertions[assertionIndex];
-         var failPath = TestRunner.findFirstFailurePath(thisAssertion, testConfig.defaultDelta);
+         var failPath = TestRunner._findFirstFailurePath(thisAssertion, testConfig.defaultDelta);
          if (undefined === failPath)
          {
             ++passCount;
@@ -290,11 +289,11 @@ TestRunner.processResults=function(suiteResults, testState)
    output.startTime = testState._startTime;
    output.endTime = testState._endTime;
    output.duration = (testState._endTime - testState._startTime);
-   output.toString=function(){return TestRunner.generateResultTable(this);};
+   output.toString=function(){return TestRunner._generateResultTable(this);};
    return output;
 };
 /**@returns {boolean} true if the input should be compared via === when determining equality*/
-TestRunner.isPrimitive=function(input)
+TestRunner._isPrimitive=function(input)
 {
    var inputType = typeof(input);
    return ('boolean' === inputType || 'number' === inputType || 'string' === inputType
@@ -302,20 +301,20 @@ TestRunner.isPrimitive=function(input)
    //TestRunner._shallowEquality doesn't reach the undefined and null cases
 };
 /**Used to run every test in a suite.
-This function does the same thing as clearResults and calls TestRunner.generateResultTable.
+This function does the same thing as clearResults and calls TestRunner._generateResultTable.
 The main loop enumerates over the testSuite object given and calls each function.
 The loop is deep and all properties that are objects will also be enumerated over.
 It will call testConfig.beforeFirst (if it is defined) before the first test. This can be used to setup mocks.
 It will call testConfig.betweenEach (if it is defined) between each test. This can be used to reset state.
-It will call testConfig.afterLast (if it is defined) after the last test and TestRunner.processResults.
+It will call testConfig.afterLast (if it is defined) after the last test and TestRunner._processResults.
 This can be used to teardown mocks (including deleting equals functions).
 If the called test function throws, TestRunner.testAll will catch it and display the list of errors when finished.
 if(DOM exists) everything is written to #testResults then it updates location.hash to scroll to it.
 @param {object} testSuite an object that contains every test to be run. defaults to TestSuite
 @param {object} testConfig an object (defaults to TestConfig) that contains:
    {function} betweenEach if defined it will be called between each test
-   {number} defaultDelta passed to TestRunner.findFirstFailurePath
-   {boolean} hidePassed defaults to true and is passed to TestRunner.generateResultTable
+   {number} defaultDelta passed to TestRunner._findFirstFailurePath
+   {boolean} hidePassed defaults to true and is passed to TestRunner._generateResultTable
 @returns {object} a promise of a json object of test results (also has a toString)
 */
 TestRunner.testAll=function(testSuite, testConfig)
@@ -329,7 +328,7 @@ TestRunner.testAll=function(testSuite, testConfig)
 
    //testSuite and testConfig defaults can't be self tested
    if(undefined === testSuite) testSuite = TestSuite;
-   testState.config = _sanitizeConfig(testConfig, true);
+   testState.config = TestRunner._defaultConfigValues(testConfig, true);
 
    //TestSuite is quoted so that it looks the same as the rest.
    //Always start with this because I don't any other name.
@@ -388,8 +387,8 @@ TestRunner.testAll=function(testSuite, testConfig)
       }
       if(0 !== errorTests.length) resolvedTests.push({name: 'TestRunner.testAll', assertions: errorTests});
 
-      var output = TestRunner.processResults(resolvedTests, testState);
-      //afterLast should be run after processResults so that equals functions could be removed
+      var output = TestRunner._processResults(resolvedTests, testState);
+      //afterLast should be run after TestRunner._processResults so that equals functions could be removed
       testState.config.afterLast();
 
       if (_hasDom)
@@ -421,20 +420,22 @@ TestRunner.testAll=function(testSuite, testConfig)
    });
 };
 /**@returns {boolean} true if the input should be compared via .valueOf when determining equality*/
-TestRunner.useValueOf=function(input)
+TestRunner._useValueOf=function(input)
 {
    return (input instanceof Boolean || input instanceof Number || input instanceof String
       || input instanceof Date);
       //although RegExp has a valueOf it returns an object so it is pointless to call
       //typeof(new Function()) === 'function' and any subclass would need to have equals
 };
-function _sanitizeConfig(testConfig, hidePassed)
+/**@returns {object} a config with all values defined*/
+TestRunner._defaultConfigValues=function(testConfig, hidePassedDefaultValue)
 {
    if(undefined === testConfig) testConfig = TestConfig;
    if(undefined === testConfig.beforeFirst || undefined === testConfig.betweenEach
       || undefined === testConfig.afterLast || undefined === testConfig.defaultDelta
-      || (undefined === testConfig.hidePassed && undefined !== hidePassed))
+      || (undefined === testConfig.hidePassed && undefined !== hidePassedDefaultValue))
    {
+      //copy testConfig object so that I don't modify the one passed in
       testConfig = {beforeFirst: testConfig.beforeFirst, betweenEach: testConfig.betweenEach, afterLast: testConfig.afterLast,
          defaultDelta: testConfig.defaultDelta, hidePassed: testConfig.hidePassed};
       var noOp = Function.prototype;
@@ -442,12 +443,11 @@ function _sanitizeConfig(testConfig, hidePassed)
       if(undefined === testConfig.betweenEach) testConfig.betweenEach = noOp;
       if(undefined === testConfig.afterLast) testConfig.afterLast = noOp;
       if(undefined === testConfig.defaultDelta) testConfig.defaultDelta = 0;
-      if(undefined === testConfig.hidePassed) testConfig.hidePassed = hidePassed;
+      if(undefined === testConfig.hidePassed) testConfig.hidePassed = hidePassedDefaultValue;
    }
    return testConfig;
-}
-//TODO: make an easy to comment in code for exposing for meta testing so that this can normally be private
-/**Used internally by TestRunner.findFirstFailurePath. Don't call this directly (delta isn't validated).
+};
+/**Used internally by TestRunner._findFirstFailurePath. Don't call this directly (delta isn't validated).
 @returns {?boolean} true or false based on a shallow equality check or undefined if a deep equality is required.*/
 TestRunner._shallowEquality=function(expected, actual, delta)
 {
@@ -455,13 +455,19 @@ TestRunner._shallowEquality=function(expected, actual, delta)
    //null instanceof Object is false
    if(expected instanceof Object && typeof(expected.equals) === 'function') return expected.equals(actual);
 
+   //TODO: what about Object.is()? https://developer.mozilla.org/en-US/docs/Web/JavaScript/Equality_comparisons_and_sameness
+   //TODO: add a looseEquality flag:
+   /*
+   if(looseEqualityMatch && expected == actual) return true;
+   if(!looseEqualityMatch && typeof(expected) !== typeof(actual)) return false;  //testing is type strict
+   */
    if(typeof(expected) !== typeof(actual)) return false;  //testing is type strict
 
    if(null === expected) return (null === actual);  //typeof(null) === 'object' this is to avoid that mess
    if(null === actual) return false;
    if('object' === typeof(expected) && expected.constructor !== actual.constructor) return false;
 
-   if (TestRunner.useValueOf(expected))
+   if (TestRunner._useValueOf(expected))
    {
       //unboxing is intentionally after the type check (in case of box and primitive)
       expected = expected.valueOf();
@@ -471,7 +477,7 @@ TestRunner._shallowEquality=function(expected, actual, delta)
    //undefined has it's own type so it will return true here or false above
    if(expected === actual) return true;  //base case. if this is true no need to get more advanced
 
-   if (TestRunner.isPrimitive(expected))  //Dates have already been converted to numbers so that they can also use delta
+   if (TestRunner._isPrimitive(expected))  //Dates have already been converted to numbers so that they can also use delta
    {
       if(typeof(expected) !== 'number') return false;  //equality was denied at base case
       if(isNaN(expected) && isNaN(actual)) return true;

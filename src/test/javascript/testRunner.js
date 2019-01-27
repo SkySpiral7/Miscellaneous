@@ -169,38 +169,38 @@ TestSuite.TestRunner.displayResults=async function(testState={})
 
    return TestRunner.displayResults('meta: TestRunner.displayResults', assertions, testState);
 };
-TestSuite.TestRunner.findFirstFailurePath=async function(testState={})
+TestSuite.TestRunner._findFirstFailurePath=async function(testState={})
 {
    TestRunner.clearResults(testState);
 
    var assertions = [], actual;
 
    try{
-   actual = TestRunner.findFirstFailurePath({Error: new Error('Something evil')});
+   actual = TestRunner._findFirstFailurePath({Error: new Error('Something evil')});
    assertions.push({Expected: '', Actual: actual, Description: 'Happy path: error'});
    } catch(e){assertions.push({Error: e, Description: 'Happy path: error'});}
 
    try{
-   actual = TestRunner.findFirstFailurePath({Expected: true, Actual: true});
+   actual = TestRunner._findFirstFailurePath({Expected: true, Actual: true});
    assertions.push({Expected: undefined, Actual: actual, Description: 'Happy path: pass'});
    } catch(e){assertions.push({Error: e, Description: 'Happy path: pass'});}
 
    try{
    TestConfig.defaultDelta = 'pork';
-   actual = TestRunner.findFirstFailurePath({Expected: 1.2, Actual: 1.4, Delta: 0.2}, 'pig');
+   actual = TestRunner._findFirstFailurePath({Expected: 1.2, Actual: 1.4, Delta: 0.2}, 'pig');
    assertions.push({Expected: undefined, Actual: actual, Description: 'Use delta property first'});
 
-   actual = TestRunner.findFirstFailurePath({Expected: 1, Actual: 2}, 5);
+   actual = TestRunner._findFirstFailurePath({Expected: 1, Actual: 2}, 5);
    assertions.push({Expected: undefined, Actual: actual, Description: 'Then use delta arg'});
 
    TestConfig.defaultDelta = 0;
-   actual = TestRunner.findFirstFailurePath({Expected: 1, Actual: (1 + Number.EPSILON)});
+   actual = TestRunner._findFirstFailurePath({Expected: 1, Actual: (1 + Number.EPSILON)});
    assertions.push({Expected: '', Actual: actual, Description: 'Then TestConfig.defaultDelta'});
    } catch(e){assertions.push({Error: e, Description: 'Delta order'});}
    TestConfig.defaultDelta = 0;
 
    try{
-   TestRunner.findFirstFailurePath({Expected: 1, Actual: 1.5, Delta: 'ham'});
+   TestRunner._findFirstFailurePath({Expected: 1, Actual: 1.5, Delta: 'ham'});
    TestRunner.failedToThrow(assertions, 'Using invalid delta property');
    }
    catch(e)
@@ -209,7 +209,7 @@ TestSuite.TestRunner.findFirstFailurePath=async function(testState={})
    }
 
    try{
-   TestRunner.findFirstFailurePath({Expected: 1, Actual: 1.5}, 'pig');
+   TestRunner._findFirstFailurePath({Expected: 1, Actual: 1.5}, 'pig');
    TestRunner.failedToThrow(assertions, 'Using invalid delta arg');
    }
    catch(e)
@@ -219,7 +219,7 @@ TestSuite.TestRunner.findFirstFailurePath=async function(testState={})
 
    try{
    TestConfig.defaultDelta = 'pork';
-   TestRunner.findFirstFailurePath({Expected: 1, Actual: 1.5});
+   TestRunner._findFirstFailurePath({Expected: 1, Actual: 1.5});
    TestRunner.failedToThrow(assertions, 'Using invalid TestConfig.defaultDelta');
    }
    catch(e)
@@ -229,47 +229,47 @@ TestSuite.TestRunner.findFirstFailurePath=async function(testState={})
    TestConfig.defaultDelta = 0;
 
    try{
-   actual = TestRunner.findFirstFailurePath({Expected: [1,2], Actual: [1,2]});
+   actual = TestRunner._findFirstFailurePath({Expected: [1,2], Actual: [1,2]});
    assertions.push({Expected: undefined, Actual: actual, Description: 'Least deep equal'});
    } catch(e){assertions.push({Error: e, Description: 'Least deep equal'});}
 
    try{
-   actual = TestRunner.findFirstFailurePath({Expected: {a: 1}, Actual: {a: 2}});
+   actual = TestRunner._findFirstFailurePath({Expected: {a: 1}, Actual: {a: 2}});
    assertions.push({Expected: '"a"', Actual: actual, Description: 'Least deep not equal'});
    } catch(e){assertions.push({Error: e, Description: 'Least deep not equal'});}
 
    try{
-   actual = TestRunner.findFirstFailurePath({Expected: [{a: {b: 'blue', c: 1}}], Actual: [{a: {b: 'blue', c: 2}}]});
+   actual = TestRunner._findFirstFailurePath({Expected: [{a: {b: 'blue', c: 1}}], Actual: [{a: {b: 'blue', c: 2}}]});
    assertions.push({Expected: '"0"."a"."c"', Actual: actual, Description: 'Fail path'});
    } catch(e){assertions.push({Error: e, Description: 'Fail path'});}
 
    try{
-   actual = TestRunner.findFirstFailurePath({Expected: [1.2, 2.5], Actual: [1.4, 2.55], Delta: 0.2});
+   actual = TestRunner._findFirstFailurePath({Expected: [1.2, 2.5], Actual: [1.4, 2.55], Delta: 0.2});
    assertions.push({Expected: undefined, Actual: actual, Description: 'Delta is global'});
    } catch(e){assertions.push({Error: e, Description: 'Delta is global'});}
 
    try{
-   actual = TestRunner.findFirstFailurePath({Expected: {a: 1.01}, Actual: {a: 2}, Delta: 1});
+   actual = TestRunner._findFirstFailurePath({Expected: {a: 1.01}, Actual: {a: 2}, Delta: 1});
    assertions.push({Expected: undefined, Actual: actual, Description: 'Delta can be > 1'});
    } catch(e){assertions.push({Error: e, Description: 'Delta can be > 1'});}
 
    try{
-   actual = TestRunner.findFirstFailurePath({Expected: [{}, {a: 1}], Actual: [{}, {a: 1, b: 5}]});
+   actual = TestRunner._findFirstFailurePath({Expected: [{}, {a: 1}], Actual: [{}, {a: 1, b: 5}]});
    assertions.push({Expected: '"1"', Actual: actual, Description: 'Deep with unequal keys'});
    } catch(e){assertions.push({Error: e, Description: 'Deep with unequal keys'});}
 
    try{
-   actual = TestRunner.findFirstFailurePath({Expected: {a: undefined}, Actual: {b: 1}});
+   actual = TestRunner._findFirstFailurePath({Expected: {a: undefined}, Actual: {b: 1}});
    //Actual.b exists so that there are the same number of keys (thus edge case)
    assertions.push({Expected: '"a"', Actual: actual, Description: 'Edge case: undefined vs not exist'});
    } catch(e){assertions.push({Error: e, Description: 'Edge case: undefined vs not exist'});}
 
    try{
-   actual = TestRunner.findFirstFailurePath({Expected: {a: 1, b: 2}, Actual: {b: 2, a: 1}});
+   actual = TestRunner._findFirstFailurePath({Expected: {a: 1, b: 2}, Actual: {b: 2, a: 1}});
    assertions.push({Expected: undefined, Actual: actual, Description: 'Ignore key order'});
    } catch(e){assertions.push({Error: e, Description: 'Ignore key order'});}
 
-   return TestRunner.displayResults('meta: TestRunner.findFirstFailurePath', assertions, testState);
+   return TestRunner.displayResults('meta: TestRunner._findFirstFailurePath', assertions, testState);
 };
 TestSuite.TestRunner.failedToThrow=async function(testState={})
 {
@@ -286,7 +286,7 @@ TestSuite.TestRunner.failedToThrow=async function(testState={})
 
    return TestRunner.displayResults('meta: TestRunner.failedToThrow', assertions, testState);
 };
-TestSuite.TestRunner.formatTestTime=async function(testState={})
+TestSuite.TestRunner._formatTestTime=async function(testState={})
 {
    TestRunner.clearResults(testState);
 
@@ -294,25 +294,25 @@ TestSuite.TestRunner.formatTestTime=async function(testState={})
 
    try{
    expected = '0.100 seconds';
-   actual = TestRunner.formatTestTime(100);
+   actual = TestRunner._formatTestTime(100);
    assertions.push({Expected: expected, Actual: actual, Description: 'milliseconds only'});
    } catch(e){assertions.push({Error: e, Description: 'milliseconds only'});}
 
    try{
    expected = '1 minutes and 3.123 seconds';
-   actual = TestRunner.formatTestTime(63123);
+   actual = TestRunner._formatTestTime(63123);
    assertions.push({Expected: expected, Actual: actual, Description: 'each'});
    } catch(e){assertions.push({Error: e, Description: 'each'});}
 
    try{
    expected = '61 minutes and 0.000 seconds';
-   actual = TestRunner.formatTestTime(3660000);
+   actual = TestRunner._formatTestTime(3660000);
    assertions.push({Expected: expected, Actual: actual, Description: 'no hours'});
    } catch(e){assertions.push({Error: e, Description: 'no hours'});}
 
-   return TestRunner.displayResults('meta: TestRunner.formatTestTime', assertions, testState);
+   return TestRunner.displayResults('meta: TestRunner._formatTestTime', assertions, testState);
 };
-TestSuite.TestRunner.generateResultTable=async function(testState={})
+TestSuite.TestRunner._generateResultTable=async function(testState={})
 {
    TestRunner.clearResults(testState);
 
@@ -341,7 +341,7 @@ TestSuite.TestRunner.generateResultTable=async function(testState={})
    expected += '\n';
    expected += 'Grand total: 1/1\n';
    expected += 'Time taken: 0.123 seconds\n';
-   actual = TestRunner.generateResultTable(input);
+   actual = TestRunner._generateResultTable(input);
    assertions.push({Expected: expected, Actual: actual, Description: 'Happy path: 1 pass'});
    } catch(e){assertions.push({Error: e, Description: 'Happy path: 1 pass'});}
 
@@ -369,7 +369,7 @@ TestSuite.TestRunner.generateResultTable=async function(testState={})
       expected += '\n';
       expected += 'Grand total: 0/1\n';
       expected += 'Time taken: 0.123 seconds\n';
-      actual = TestRunner.generateResultTable(input);
+      actual = TestRunner._generateResultTable(input);
       assertions.push({Expected: expected, Actual: actual, Description: 'has Error'});
    } catch(e){assertions.push({Error: e, Description: 'has Error'});}
 
@@ -402,7 +402,7 @@ TestSuite.TestRunner.generateResultTable=async function(testState={})
       expected += '\n';
       expected += 'Grand total: 0/2\n';
       expected += 'Time taken: 0.123 seconds\n';
-      actual = TestRunner.generateResultTable(input);
+      actual = TestRunner._generateResultTable(input);
       assertions.push({Expected: expected, Actual: actual, Description: 'has failure'});
    } catch(e){assertions.push({Error: e, Description: 'has failure'});}
 
@@ -447,7 +447,7 @@ TestSuite.TestRunner.generateResultTable=async function(testState={})
       expected += '\n';
       expected += 'Grand total: 2/4\n';
       expected += 'Time taken: 0.123 seconds\n';
-      actual = TestRunner.generateResultTable(input);
+      actual = TestRunner._generateResultTable(input);
       assertions.push({Expected: expected, Actual: actual, Description: 'loops: 2 tests of 2 assertions'});
    } catch(e){assertions.push({Error: e, Description: 'loops: 2 tests of 2 assertions'});}
 
@@ -460,7 +460,7 @@ TestSuite.TestRunner.generateResultTable=async function(testState={})
          endTime: 0,
          duration: 123
       };
-      actual = TestRunner.generateResultTable(input);
+      actual = TestRunner._generateResultTable(input);
       expected  = 'Grand total: 16/16\n';
       expected += 'Time taken: 0.123 seconds\n';
       assertions.push({Expected: expected, Actual: actual, Description: 'All tests hidden'});
@@ -475,22 +475,22 @@ TestSuite.TestRunner.generateResultTable=async function(testState={})
          endTime: 0,
          duration: 61100
       };
-   actual = TestRunner.generateResultTable(input);
+   actual = TestRunner._generateResultTable(input);
    expected  = 'Grand total: 0/0\n';
    expected += 'Time taken: 1 minutes and 1.100 seconds\n';
    assertions.push({Expected: expected, Actual: actual, Description: 'No tests'});
    } catch(e){assertions.push({Error: e, Description: 'No tests'});}
 
-   return TestRunner.displayResults('meta: TestRunner.generateResultTable', assertions, testState);
+   return TestRunner.displayResults('meta: TestRunner._generateResultTable', assertions, testState);
 };
-TestSuite.TestRunner.processResults=async function(testState={})
+TestSuite.TestRunner._processResults=async function(testState={})
 {
    TestRunner.clearResults(testState);
 
    var assertions = [], actual, input, expected;
 
    try{
-      TestRunner.processResults([], {config: {defaultDelta: 1}});
+      TestRunner._processResults([], {config: {defaultDelta: 1}});
       TestRunner.failedToThrow(assertions, 'hidePassed is required');
    }
    catch(e)
@@ -524,7 +524,7 @@ TestSuite.TestRunner.processResults=async function(testState={})
       expectedString += '\n';
       expectedString += 'Grand total: 1/1\n';
       expectedString += 'Time taken: 0.045 seconds\n';
-      actual = TestRunner.processResults(input, {config: {hidePassed: false}, _startTime: 123});
+      actual = TestRunner._processResults(input, {config: {hidePassed: false}, _startTime: 123});
       actual.endTime = 0;
       actual.duration = 45;
       var actualString = actual.toString();
@@ -544,7 +544,7 @@ TestSuite.TestRunner.processResults=async function(testState={})
          endTime: 0,
          duration: 0
       };
-      actual = TestRunner.processResults(input, {config: {hidePassed: true}, _startTime: 123});
+      actual = TestRunner._processResults(input, {config: {hidePassed: true}, _startTime: 123});
       actual.endTime = 0;
       actual.duration = 0;
       delete actual.toString;
@@ -572,7 +572,7 @@ TestSuite.TestRunner.processResults=async function(testState={})
          endTime: 0,
          duration: 0
       };
-      actual = TestRunner.processResults(input, {config: {hidePassed: false}, _startTime: 123});
+      actual = TestRunner._processResults(input, {config: {hidePassed: false}, _startTime: 123});
       actual.endTime = 0;
       actual.duration = 0;
       delete actual.toString;
@@ -603,7 +603,7 @@ TestSuite.TestRunner.processResults=async function(testState={})
          endTime: 0,
          duration: 0
       };
-      actual = TestRunner.processResults(input, {config: {hidePassed: true}, _startTime: 123});
+      actual = TestRunner._processResults(input, {config: {hidePassed: true}, _startTime: 123});
       actual.endTime = 0;
       actual.duration = 0;
       delete actual.toString;
@@ -634,7 +634,7 @@ TestSuite.TestRunner.processResults=async function(testState={})
          endTime: 0,
          duration: 0
       };
-      actual = TestRunner.processResults(input, {config: {hidePassed: false}, _startTime: 123});
+      actual = TestRunner._processResults(input, {config: {hidePassed: false}, _startTime: 123});
       actual.endTime = 0;
       actual.duration = 0;
       delete actual.toString;
@@ -664,7 +664,7 @@ TestSuite.TestRunner.processResults=async function(testState={})
          endTime: 0,
          duration: 0
       };
-      actual = TestRunner.processResults(input, {config: {hidePassed: true}, _startTime: 123});
+      actual = TestRunner._processResults(input, {config: {hidePassed: true}, _startTime: 123});
       actual.endTime = 0;
       actual.duration = 0;
       delete actual.toString;
@@ -715,7 +715,7 @@ TestSuite.TestRunner.processResults=async function(testState={})
          endTime: 0,
          duration: 0
       };
-      actual = TestRunner.processResults(input, {config: {hidePassed: false}, _startTime: 123});
+      actual = TestRunner._processResults(input, {config: {hidePassed: false}, _startTime: 123});
       actual.endTime = 0;
       actual.duration = 0;
       delete actual.toString;
@@ -731,67 +731,67 @@ TestSuite.TestRunner.processResults=async function(testState={})
          endTime: 0,
          duration: 0
       };
-      actual = TestRunner.processResults([], {config: {hidePassed: false}, _startTime: 25});
+      actual = TestRunner._processResults([], {config: {hidePassed: false}, _startTime: 25});
       actual.endTime = 0;
       actual.duration = 0;
       delete actual.toString;
       assertions.push({Expected: expected, Actual: actual, Description: 'No tests'});
    } catch(e){assertions.push({Error: e, Description: 'No tests'});}
 
-   return TestRunner.displayResults('meta: TestRunner.processResults', assertions, testState);
+   return TestRunner.displayResults('meta: TestRunner._processResults', assertions, testState);
 };
-TestSuite.TestRunner.isPrimitive=async function(testState={})
+TestSuite.TestRunner._isPrimitive=async function(testState={})
 {
    TestRunner.clearResults(testState);
 
    var assertions = [], actual;
 
    try{
-   actual = TestRunner.isPrimitive(true);
+   actual = TestRunner._isPrimitive(true);
    assertions.push({Expected: true, Actual: actual, Description: 'boolean'});
    } catch(e){assertions.push({Error: e, Description: 'boolean'});}
 
    try{
-   actual = TestRunner.isPrimitive(5);
+   actual = TestRunner._isPrimitive(5);
    assertions.push({Expected: true, Actual: actual, Description: 'number'});
    } catch(e){assertions.push({Error: e, Description: 'number'});}
 
    try{
-   actual = TestRunner.isPrimitive('test');
+   actual = TestRunner._isPrimitive('test');
    assertions.push({Expected: true, Actual: actual, Description: 'string'});
    } catch(e){assertions.push({Error: e, Description: 'string'});}
 
    try{
-   actual = TestRunner.isPrimitive(new Date(0));
+   actual = TestRunner._isPrimitive(new Date(0));
    assertions.push({Expected: false, Actual: actual, Description: 'Date'});
    } catch(e){assertions.push({Error: e, Description: 'Date'});}
 
    try{
-   actual = TestRunner.isPrimitive(Math.floor);
+   actual = TestRunner._isPrimitive(Math.floor);
    assertions.push({Expected: true, Actual: actual, Description: 'function'});
    } catch(e){assertions.push({Error: e, Description: 'function'});}
 
    try{
-   actual = TestRunner.isPrimitive(Symbol());
+   actual = TestRunner._isPrimitive(Symbol());
    assertions.push({Expected: true, Actual: actual, Description: 'symbol'});
    } catch(e){assertions.push({Error: e, Description: 'symbol'});}
 
    try{
-   actual = TestRunner.isPrimitive();
+   actual = TestRunner._isPrimitive();
    assertions.push({Expected: true, Actual: actual, Description: 'undefined'});
    } catch(e){assertions.push({Error: e, Description: 'undefined'});}
 
    try{
-   actual = TestRunner.isPrimitive(null);
+   actual = TestRunner._isPrimitive(null);
    assertions.push({Expected: true, Actual: actual, Description: 'null'});
    } catch(e){assertions.push({Error: e, Description: 'null'});}
 
    try{
-   actual = TestRunner.isPrimitive(/a/);
+   actual = TestRunner._isPrimitive(/a/);
    assertions.push({Expected: false, Actual: actual, Description: 'RegExp'});
    } catch(e){assertions.push({Error: e, Description: 'RegExp'});}
 
-   return TestRunner.displayResults('meta: TestRunner.isPrimitive', assertions, testState);
+   return TestRunner.displayResults('meta: TestRunner._isPrimitive', assertions, testState);
 };
 TestSuite.TestRunner.testAll=async function(testState={})
 {
@@ -1014,7 +1014,7 @@ TestSuite.TestRunner.testAll=async function(testState={})
 
    return TestRunner.displayResults('meta: TestRunner.testAll', assertions, testState);
 };
-TestSuite.TestRunner.useValueOf=async function(testState={})
+TestSuite.TestRunner._useValueOf=async function(testState={})
 {
    TestRunner.clearResults(testState);
 
@@ -1023,42 +1023,42 @@ TestSuite.TestRunner.useValueOf=async function(testState={})
    try{
    input = new Boolean(false);
    assertions.push({Expected: 'object', Actual: typeof(input), Description: 'Is object: Boolean'});
-   actual = TestRunner.useValueOf(input);
-   assertions.push({Expected: true, Actual: actual, Description: 'useValueOf: Boolean'});
-   } catch(e){assertions.push({Error: e, Description: 'useValueOf: Boolean'});}
+   actual = TestRunner._useValueOf(input);
+   assertions.push({Expected: true, Actual: actual, Description: '_useValueOf: Boolean'});
+   } catch(e){assertions.push({Error: e, Description: '_useValueOf: Boolean'});}
 
    try{
    input = new Number(5);
    assertions.push({Expected: 'object', Actual: typeof(input), Description: 'Is object: Number'});
-   actual = TestRunner.useValueOf(input);
-   assertions.push({Expected: true, Actual: actual, Description: 'useValueOf: Number'});
-   } catch(e){assertions.push({Error: e, Description: 'useValueOf: Number'});}
+   actual = TestRunner._useValueOf(input);
+   assertions.push({Expected: true, Actual: actual, Description: '_useValueOf: Number'});
+   } catch(e){assertions.push({Error: e, Description: '_useValueOf: Number'});}
 
    try{
    input = new String('test');
    assertions.push({Expected: 'object', Actual: typeof(input), Description: 'Is object: String'});
-   actual = TestRunner.useValueOf(input);
-   assertions.push({Expected: true, Actual: actual, Description: 'useValueOf: String'});
-   } catch(e){assertions.push({Error: e, Description: 'useValueOf: String'});}
+   actual = TestRunner._useValueOf(input);
+   assertions.push({Expected: true, Actual: actual, Description: '_useValueOf: String'});
+   } catch(e){assertions.push({Error: e, Description: '_useValueOf: String'});}
 
    try{
    input = new Date(1465695450227);
    assertions.push({Expected: 'object', Actual: typeof(input), Description: 'Is object: Date'});
-   actual = TestRunner.useValueOf(input);
-   assertions.push({Expected: true, Actual: actual, Description: 'useValueOf: Date'});
-   } catch(e){assertions.push({Error: e, Description: 'useValueOf: Date'});}
+   actual = TestRunner._useValueOf(input);
+   assertions.push({Expected: true, Actual: actual, Description: '_useValueOf: Date'});
+   } catch(e){assertions.push({Error: e, Description: '_useValueOf: Date'});}
 
    try{
-   actual = TestRunner.useValueOf(Math.floor);
-   assertions.push({Expected: false, Actual: actual, Description: 'useValueOf: function'});
-   } catch(e){assertions.push({Error: e, Description: 'useValueOf: function'});}
+   actual = TestRunner._useValueOf(Math.floor);
+   assertions.push({Expected: false, Actual: actual, Description: '_useValueOf: function'});
+   } catch(e){assertions.push({Error: e, Description: '_useValueOf: function'});}
 
    try{
-   actual = TestRunner.useValueOf(/a/);
-   assertions.push({Expected: false, Actual: actual, Description: 'useValueOf: RegExp'});
-   } catch(e){assertions.push({Error: e, Description: 'useValueOf: RegExp'});}
+   actual = TestRunner._useValueOf(/a/);
+   assertions.push({Expected: false, Actual: actual, Description: '_useValueOf: RegExp'});
+   } catch(e){assertions.push({Error: e, Description: '_useValueOf: RegExp'});}
 
-   return TestRunner.displayResults('meta: TestRunner.useValueOf', assertions, testState);
+   return TestRunner.displayResults('meta: TestRunner._useValueOf', assertions, testState);
 };
 TestSuite.TestRunner._shallowEquality=async function(testState={})
 {
