@@ -121,6 +121,147 @@ TestRunner.failedToThrow=function(testsSoFar, description)
 {
    testsSoFar.push({Expected: 'throw', Actual: 'return', Description: description});
 };
+/**Used to run every test in a suite.
+This function does the same thing as clearResults and calls TestRunner._generateResultTable.
+The main loop enumerates over the testSuite object given and calls each function.
+The loop is deep and all properties that are objects will also be enumerated over.
+It will call testConfig.beforeFirst (if it is defined) before the first test. This can be used to setup mocks.
+It will call testConfig.betweenEach (if it is defined) between each test. This can be used to reset state.
+It will call testConfig.afterLast (if it is defined) after the last test and TestRunner._processResults.
+This can be used to teardown mocks (including deleting equals functions).
+If the called test function throws, TestRunner.testAll will catch it and display the list of errors when finished.
+if(DOM exists) everything is written to #testResults then it updates location.hash to scroll to it.
+@param {object} testSuite an object that contains every test to be run. defaults to TestSuite
+@param {object} testConfig an object (defaults to TestConfig) that contains:
+   {function} beforeFirst if defined it will be called before the first test
+   {function} betweenEach if defined it will be called between each test
+   {function} afterLast if defined it will be called after the last test and TestRunner._processResults
+   {number} defaultDelta passed to TestRunner._findFirstFailurePath
+   {boolean} hidePassed defaults to true and is passed to TestRunner._generateResultTable
+@returns {object} a promise of a json object of test results (also has a toString)
+*/
+TestRunner.testAll=function(testSuite, testConfig)
+{
+   var testState = {_startTime: Date.now(), runningSingleTest: false}, testResults;
+   if (_hasDom)
+   {
+      testResults = document.getElementById('testResults');
+      if(null !== testResults) testResults.value = '';
+   }
+
+   //testSuite and testConfig defaults can't be self tested
+   if(undefined === testSuite) testSuite = TestSuite;
+   testState.config = TestRunner._defaultConfigValues(testConfig, true);
+
+   //TestSuite is quoted so that it looks the same as the rest.
+   //Always start with this because I don't any other name.
+   var suiteCollection = [{breadcrumb: '"TestSuite"', object: testSuite}], unprocessedList = [], runBetweenEach = false;
+   testState.config.beforeFirst();
+   while (0 !== suiteCollection.length)
+   {
+      var thisHistory = suiteCollection.shift();
+      testSuite = thisHistory.object;
+      for (var key in testSuite)
+      {
+         if(!testSuite.hasOwnProperty(key)) continue;  //"for in" loops are always risky and therefore require sanitizing
+         var thisPath = thisHistory.breadcrumb + '.' + JSON.stringify(key);
+         if('object' === typeof(testSuite[key]) && null !== testSuite[key])
+         {
+            //null is a jerk: typeof erroneously returns 'object' (null isn't an object because it doesn't inherit Object.prototype)
+            suiteCollection.push({breadcrumb: thisPath, object: testSuite[key]});
+         }
+         else if ('function' === typeof(testSuite[key]))
+         {
+            if(runBetweenEach) testState.config.betweenEach();
+            else runBetweenEach = true;
+            try
+            {
+               var testReturnValue = testSuite[key](testState);
+               if (testReturnValue instanceof Promise)
+               {
+                  (function(copyOfThisPath){
+                     unprocessedList.push(testReturnValue
+                        .then(function(value){return {status: 'resolved', value: value}})
+                        //logging will be done later for errors
+                        .catch(function(errorCaught){return {status: 'rejected', value: {Error: errorCaught, Description: copyOfThisPath}}})
+                     );
+                  })(thisPath);
+               }
+               else unprocessedList.push({status: 'resolved', value: testReturnValue});
+            }
+            catch (errorCaught)
+            {
+               //when a non-async test throws
+               //logging will be done later
+               unprocessedList.push({status: 'rejected', value: {Error: errorCaught, Description: thisPath}});
+            }
+         }
+      }
+   }
+   //javascript:TestRunner.testAll(); link won't override the page if it returns a promise
+   return Promise.all(unprocessedList)
+   .then(function(promiseResults)
+   {
+      var errorTests = [], resolvedTests = [];
+      for (var i=0; i < promiseResults.length; ++i)
+      {
+         if('resolved' === promiseResults[i].status) resolvedTests.push(promiseResults[i].value);
+         else errorTests.push(promiseResults[i].value);
+      }
+      if(0 !== errorTests.length) resolvedTests.push({name: 'TestRunner.testAll', assertions: errorTests});
+
+      var output = TestRunner._processResults(resolvedTests, testState);
+      //afterLast should be run after TestRunner._processResults so that equals functions could be removed
+      testState.config.afterLast();
+
+      if (_hasDom)
+      {
+         testResults = document.getElementById('testResults');
+         if (null !== testResults)
+         {
+            testResults.value = output.toString();
+            location.hash = '#testResults';  //scroll to the results
+         }
+      }
+      return output;
+   })
+   .catch(function(problem)
+   {
+      //when runner throws (shouldn't) or equals throws
+      var message = 'Test runner failed. Did an equals function throw?';
+      //TODO: have a mock logger (3 places) for self-testing
+      console.error(message, problem);
+      if (_hasDom)
+      {
+         testResults = document.getElementById('testResults');
+         if (null !== testResults)
+         {
+            testResults.value = message + '\n' + problem.toString();
+            location.hash = '#testResults';  //scroll to the results
+         }
+      }
+   });
+};
+/**@returns {object} a config with all values defined*/
+TestRunner._defaultConfigValues=function(testConfig, hidePassedDefaultValue)
+{
+   if(undefined === testConfig) testConfig = TestConfig;
+   if(undefined === testConfig.beforeFirst || undefined === testConfig.betweenEach
+      || undefined === testConfig.afterLast || undefined === testConfig.defaultDelta
+      || (undefined === testConfig.hidePassed && undefined !== hidePassedDefaultValue))
+   {
+      //copy testConfig object so that I don't modify the one passed in
+      testConfig = {beforeFirst: testConfig.beforeFirst, betweenEach: testConfig.betweenEach, afterLast: testConfig.afterLast,
+         defaultDelta: testConfig.defaultDelta, hidePassed: testConfig.hidePassed};
+      var noOp = Function.prototype;
+      if(undefined === testConfig.beforeFirst) testConfig.beforeFirst = noOp;
+      if(undefined === testConfig.betweenEach) testConfig.betweenEach = noOp;
+      if(undefined === testConfig.afterLast) testConfig.afterLast = noOp;
+      if(undefined === testConfig.defaultDelta) testConfig.defaultDelta = 0;
+      if(undefined === testConfig.hidePassed) testConfig.hidePassed = hidePassedDefaultValue;
+   }
+   return testConfig;
+};
 /**Returns the path to the first (in no particular order) element in Expected that doesn't equal Actual (or return if there's an Error).
 If Expected.equals is a function then it will use the result of Expected.equals(Actual) without any other checks.
 Functions must be the same object for equality in this case, if you want to compare the sources call toString.
@@ -229,6 +370,14 @@ TestRunner._generateResultTable=function(resultJson)
    output += 'Time taken: ' + TestRunner._formatTestTime(resultJson.duration) + '\n';
    return output;
 };
+/**@returns {boolean} true if the input should be compared via === when determining equality*/
+TestRunner._isPrimitive=function(input)
+{
+   var inputType = typeof(input);
+   return ('boolean' === inputType || 'number' === inputType || 'string' === inputType
+      || 'function' === inputType || 'symbol' === inputType || undefined === input || null === input);
+   //TestRunner._shallowEquality doesn't reach the undefined and null cases
+};
 /**This function creates a json table (with a toString) which are the processed outcome of suiteResults.
 Pass and fail counts are counted and added to the grand total.
 Note that the totals will not match array lengths when testConfig.hidePassed (and an assertion passes)
@@ -291,161 +440,6 @@ TestRunner._processResults=function(suiteResults, testState)
    output.duration = (testState._endTime - testState._startTime);
    output.toString=function(){return TestRunner._generateResultTable(this);};
    return output;
-};
-/**@returns {boolean} true if the input should be compared via === when determining equality*/
-TestRunner._isPrimitive=function(input)
-{
-   var inputType = typeof(input);
-   return ('boolean' === inputType || 'number' === inputType || 'string' === inputType
-      || 'function' === inputType || 'symbol' === inputType || undefined === input || null === input);
-   //TestRunner._shallowEquality doesn't reach the undefined and null cases
-};
-/**Used to run every test in a suite.
-This function does the same thing as clearResults and calls TestRunner._generateResultTable.
-The main loop enumerates over the testSuite object given and calls each function.
-The loop is deep and all properties that are objects will also be enumerated over.
-It will call testConfig.beforeFirst (if it is defined) before the first test. This can be used to setup mocks.
-It will call testConfig.betweenEach (if it is defined) between each test. This can be used to reset state.
-It will call testConfig.afterLast (if it is defined) after the last test and TestRunner._processResults.
-This can be used to teardown mocks (including deleting equals functions).
-If the called test function throws, TestRunner.testAll will catch it and display the list of errors when finished.
-if(DOM exists) everything is written to #testResults then it updates location.hash to scroll to it.
-@param {object} testSuite an object that contains every test to be run. defaults to TestSuite
-@param {object} testConfig an object (defaults to TestConfig) that contains:
-   {function} betweenEach if defined it will be called between each test
-   {number} defaultDelta passed to TestRunner._findFirstFailurePath
-   {boolean} hidePassed defaults to true and is passed to TestRunner._generateResultTable
-@returns {object} a promise of a json object of test results (also has a toString)
-*/
-TestRunner.testAll=function(testSuite, testConfig)
-{
-   var testState = {_startTime: Date.now(), runningSingleTest: false}, testResults;
-   if (_hasDom)
-   {
-      testResults = document.getElementById('testResults');
-      if(null !== testResults) testResults.value = '';
-   }
-
-   //testSuite and testConfig defaults can't be self tested
-   if(undefined === testSuite) testSuite = TestSuite;
-   testState.config = TestRunner._defaultConfigValues(testConfig, true);
-
-   //TestSuite is quoted so that it looks the same as the rest.
-   //Always start with this because I don't any other name.
-   var suiteCollection = [{breadcrumb: '"TestSuite"', object: testSuite}], unprocessedList = [], runBetweenEach = false;
-   testState.config.beforeFirst();
-   while (0 !== suiteCollection.length)
-   {
-      var thisHistory = suiteCollection.shift();
-      testSuite = thisHistory.object;
-      for (var key in testSuite)
-      {
-         if(!testSuite.hasOwnProperty(key)) continue;  //"for in" loops are always risky and therefore require sanitizing
-         var thisPath = thisHistory.breadcrumb + '.' + JSON.stringify(key);
-         if('object' === typeof(testSuite[key]) && null !== testSuite[key])
-         {
-            //null is a jerk: typeof erroneously returns 'object' (null isn't an object because it doesn't inherit Object.prototype)
-            suiteCollection.push({breadcrumb: thisPath, object: testSuite[key]});
-         }
-         else if ('function' === typeof(testSuite[key]))
-         {
-            if(runBetweenEach) testState.config.betweenEach();
-            else runBetweenEach = true;
-            try
-            {
-               var testReturnValue = testSuite[key](testState);
-               if (testReturnValue instanceof Promise)
-               {
-                  (function(copyOfThisPath){
-                     unprocessedList.push(testReturnValue
-                        .then(function(value){return {status: 'resolved', value: value}})
-                        //logging will be done later for errors
-                        .catch(function(errorCaught){return {status: 'rejected', value: {Error: errorCaught, Description: copyOfThisPath}}})
-                     );
-                  })(thisPath);
-               }
-               else unprocessedList.push({status: 'resolved', value: testReturnValue});
-            }
-            catch (errorCaught)
-            {
-               //when a non-async test throws
-               //logging will be done later
-               unprocessedList.push({status: 'rejected', value: {Error: errorCaught, Description: thisPath}});
-            }
-         }
-      }
-   }
-   //javascript:TestRunner.testAll(); link won't override the page if it returns a promise
-   return Promise.all(unprocessedList)
-   .then(function(promiseResults)
-   {
-      var errorTests = [], resolvedTests = [];
-      for (var i=0; i < promiseResults.length; ++i)
-      {
-         if('resolved' === promiseResults[i].status) resolvedTests.push(promiseResults[i].value);
-         else errorTests.push(promiseResults[i].value);
-      }
-      if(0 !== errorTests.length) resolvedTests.push({name: 'TestRunner.testAll', assertions: errorTests});
-
-      var output = TestRunner._processResults(resolvedTests, testState);
-      //afterLast should be run after TestRunner._processResults so that equals functions could be removed
-      testState.config.afterLast();
-
-      if (_hasDom)
-      {
-         testResults = document.getElementById('testResults');
-         if (null !== testResults)
-         {
-            testResults.value = output.toString();
-            location.hash = '#testResults';  //scroll to the results
-         }
-      }
-      return output;
-   })
-   .catch(function(problem)
-   {
-      //when runner throws (shouldn't) or equals throws
-      var message = 'Test runner failed. Did an equals function throw?';
-      //TODO: have a mock logger (3 places) for self-testing
-      console.error(message, problem);
-      if (_hasDom)
-      {
-         testResults = document.getElementById('testResults');
-         if (null !== testResults)
-         {
-            testResults.value = message + '\n' + problem.toString();
-            location.hash = '#testResults';  //scroll to the results
-         }
-      }
-   });
-};
-/**@returns {boolean} true if the input should be compared via .valueOf when determining equality*/
-TestRunner._useValueOf=function(input)
-{
-   return (input instanceof Boolean || input instanceof Number || input instanceof String
-      || input instanceof Date);
-      //although RegExp has a valueOf it returns an object so it is pointless to call
-      //typeof(new Function()) === 'function' and any subclass would need to have equals
-};
-/**@returns {object} a config with all values defined*/
-TestRunner._defaultConfigValues=function(testConfig, hidePassedDefaultValue)
-{
-   if(undefined === testConfig) testConfig = TestConfig;
-   if(undefined === testConfig.beforeFirst || undefined === testConfig.betweenEach
-      || undefined === testConfig.afterLast || undefined === testConfig.defaultDelta
-      || (undefined === testConfig.hidePassed && undefined !== hidePassedDefaultValue))
-   {
-      //copy testConfig object so that I don't modify the one passed in
-      testConfig = {beforeFirst: testConfig.beforeFirst, betweenEach: testConfig.betweenEach, afterLast: testConfig.afterLast,
-         defaultDelta: testConfig.defaultDelta, hidePassed: testConfig.hidePassed};
-      var noOp = Function.prototype;
-      if(undefined === testConfig.beforeFirst) testConfig.beforeFirst = noOp;
-      if(undefined === testConfig.betweenEach) testConfig.betweenEach = noOp;
-      if(undefined === testConfig.afterLast) testConfig.afterLast = noOp;
-      if(undefined === testConfig.defaultDelta) testConfig.defaultDelta = 0;
-      if(undefined === testConfig.hidePassed) testConfig.hidePassed = hidePassedDefaultValue;
-   }
-   return testConfig;
 };
 /**Used internally by TestRunner._findFirstFailurePath. Don't call this directly (delta isn't validated).
 @returns {?boolean} true or false based on a shallow equality check or undefined if a deep equality is required.*/
@@ -511,6 +505,14 @@ TestRunner._shallowEquality=function(expected, actual, delta)
    }
 
    return undefined;  //it comes here for arrays and all custom objects
+};
+/**@returns {boolean} true if the input should be compared via .valueOf when determining equality*/
+TestRunner._useValueOf=function(input)
+{
+   return (input instanceof Boolean || input instanceof Number || input instanceof String
+      || input instanceof Date);
+   //although RegExp has a valueOf it returns an object so it is pointless to call
+   //typeof(new Function()) === 'function' and any subclass would need to have equals
 };
 })();
 
