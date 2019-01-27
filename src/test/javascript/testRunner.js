@@ -1,48 +1,6 @@
 'use strict';
 TestSuite.TestRunner={};
-TestSuite.TestRunner.changeValue=async function(testState={})
-{
-   TestRunner.clearResults(testState);
-
-   var assertions = [], actual;
-   var resultBox = document.getElementById('testResults');
-
-   try{
-   resultBox.value = '';
-   actual = false;
-   resultBox.onchange = function(){actual = true;};
-   TestRunner.changeValue('testResults', 'new value');
-   assertions.push({Expected: true, Actual: actual, Description: 'Happy path: called'});
-   assertions.push({Expected: 'new value', Actual: resultBox.value, Description: 'Happy path: value'});
-   } catch(e){assertions.push({Error: e, Description: 'Happy path'});}
-
-   try{
-   TestRunner.changeValue('Dana', 'only Zuul');  //assuming there is no Dana
-   TestRunner.failedToThrow(assertions, 'Element doesn\'t exist');
-   }
-   catch(e)
-   {
-      assertions.push({Expected: true, Actual: true, Description: 'Element doesn\'t exist'});
-      //ignore exact error because it is browser specific
-   }
-
-   try{
-   resultBox.onchange = undefined;
-   TestRunner.changeValue('testResults', 'new value');
-   TestRunner.failedToThrow(assertions, 'No onchange');
-   }
-   catch(e)
-   {
-      assertions.push({Expected: true, Actual: true, Description: 'No onchange'});
-      //ignore exact error because it is browser specific
-   }
-
-   resultBox.value = '';
-   //delete resultBox.onchange;  //not possible so just leave it undefined
-
-   return TestRunner.displayResults('meta: TestRunner.changeValue', assertions, testState);
-};
-TestSuite.TestRunner.clearResults=async function(testState={})
+TestSuite.TestRunner.clearResults=function(testState={})
 {
    TestRunner.clearResults(testState);
 
@@ -93,7 +51,7 @@ TestSuite.TestRunner.clearResults=async function(testState={})
 
    return TestRunner.displayResults('meta: TestRunner.clearResults', assertions, testState);
 };
-TestSuite.TestRunner.displayResults=async function(testState={})
+TestSuite.TestRunner.displayResults=function(testState={})
 {
    TestRunner.clearResults(testState);
 
@@ -186,6 +144,7 @@ TestSuite.TestRunner.failedToThrow=async function(testState={})
 };
 TestSuite.TestRunner.testAll=async function(testState={})
 {
+   //TODO: async can't safely use DOM but need to await
    TestRunner.clearResults(testState);
 
    var assertions = [], actual, testSuite, expected, beforeFirstCount = 0, betweenCount = 0, afterLastCount = 0, inputConfig = {};

@@ -54,16 +54,6 @@ var TestRunner = {};
 /**This is a private global because the value doesn't change.*/
 var _hasDom = (typeof window === 'object' && undefined !== window.document);
 
-/**Given the DOM's id this function sets the value property equal to valueToSet then calls onchange.
-No validation is done so if the id is not found it will throw an error.
-It will also throw if there is no onchange defined (instead just set .value directly).*/
-//TODO: move to H&H (update example at bottom)
-TestRunner.changeValue=function(elementId, valueToSet)
-{
-   var element = document.getElementById(elementId);
-   element.value = valueToSet;
-   element.onchange();
-};
 /**Will do nothing if testState.runningSingleTest is false (strict). else this function will clear #testResults (if exists),
 start the timer, and call testState.config.beforeFirst (if it is defined) which can be used to setup mocks.*/
 TestRunner.clearResults=function(testState)
@@ -540,7 +530,9 @@ TestSuite.abilityList.calculateValues=function(testState={})  //all tests must d
    //A basic assertion that assumes no error will be thrown. Easy to do but not as useful.
 
    try{
-      TestRunner.changeValue('input', 5);
+      var element = document.getElementById('input');
+      element.value = 5;
+      element.onchange();
       assertions.push({Expected: 5, Actual: document.getElementById('output').value, Description: 'input is copied over on change'});
    } catch(e){assertions.push({Error: e, Description: 'input is copied over on change'});}
    //not expecting an error to be thrown but it was. fail instead of crashing
