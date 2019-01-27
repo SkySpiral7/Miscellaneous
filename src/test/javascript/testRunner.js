@@ -249,6 +249,11 @@ TestSuite.TestRunner.findFirstFailurePath=async function(testState={})
    } catch(e){assertions.push({Error: e, Description: 'Delta is global'});}
 
    try{
+   actual = TestRunner.findFirstFailurePath({Expected: {a: 1.01}, Actual: {a: 2}, Delta: 1});
+   assertions.push({Expected: undefined, Actual: actual, Description: 'Delta can be > 1'});
+   } catch(e){assertions.push({Error: e, Description: 'Delta can be > 1'});}
+
+   try{
    actual = TestRunner.findFirstFailurePath({Expected: [{}, {a: 1}], Actual: [{}, {a: 1, b: 5}]});
    assertions.push({Expected: '"1"', Actual: actual, Description: 'Deep with unequal keys'});
    } catch(e){assertions.push({Error: e, Description: 'Deep with unequal keys'});}
