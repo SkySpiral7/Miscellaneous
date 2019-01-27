@@ -30,8 +30,11 @@ This test runner supports NodeJs.
 This test runner has no polyfil or prototypes defined and requires Promise to exist.
 
 The way Expected and Actual are compared by default should cover most cases but if you need custom equality simply
-define a function named equals on Expected which takes in actual and synchronously returns true or false.
+define a function named equals on Expected which takes in Actual and synchronously returns true or false.
 Note that the comparisons are type strict since using the wrong type can lead to bugs.
+However if equals exists it will be called before any other checks therefore
+if {Expected: {equals: function(other){return other % 2 === 0;}}, Actual: actual} fails it will show what Actual was
+rather than just {Expected: true, Actual: (actual%2===0)} which only shows false.
 */
 /*
 Comparing delta to Jasmine:
@@ -120,7 +123,7 @@ TestRunner.failedToThrow=function(testsSoFar, description)
    testsSoFar.push({Expected: 'throw', Actual: 'return', Description: description});
 };
 /**Returns the path to the first (in no particular order) element in Expected that doesn't equal Actual (or return if there's an Error).
-If Expected and Actual are both (non-null) objects and Expected.equals is a function then it will use the result of Expected.equals(Actual).
+If Expected.equals is a function then it will use the result of Expected.equals(Actual) without any other checks.
 Functions must be the same object for equality in this case, if you want to compare the sources call toString.
 hasOwnProperty is not used: all enumerable properties must match.
 NaN is equal to NaN.
@@ -448,6 +451,10 @@ function _sanitizeConfig(testConfig, hidePassed)
 @returns {?boolean} true or false based on a shallow equality check or undefined if a deep equality is required.*/
 TestRunner._shallowEquality=function(expected, actual, delta)
 {
+   //equals is checked first so that clients can change any equality including expected matching a different type
+   //null instanceof Object is false
+   if(expected instanceof Object && typeof(expected.equals) === 'function') return expected.equals(actual);
+
    if(typeof(expected) !== typeof(actual)) return false;  //testing is type strict
 
    if(null === expected) return (null === actual);  //typeof(null) === 'object' this is to avoid that mess
@@ -473,9 +480,6 @@ TestRunner._shallowEquality=function(expected, actual, delta)
       return Math.abs(expected - actual) <= delta;  //returns false if expected or actual is NaN
          //numbers are immutable. they are kept the same for the sake of display
    }
-
-   //TODO: bug? equals isn't called if diff types and other cases
-   if(expected instanceof Object && typeof(expected.equals) === 'function') return expected.equals(actual);
 
    if (expected instanceof Error)
    {

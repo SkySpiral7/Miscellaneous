@@ -964,6 +964,21 @@ TestSuite.TestRunner.testAll=async function(testState={})
    } catch(e){assertions.push({Error: e, Description: 'equals throws'});}
 
    try{
+   testSuite = {testTable: function(){return {name: 'my equal', assertions:[
+      {Expected: {equals: function(other){return other % 2 === 0;}}, Actual: 15, Description: 'should be even'}
+   ]}}};
+   expected  = '0/1: my equal\n';
+   expected += '   Fail: should be even\n';
+   expected += '      Expected: [object Object]\n';
+   expected += '      Actual: 15\n';
+   expected += '\nGrand total: 0/1\nTime taken: ?\n';
+
+   await TestRunner.testAll(testSuite, trackingConfig);
+   actual = resultBox.value.replace(/Time taken:.+/, 'Time taken: ?');
+   assertions.push({Expected: expected, Actual: actual, Description: 'IT: custom match shows actual'});
+   } catch(e){assertions.push({Error: e, Description: 'IT: custom match shows actual'});}
+
+   try{
    testSuite = {testTable: function(){return {name: 'Off test', assertions:[
       {Expected: 1, Actual: 5, Description: '4 Off'}
    ]}}};
@@ -1052,6 +1067,30 @@ TestSuite.TestRunner._shallowEquality=async function(testState={})
    var assertions = [], actual, input;
 
    try{
+   input = {};
+   input.Expected = {hairColor: 'green', isCached: false, equals: function(other){return other.hairColor === this.hairColor;}};
+   input.Actual = {hairColor: 'green', isCached: true};
+   actual = TestRunner._shallowEquality(input.Expected, input.Actual, 0);
+   assertions.push({Expected: true, Actual: actual, Description: 'Custom equals function: true'});
+   } catch(e){assertions.push({Error: e, Description: 'Custom equals function: true'});}
+
+   try{
+   input = {};
+   input.Expected = {hairColor: 'green', isCached: false, equals: function(other){return other.hairColor === this.hairColor;}};
+   input.Actual = {hairColor: 'blue', isCached: true};
+   actual = TestRunner._shallowEquality(input.Expected, input.Actual, 0);
+   assertions.push({Expected: false, Actual: actual, Description: 'Custom equals function: false'});
+   } catch(e){assertions.push({Error: e, Description: 'Custom equals function: false'});}
+
+   try{
+   input = {};
+   input.Expected = {equals: function(other){return other % 2 === 0;}};
+   input.Actual = 16;
+   actual = TestRunner._shallowEquality(input.Expected, input.Actual, 0);
+   assertions.push({Expected: true, Actual: actual, Description: 'Custom equals function: different types'});
+   } catch(e){assertions.push({Error: e, Description: 'Custom equals function: different types'});}
+
+   try{
    actual = TestRunner._shallowEquality(1, '1', 0);
    assertions.push({Expected: false, Actual: actual, Description: 'Different types'});
    } catch(e){assertions.push({Error: e, Description: 'Different types'});}
@@ -1116,22 +1155,6 @@ TestSuite.TestRunner._shallowEquality=async function(testState={})
    actual = TestRunner._shallowEquality(new Date(1466625615000), new Date(1466625615156), 1000);
    assertions.push({Expected: true, Actual: actual, Description: 'Date with delta'});
    } catch(e){assertions.push({Error: e, Description: 'Date with delta'});}
-
-   try{
-   input = {};
-   input.Expected = {hairColor: 'green', isCached: false, equals: function(other){return other.hairColor === this.hairColor;}};
-   input.Actual = {hairColor: 'green', isCached: true, equals: function(other){return other.hairColor === this.hairColor;}};
-   actual = TestRunner._shallowEquality(input.Expected, input.Actual, 0);
-   assertions.push({Expected: true, Actual: actual, Description: 'Custom equals function: true'});
-   } catch(e){assertions.push({Error: e, Description: 'Custom equals function: true'});}
-
-   try{
-   input = {};
-   input.Expected = {hairColor: 'green', isCached: false, equals: function(other){return other.hairColor === this.hairColor;}};
-   input.Actual = {hairColor: 'blue', isCached: true, equals: function(other){return other.hairColor === this.hairColor;}};
-   actual = TestRunner._shallowEquality(input.Expected, input.Actual, 0);
-   assertions.push({Expected: false, Actual: actual, Description: 'Custom equals function: false'});
-   } catch(e){assertions.push({Error: e, Description: 'Custom equals function: false'});}
 
    try{
    input = new Error();
