@@ -3,7 +3,7 @@ TestSuite.unstableSort=function(testState={})
 {
    TestRunner.clearResults(testState);
 
-   var testResults=[], input, expected;
+   var assertions=[], input, expected;
 
    try {
    input = ['cat', 'human', 'dog'];
@@ -15,8 +15,8 @@ TestSuite.unstableSort=function(testState={})
    unstableSort(input, byStringLength);
 
    expected = ['dog', 'cat', 'human'];
-   testResults.push({Expected: expected, Actual: input, Description: 'Does sort but unstable'});
-   } catch(e){testResults.push({Error: e, Description: 'Does sort but unstable'});}
+   assertions.push({Expected: expected, Actual: input, Description: 'Does sort but unstable'});
+   } catch(e){assertions.push({Error: e, Description: 'Does sort but unstable'});}
 
    try {
    input = ['cat', 'human', 'dog'];
@@ -26,8 +26,8 @@ TestSuite.unstableSort=function(testState={})
    unstableSort(input, noOpCompare);
 
    expected = ['human', 'dog', 'cat'];
-   testResults.push({Expected: expected, Actual: input, Description: 'Unstable with no op'});
-   } catch(e){testResults.push({Error: e, Description: 'Unstable with no op'});}
+   assertions.push({Expected: expected, Actual: input, Description: 'Unstable with no op'});
+   } catch(e){assertions.push({Error: e, Description: 'Unstable with no op'});}
 
-   return TestRunner.displayResults('TestSuite.unstableSort', testResults, testState);
+   return TestRunner.displayResults('TestSuite.unstableSort', assertions, testState);
 };

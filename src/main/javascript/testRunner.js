@@ -230,7 +230,7 @@ TestRunner.generateResultTable=function(resultJson)
 /**This function creates a json table (with a toString) which are the processed outcome of suiteResults.
 Pass and fail counts are counted and added to the grand total.
 Note that the totals will not match array lengths when testConfig.hidePassed (and an assertion passes)
-@param {object[]} suiteResults an array of testResults which contains an array of assertions
+@param {object[]} suiteResults an array of assertions which contains an array of assertions
 @param {object} testState with _startTime and config properties:
 {boolean} hidePassed if false then the assertions within a table that pass won't display (returns only grand total if all pass)
 {number} defaultDelta passed to TestRunner.findFirstFailurePath
