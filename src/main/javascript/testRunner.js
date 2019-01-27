@@ -1,24 +1,61 @@
 'use strict';
 /*
+This javascript program is used to run javascript tests. It is lightweight but useful and fast.
+I maintain it because I like how lightweight it is and because it accepts a delta for deeply comparing floating point
+numbers (and dates) whereas Jasmine only does surface level comparisons using decimal place precision (more details below).
+QUnit doesn't seem to support "close enough" matches for numbers.
+*/
+/*
 Terms:
 'suite': an object that contains any number of tests and suites
 'test': a function (generally defined under the TestSuite object) that creates assertions
-'assertion': an object with Expected/Actual (or Error), if it has an Outcome then it has already been determined if it passes
+'assertion': an object with Expected/Actual (or Error) etc, if it has an Outcome then it has already been determined if it passes
+*/
+/*
+For examples see the bottom of this file and testRunnerExample.html.
+For more information see the javascript doc comments within this file.
 
-This test runner currently doesn't support asynchronous test execution
-If you have a DOM element textarea#testResults that will have the results put in it
-   if you don't have that DOM then the json results will be returned instead
+To run a specific test simply call the test as a normal function (no args).
+To run all tests simply call TestRunner.testAll() note that it returns a promise.
+If you have a DOM element textarea#testResults that will have the results put in it and update location.hash to #testResults.
+Test functions and testAll will also return the test results as json (it also has a toString defined).
+
+This test runner supports asynchronous test execution.
+Simply make any number of your test functions async to take advantage.
+Tests that are not async will be executed sequentially (in no particular order) therefore tests that use the DOM
+will not interfere with each other.
+
+This test runner supports NodeJs.
+
+This test runner has no polyfil or prototypes defined and requires Promise to exist.
+
+The way Expected and Actual are compared by default should cover most cases but if you need custom equality simply
+define a function named equals on Expected which takes in actual and synchronously returns true or false.
+Note that the comparisons are type strict since using the wrong type can lead to bugs.
+*/
+/*
+Comparing delta to Jasmine:
+delta is safer than what Jasmine did: https://github.com/jasmine/jasmine/blob/master/src/core/matchers/toBeCloseTo.js
+   var pow = Math.pow(10, precision + 1);
+   var delta = Math.abs(expected - actual);
+   var maxDelta = Math.pow(10, -precision) / 2;
+   return (Math.round(delta * pow) / pow <= maxDelta)
+although I can't prove that Jasmine is wrong.
+Either way my delta works for deep matches not just top level asserts like Jasmine does.
+My runner can do {Expected: {a: 1.01}, Actual: {a: 2}, Delta: 1} and pass.
+But Jasmine's toBeCloseTo only takes in numbers making large object/array comparisons impractical.
 */
 
-//TODO: allow asynchronous: Promise.all (if exists). betweenEach redundantly called. see branch
-const TestRunner = {};
+//TODO: add underscores to everything that isn't clearResults, displayResults, failedToThrow, testAll
+var TestRunner = {};
 (function(){
 /**This is a private global because the value doesn't change.*/
-const _hasDom = (typeof window === 'object' && undefined !== window.document);
+var _hasDom = (typeof window === 'object' && undefined !== window.document);
 
 /**Given the DOM's id this function sets the value property equal to valueToSet then calls onchange.
 No validation is done so if the id is not found it will throw an error.
 It will also throw if there is no onchange defined (instead just set .value directly).*/
+//TODO: move to H&H (update example at bottom)
 TestRunner.changeValue=function(elementId, valueToSet)
 {
    var element = document.getElementById(elementId);
@@ -43,7 +80,8 @@ TestRunner.clearResults=function(testState)
    }
 };
 /**if(testState.runningSingleTest) This function clears out then writes the test results to #testResults and scrolls to it.
-It will call testState.config.afterLast (if it is defined) which can be used to teardown mocks.
+After calling processResults it will call testState.config.afterLast (if it is defined) which can be used to teardown mocks
+(including deleting equals functions).
 @param {string} name the display name of the test
 @param {array} assertions an array of assertions created by the test
 @param {object} testState testState.config.hidePassed defaults to false
@@ -66,6 +104,7 @@ TestRunner.displayResults=function(name, assertions, testState)
          if (null !== testResults)
          {
             testResults.value = output.toString();
+            //TODO: this breaks single page applications. maybe only update if it is '#top', '', '#', '#testResults'
             location.hash = '#testResults';  //scroll to the results
          }
       }
@@ -188,7 +227,7 @@ TestRunner.generateResultTable=function(resultJson)
    output += 'Time taken: ' + TestRunner.formatTestTime(resultJson.duration) + '\n';
    return output;
 };
-/**This function creates a json table which are the processed outcome of suiteResults.
+/**This function creates a json table (with a toString) which are the processed outcome of suiteResults.
 Pass and fail counts are counted and added to the grand total.
 Note that the totals will not match array lengths when testConfig.hidePassed (and an assertion passes)
 @param {object[]} suiteResults an array of testResults which contains an array of assertions
@@ -259,24 +298,22 @@ TestRunner.isPrimitive=function(input)
       || 'function' === inputType || 'symbol' === inputType || undefined === input || null === input);
    //TestRunner._shallowEquality doesn't reach the undefined and null cases
 };
-/**Used to run every test in a suite. This function is assumed to run alone.
-This function calls clears the results and calls TestRunner.generateResultTable.
+/**Used to run every test in a suite.
+This function does the same thing as clearResults and calls TestRunner.generateResultTable.
 The main loop enumerates over the testSuite object given and calls each function.
 The loop is deep and all properties that are objects will also be enumerated over.
 It will call testConfig.beforeFirst (if it is defined) before the first test. This can be used to setup mocks.
 It will call testConfig.betweenEach (if it is defined) between each test. This can be used to reset state.
-It will call testConfig.afterLast (if it is defined) after the last test. This can be used to teardown mocks.
-If the called test function throws, TestRunner.testAll will catch it and display the list of errors when finished
-(and will also send the stack to console.error).
-The total time taken is displayed.
-if(DOM exists) everything is written to #testResults then it scrolls to it
-else returns string of test results
+It will call testConfig.afterLast (if it is defined) after the last test and TestRunner.processResults.
+This can be used to teardown mocks (including deleting equals functions).
+If the called test function throws, TestRunner.testAll will catch it and display the list of errors when finished.
+if(DOM exists) everything is written to #testResults then it updates location.hash to scroll to it.
 @param {object} testSuite an object that contains every test to be run. defaults to TestSuite
 @param {object} testConfig an object (defaults to TestConfig) that contains:
    {function} betweenEach if defined it will be called between each test
    {number} defaultDelta passed to TestRunner.findFirstFailurePath
    {boolean} hidePassed defaults to true and is passed to TestRunner.generateResultTable
-@returns {object} a json object of test results
+@returns {object} a promise of a json object of test results (also has a toString)
 */
 TestRunner.testAll=function(testSuite, testConfig)
 {
@@ -293,7 +330,7 @@ TestRunner.testAll=function(testSuite, testConfig)
 
    //TestSuite is quoted so that it looks the same as the rest.
    //Always start with this because I don't any other name.
-   var suiteCollection = [{breadcrumb: '"TestSuite"', object: testSuite}], errorTests = [], resultingList = [], runBetweenEach = false;
+   var suiteCollection = [{breadcrumb: '"TestSuite"', object: testSuite}], unprocessedList = [], runBetweenEach = false;
    testState.config.beforeFirst();
    while (0 !== suiteCollection.length)
    {
@@ -312,27 +349,73 @@ TestRunner.testAll=function(testSuite, testConfig)
          {
             if(runBetweenEach) testState.config.betweenEach();
             else runBetweenEach = true;
-            try{resultingList.push(testSuite[key](testState));}
-            catch(e){console.error(e); errorTests.push({Error: e, Description: thisPath});}
-            //I could have breadcrumbs instead of key but these shouldn't happen and the stack trace is good enough
+            try
+            {
+               var testReturnValue = testSuite[key](testState);
+               if (testReturnValue instanceof Promise)
+               {
+                  (function(copyOfThisPath){
+                     unprocessedList.push(testReturnValue
+                        .then(function(value){return {status: 'resolved', value: value}})
+                        //logging will be done later for errors
+                        .catch(function(errorCaught){return {status: 'rejected', value: {Error: errorCaught, Description: copyOfThisPath}}})
+                     );
+                  })(thisPath);
+               }
+               else unprocessedList.push({status: 'resolved', value: testReturnValue});
+            }
+            catch (errorCaught)
+            {
+               //when a non-async test throws
+               //logging will be done later
+               unprocessedList.push({status: 'rejected', value: {Error: errorCaught, Description: thisPath}});
+            }
          }
       }
    }
-   if(0 !== errorTests.length) resultingList.push({name: 'TestRunner.testAll', assertions: errorTests});
-   var output = TestRunner.processResults(resultingList, testState);
-   //afterLast should be run after processResults so that equals functions could be removed
-   testState.config.afterLast();
-
-   if (_hasDom)
+   //javascript:TestRunner.testAll(); link won't override the page if it returns a promise
+   return Promise.all(unprocessedList)
+   .then(function(promiseResults)
    {
-      testResults = document.getElementById('testResults');
-      if (null !== testResults)
+      var errorTests = [], resolvedTests = [];
+      for (var i=0; i < promiseResults.length; ++i)
       {
-         testResults.value = output.toString();
-         location.hash = '#testResults';  //scroll to the results
+         if('resolved' === promiseResults[i].status) resolvedTests.push(promiseResults[i].value);
+         else errorTests.push(promiseResults[i].value);
       }
-   }
-   return output;  //output is an object (not a string) so a javascript:TestRunner.testAll(); link won't override the page
+      if(0 !== errorTests.length) resolvedTests.push({name: 'TestRunner.testAll', assertions: errorTests});
+
+      var output = TestRunner.processResults(resolvedTests, testState);
+      //afterLast should be run after processResults so that equals functions could be removed
+      testState.config.afterLast();
+
+      if (_hasDom)
+      {
+         testResults = document.getElementById('testResults');
+         if (null !== testResults)
+         {
+            testResults.value = output.toString();
+            location.hash = '#testResults';  //scroll to the results
+         }
+      }
+      return output;
+   })
+   .catch(function(problem)
+   {
+      //when runner throws (shouldn't) or equals throws
+      var message = 'Test runner failed. Did an equals function throw?';
+      //TODO: have a mock logger (3 places) for self-testing
+      console.error(message, problem);
+      if (_hasDom)
+      {
+         testResults = document.getElementById('testResults');
+         if (null !== testResults)
+         {
+            testResults.value = message + '\n' + problem.toString();
+            location.hash = '#testResults';  //scroll to the results
+         }
+      }
+   });
 };
 /**@returns {boolean} true if the input should be compared via .valueOf when determining equality*/
 TestRunner.useValueOf=function(input)
@@ -360,6 +443,7 @@ function _sanitizeConfig(testConfig, hidePassed)
    }
    return testConfig;
 }
+//TODO: make an easy to comment in code for exposing for meta testing so that this can normally be private
 /**Used internally by TestRunner.findFirstFailurePath. Don't call this directly (delta isn't validated).
 @returns {?boolean} true or false based on a shallow equality check or undefined if a deep equality is required.*/
 TestRunner._shallowEquality=function(expected, actual, delta)
@@ -390,6 +474,7 @@ TestRunner._shallowEquality=function(expected, actual, delta)
          //numbers are immutable. they are kept the same for the sake of display
    }
 
+   //TODO: bug? equals isn't called if diff types and other cases
    if(expected instanceof Object && typeof(expected.equals) === 'function') return expected.equals(actual);
 
    if (expected instanceof Error)
@@ -418,31 +503,25 @@ TestRunner._shallowEquality=function(expected, actual, delta)
    return undefined;  //it comes here for arrays and all custom objects
 };
 })();
-Object.freeze(TestRunner);
 
-/*
-Comparing delta to Jasmine:
-delta is safer than what Jasmine did: https://github.com/jasmine/jasmine/blob/master/src/core/matchers/toBeCloseTo.js
-   var pow = Math.pow(10, precision + 1);
-   var delta = Math.abs(expected - actual);
-   var maxDelta = Math.pow(10, -precision) / 2;
-   return (Math.round(delta * pow) / pow <= maxDelta)
-although I can't prove that it's wrong.
-Either way delta works for deep matches not just top level asserts like Jasmine does.
-*/
 /**beforeFirst and afterLast are called by TestRunner.testAll (see doc there) and by running a single test.
 betweenEach is only called by TestRunner.testAll (see doc there).
+In order to get a beforeEach assign beforeFirst and betweenEach to the same function (or have them call the same function).
+The same is possible for a afterEach.
+TestRunner doesn't call functions named beforeEach and afterEach because the order compared to betweenEach would be confusing.
 defaultDelta: 0 requires an exact match. To handle imprecise decimals use TestConfig.defaultDelta = Number.EPSILON;
 hidePassed: undefined means that it will hide them during TestRunner.testAll but not when running a single test.*/
-var TestConfig = {beforeFirst: Function.prototype, betweenEach: Function.prototype, afterLast: Function.prototype, defaultDelta: 0, hidePassed: undefined};
+var TestConfig = {beforeFirst: Function.prototype, betweenEach: Function.prototype, afterLast: Function.prototype,
+   defaultDelta: 0, hidePassed: undefined};
 var TestSuite = {};
 
 /*example:
 TestSuite.abilityList = {};
 //TestConfig does not need to be changed from defaults
-TestSuite.abilityList.calculateValues=function(testState={})
+TestSuite.abilityList.calculateValues=function(testState={})  //all tests must default testState in order to run alone and via testAll
+//if your javascript doesn't allow defaulting testState then you'll have to pass in {} when calling the function directly
 {
-   TestRunner.clearResults(testState);
+   TestRunner.clearResults(testState);  //all tests must start by calling clearResults in order to run alone
    var assertions=[];
 
    assertions.push({Expected: NaN, Actual: Math.factorial('Not a number'), Description: 'Math.factorial when passed NaN'});
@@ -466,6 +545,7 @@ TestSuite.abilityList.calculateValues=function(testState={})
 
    //be sure to give the test a name here:
    return TestRunner.displayResults('TestSuite.abilityList.calculateValues', assertions, testState);
+   //all tests must end by returning displayResults in order to run alone and via testAll
 };
 TestSuite.abilityList.unfinishedTest=function(testState={})
 {
