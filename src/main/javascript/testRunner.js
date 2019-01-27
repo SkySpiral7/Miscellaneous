@@ -314,7 +314,6 @@ TestRunner.testAll=function(testSuite, testConfig)
                var testReturnValue = testSuite[key](testState);
                if (testReturnValue instanceof Promise)
                {
-                  //TODO: self-test if possible
                   //TODO: update dice, time, async, time
                   (function(copyOfThisPath){
                      unprocessedList.push(testReturnValue

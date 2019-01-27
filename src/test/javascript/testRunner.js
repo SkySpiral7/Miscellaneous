@@ -919,6 +919,24 @@ TestSuite.TestRunner.testAll=async function(testState={})
    } catch(e){assertions.push({Error: e, Description: 'Throw breadcrumbs'});}
 
    try{
+   testSuite = {someObject: {}};
+   testSuite.someObject.testTable1=async function(){return {name: 'Fail testy', assertions: [{Expected: 1, Actual: 2, Description: 'Words'}]}};
+   testSuite.someObject.testTable2=async function(){throw new Error('Nope right outta here.');};
+   expected  = '0/1: Fail testy\n';
+   expected += '   Fail: Words\n';
+   expected += '      Expected: 1\n';
+   expected += '      Actual: 2\n';
+   expected += '0/1: TestRunner.testAll\n';
+   expected += '   Fail: "TestSuite"."someObject"."testTable2"\n';
+   expected += '      Error: Error: Nope right outta here.\n';
+   expected += '\nGrand total: 0/2\nTime taken: ?\n';
+
+   await TestRunner.testAll(testSuite, trackingConfig);
+   actual = resultBox.value.replace(/Time taken:.+/, 'Time taken: ?');
+   assertions.push({Expected: expected, Actual: actual, Description: 'async throw (with bread) and return'});
+   } catch(e){assertions.push({Error: e, Description: 'async throw (with bread) and return'});}
+
+   try{
    betweenCount = 0;
    testSuite = {testTable: passTest};
 
