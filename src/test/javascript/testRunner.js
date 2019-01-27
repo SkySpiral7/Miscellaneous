@@ -927,6 +927,20 @@ TestSuite.TestRunner.testAll=async function(testState={})
    } catch(e){assertions.push({Error: e, Description: 'No between'});}
 
    try{
+   location.hash = '';
+   resultBox.value = 'Override me';
+   testSuite = {testTable: function(){return {name: 'not equal', assertions:[
+      {Expected: {equals: function(){throw new Error('Equals threw this.');}}, Actual: {}, Description: 'exploding equals'}
+   ]}}};
+   expected = 'Test runner failed. Did an equals function throw?\nError: Equals threw this.';
+
+   await TestRunner.testAll(testSuite, trackingConfig);
+   actual = resultBox.value;
+   assertions.push({Expected: expected, Actual: actual, Description: 'equals throws: output'});
+   assertions.push({Expected: '#testResults', Actual: location.hash, Description: 'equals throws: scrolls to testResults'});
+   } catch(e){assertions.push({Error: e, Description: 'equals throws'});}
+
+   try{
    testSuite = {testTable: function(){return {name: 'Off test', assertions:[
       {Expected: 1, Actual: 5, Description: '4 Off'}
    ]}}};

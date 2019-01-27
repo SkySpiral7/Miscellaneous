@@ -10,7 +10,6 @@ If you have a DOM element textarea#testResults that will have the results put in
    if you don't have that DOM then the json results will be returned instead
 */
 
-//TODO: allow asynchronous: Promise.all (if exists). betweenEach redundantly called. see branch
 const TestRunner = {};
 (function(){
 /**This is a private global because the value doesn't change.*/
@@ -266,17 +265,15 @@ The loop is deep and all properties that are objects will also be enumerated ove
 It will call testConfig.beforeFirst (if it is defined) before the first test. This can be used to setup mocks.
 It will call testConfig.betweenEach (if it is defined) between each test. This can be used to reset state.
 It will call testConfig.afterLast (if it is defined) after the last test. This can be used to teardown mocks.
-If the called test function throws, TestRunner.testAll will catch it and display the list of errors when finished
-(and will also send the stack to console.error).
+If the called test function throws, TestRunner.testAll will catch it and display the list of errors when finished.
 The total time taken is displayed.
 if(DOM exists) everything is written to #testResults then it scrolls to it
-else returns string of test results
 @param {object} testSuite an object that contains every test to be run. defaults to TestSuite
 @param {object} testConfig an object (defaults to TestConfig) that contains:
    {function} betweenEach if defined it will be called between each test
    {number} defaultDelta passed to TestRunner.findFirstFailurePath
    {boolean} hidePassed defaults to true and is passed to TestRunner.generateResultTable
-@returns {object} a json object of test results
+@returns {object} a promise of a json object of test results
 */
 TestRunner.testAll=function(testSuite, testConfig)
 {
@@ -369,9 +366,9 @@ TestRunner.testAll=function(testSuite, testConfig)
    .catch(function(problem)
    {
       //when runner throws (shouldn't) or equals throws
-      //TODO: self-test if possible (by an equals throw)
       //TODO: bug? equals isn't called if diff types and other cases
       var message = 'Test runner failed. Did an equals function throw?';
+      //TODO: have a mock logger (3 places) for self-testing
       console.error(message, problem);
       if (_hasDom)
       {
@@ -482,6 +479,9 @@ Either way delta works for deep matches not just top level asserts like Jasmine 
 */
 /**beforeFirst and afterLast are called by TestRunner.testAll (see doc there) and by running a single test.
 betweenEach is only called by TestRunner.testAll (see doc there).
+In order to get a beforeEach assign beforeFirst and betweenEach to the same function (or have them call the same function).
+The same is possible for a afterEach.
+TestRunner doesn't call functions named beforeEach and afterEach because the order compared to betweenEach would be confusing.
 defaultDelta: 0 requires an exact match. To handle imprecise decimals use TestConfig.defaultDelta = Number.EPSILON;
 hidePassed: undefined means that it will hide them during TestRunner.testAll but not when running a single test.*/
 var TestConfig = {beforeFirst: Function.prototype, betweenEach: Function.prototype, afterLast: Function.prototype, defaultDelta: 0, hidePassed: undefined};
