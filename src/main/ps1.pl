@@ -1,5 +1,7 @@
 #!/usr/bin/perl -w
 
+#TODO: confirm this works on my home computer
+
 #implementation notes: this is optimized for a Windows 10 with git-bash (on which I can't install things)
 #this locked down computer might have custom stuff (eg custom git-bash) causing overhead
 #bash seems to be faster when I'm on ethernet instead of WiFi (for some reason)
@@ -8,29 +10,28 @@
 #therefore there is a lot of git overhead. every call to git adds at least 200ms. determining status only takes 50ms
 #therefore the name of the optimization game is to call git as few times as possible
 
-#this ps1 in a git repo has "real" between 0m1.976s to 0m2.509s (mostly around 2.015 s)
-#this ps1 outside a git repo has "real" between 0m1.574s to 0m1.683s (mostly around 1.600 s)
+#this ps1 in a git repo has "real" between 0m1.202s to 0m1.889s (mostly around 2.300 s)
+#this ps1 outside a git repo has "real" between 0m0.614s to 0m0.759s (mostly around 0.610 s)
 
 use strict;        # will make you declare variables with the my keyword
 use warnings;      # show warning messages
 #use diagnostics;   # augments diagnostics with more explicit descriptions
 #diagnostics doesn't exist in my perl
-use English;
+use English;      #for $EFFECTIVE_USER_ID instead of $<
+use Cwd;
+use Term::ANSIColor ':constants';
 require 5.010;
 
-my $delimiter='=';  #$_[0];
-my $rootUserId = 0;
+use constant ROOT_USER_ID => 0;
+use constant DELIMITER => '=';  #$_[0];
 
-my $red=`tput setaf 1`;
-#red means very important: address immediately
-my $yellow=`tput setaf 3`;
-#yellow means take action (but not as important as red)
-my $green=`tput setaf 2`;
-#green means important to the actions you are currently taking
-my $cyan=`tput setaf 6`;
-#cyan means noteworthy but not as important as green
-my $clear=`tput setaf 9`;
-#white means extra information that you can generally ignore
+#Color explanations
+#RED means very important: address immediately
+#YELLOW means take action (but not as important as red)
+#GREEN means important to the actions you are currently taking
+#CYAN means noteworthy but not as important as green
+#no color (white) means extra information that you can generally ignore
+#Always RESET right after using a color
 
 print main();
 exit;
@@ -39,10 +40,10 @@ sub main{
    my $prompt="\n";
    $prompt.=appendPath();
 
-   if ($EFFECTIVE_USER_ID == $rootUserId)
+   if ($EFFECTIVE_USER_ID == ROOT_USER_ID)
    {
       #This stands out from $ as much as possible
-      $prompt.=$red."With great power comes great responsibility:".$clear;
+      $prompt.=RED."With great power comes great responsibility:".RESET;
    }
    else
    {
@@ -61,82 +62,82 @@ sub appendGit{
 
    my $gitInfo="";
 
-   $gitInfo.="branch$delimiter";
+   $gitInfo.="branch".DELIMITER;
    my $branch="";
    if ($gitStatus =~ /On branch (\S+)/)
    {
       $branch=$1;
-      $gitInfo.="$green$branch$clear";
+      $gitInfo.=GREEN.$branch.RESET;
    }
    elsif ($gitStatus =~ /HEAD detached at (\S+)/)
    {
       $branch=$1;
-      $gitInfo.="$yellow$branch$clear";
+      $gitInfo.=YELLOW.$branch.RESET;
    }
    elsif ($gitStatus =~ /rebase in progress; onto (\w+)/)
    {
       my $currentHash=$1;
-      $gitInfo.="$cyan$currentHash$clear";
+      $gitInfo.=CYAN.$currentHash.RESET;
    }
    else
    {
       my $currentHash=`git rev-parse HEAD 2>/dev/null`;
       chomp($currentHash);
       $currentHash=substr($currentHash, 0, 7);
-      $gitInfo.="$red$currentHash$clear";
+      $gitInfo.=RED.$currentHash.RESET;
       #this is red because it should be unreachable (even though the currentHash is correct)
    }
 
-   $gitInfo.=" status$delimiter";
+   $gitInfo.=" status".DELIMITER;
    if ($gitStatus =~ 'rebase in progress' and $gitStatus =~ 'all conflicts fixed')
    {
-      $gitInfo.=$green."rebase --continue".$clear;
+      $gitInfo.=GREEN."rebase --continue".RESET;
    }
    elsif ($gitStatus =~ 'rebase in progress')
    {
-      $gitInfo.=$red."rebasing".$clear;
+      $gitInfo.=RED."rebasing".RESET;
    }
    elsif ($gitStatus =~ 'You have unmerged paths')
    {
-      $gitInfo.=$red."merging".$clear;
+      $gitInfo.=RED."merging".RESET;
    }
    elsif ($gitStatus =~ 'All conflicts fixed but you are still merging')
    {
-      $gitInfo.=$green."merge ready: commit --no-edit".$clear;
+      $gitInfo.=GREEN."merge ready: commit --no-edit".RESET;
    }
    elsif ($gitStatus =~ 'Changes to be committed')
    {
-      $gitInfo.=$green."staged".$clear;
+      $gitInfo.=GREEN."staged".RESET;
    }
    elsif ($gitStatus =~ 'Changes not staged for commit')
    {
-      $gitInfo.=$cyan."modified".$clear;
+      $gitInfo.=CYAN."modified".RESET;
    }
    elsif ($gitStatus =~ 'Untracked files')
    {
-      $gitInfo.=$yellow."untracked".$clear;
+      $gitInfo.=YELLOW."untracked".RESET;
    }
    else
    {
       $gitInfo.="clean";
    }
 
-   $gitInfo.=" upstream$delimiter";
+   $gitInfo.=" upstream".DELIMITER;
    if ($gitStatus =~ 'the upstream is gone')
    {
-      $gitInfo.=$cyan."gone".$clear;
+      $gitInfo.=CYAN."gone".RESET;
    }
    elsif ($gitStatus =~ 'have diverged')
    {
-      $gitInfo.=$red."out of sync".$clear;
+      $gitInfo.=RED."out of sync".RESET;
    }
    elsif ($gitStatus =~ /Your branch is ahead of '[^']+' by (\d+)/)
    {
-      $gitInfo.=$green."you're ahead $1$clear";
+      $gitInfo.=GREEN."you're ahead ".$1.RESET;
    }
    elsif ($gitStatus =~ /Your branch is behind '[^']+' by (\d+)/)
    {
-      $gitInfo.=$yellow."you're behind $1$clear";
+      $gitInfo.=YELLOW."you're behind ".$1.RESET;
    }
    elsif ($gitStatus =~ 'is up to date with')
    {
@@ -144,7 +145,7 @@ sub appendGit{
    }
    else
    {
-      $gitInfo.=$cyan."none$clear";
+      $gitInfo.=CYAN."none".RESET;
    }
 
    my $logStatus=`git log --pretty=format:'%d %cr %s' -1`;
@@ -170,21 +171,21 @@ sub appendGit{
    }
    if ($heads ne "")
    {
-      $gitInfo.=" heads$delimiter$cyan$heads$clear";
+      $gitInfo.=" heads".DELIMITER.CYAN.$heads.RESET;
    }
 
-   $gitInfo.=" ago$delimiter$commitDate";
+   $gitInfo.=" ago".DELIMITER.$commitDate;
 
    if (length($commitMessage) > 73)
    {
       $commitMessage=substr($commitMessage,0,70)."...";
    }
-   $gitInfo.="\ncommit$delimiter$commitMessage\n";
+   $gitInfo.="\ncommit".DELIMITER.$commitMessage."\n";
 
    return $gitInfo;
 }
 sub appendPath{
-   my $path=`pwd`;
+   my $path=getcwd();
    chomp($path);
-   return "$cyan$path$clear\n";
+   return CYAN.$path.RESET."\n";
 }
