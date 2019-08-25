@@ -1,7 +1,5 @@
 #!/usr/bin/perl -w
 
-#TODO: confirm this works on my home computer
-
 #implementation notes: this is optimized for a Windows 10 with git-bash (on which I can't install things)
 #this locked down computer might have custom stuff (eg custom git-bash) causing overhead
 #bash seems to be faster when I'm on ethernet instead of WiFi (for some reason)
@@ -55,7 +53,7 @@ sub main{
 sub appendGit{
    my $gitStatus=`git status -unormal 2>&1`;
    chomp($gitStatus);
-   if ($gitStatus =~ 'Not a git repo')
+   if ($gitStatus =~ /[Nn]ot a git repo/)
    {
       return "";
    }
