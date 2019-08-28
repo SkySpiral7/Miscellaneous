@@ -166,6 +166,7 @@ sub appendGit{
       $heads =~ s/$branch//;
       $heads =~ s/^, //;
       $heads =~ s/, $//;
+      $heads =~ s/, , /, /;
    }
    if ($heads ne "")
    {
