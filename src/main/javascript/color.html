@@ -147,7 +147,7 @@ var colorChart = [
 {"name": "yellowgreen", "hex": "9ACD32"}
 ];
 
-//conversions were copied from: https://gist.github.com/mjackson/5311256 then made more readable
+//rgbToHsl, hslToRgb were copied from: https://gist.github.com/mjackson/5311256 then made more readable
 /**
  * Converts an RGB color value to HSL. Conversion formula
  * adapted from http://en.wikipedia.org/wiki/HSL_color_space.
@@ -172,7 +172,9 @@ function rgbToHsl(red, green, blue) {
       hue = saturation = 0; // achromatic
    } else {
       var range = max - min;
-      saturation = lightness > 0.5 ? range / (2 - max - min) : range / (max + min);
+      saturation = lightness > 0.5 ?
+         range / (2 - max - min) :
+         range / (max + min);
 
       switch (max) {
          case red: hue = (green - blue) / range + (green < blue ? 6 : 0); break;
@@ -185,6 +187,49 @@ function rgbToHsl(red, green, blue) {
 
    return {hue: hue, saturation: saturation, lightness: lightness};
 }
+/**
+ * Converts an HSL color value to RGB. Conversion formula
+ * adapted from http://en.wikipedia.org/wiki/HSL_color_space.
+ * Assumes hue, saturation, and lightness are contained in the set [0, 1] and
+ * returns red, green, and blue in the set [0, 255].
+ *
+ * @param   {Number} hue         The hue
+ * @param   {Number} saturation  The saturation
+ * @param   {Number} lightness   The lightness
+ * @return  {Object}             The RGB representation (keys: red, green, and blue)
+ */
+function hslToRgb(hue, saturation, lightness) {
+   var red, green, blue;
+
+   if (0 === saturation) {
+      red = green = blue = lightness; // achromatic
+   } else {
+      function hue2rgb(p, q, t) {
+         if (t < 0) t += 1;
+         if (t > 1) t -= 1;
+         if (t < 1 / 6) return p + (q - p) * 6 * t;
+         if (t < 1 / 2) return q;
+         if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
+         return p;
+      }
+
+      var q = lightness < 0.5 ?
+         lightness * (1 + saturation) :
+         lightness + saturation - lightness * saturation;
+      var p = 2 * lightness - q;
+
+      red = hue2rgb(p, q, hue + 1 / 3);
+      green = hue2rgb(p, q, hue);
+      blue = hue2rgb(p, q, hue - 1 / 3);
+   }
+
+   red *= 255;
+   green *= 255;
+   blue *= 255;
+
+   return {red: red, green: green, blue: blue};
+}
+
 
 function hexToRgb(hex)
 {
@@ -192,6 +237,19 @@ function hexToRgb(hex)
    var green = Number.parseInt(hex.substr(2, 2), 16);
    var blue = Number.parseInt(hex.substr(4, 2), 16);
    return {red: red, green: green, blue: blue};
+}
+function rgbToHex(red, green, blue)
+{
+   red = Math.round(red).toString(16);
+   if(1 === red.length) red = '0' + red;
+
+   green = Math.round(green).toString(16);
+   if(1 === green.length) green = '0' + green;
+
+   blue = Math.round(blue).toString(16);
+   if(1 === blue.length) blue = '0' + blue;
+
+   return ('' + red + green + blue);
 }
 function calculateHslDistance(leftHex, rightHex, hueWeight, saturationWeight, lightnessWeight)
 {
@@ -218,11 +276,12 @@ function calculateDistanceForAllColors(inputColorHex, hueWeight, saturationWeigh
    }
    colorChart.sort(sortByDistance);
 }
-function generateTable(inputColorHex)
+function generateTable(inputColorHex, inverseHex, inverseDistance)
 {
    var output = '<table>';
    output += '<thead><tr><th>Color name</th><th>Hex</th><th>Distance</th><th>Display</th></tr></thead>';
    output += '<tbody>';
+   output += ('<tr><td>Inverse Lightness</td><td>' + inverseHex.toUpperCase() + '</td><td>' + inverseDistance.toFixed(4) + '</td><td style="width:20px;background-color: #' + inverseHex + '"></td></tr>');
    output += ('<tr><td>Your color</td><td>' + inputColorHex.toUpperCase() + '</td><td>-</td><td style="width:20px;background-color: #' + inputColorHex + '"></td></tr>');
 
    for (var i = 0; i < colorChart.length; ++i)
@@ -232,30 +291,31 @@ function generateTable(inputColorHex)
    output += '</tbody></table>';
    return output;
 }
-function setHslInverse(inputColorHex)
+function inverseLightness(inputColorHex)
 {
    var inputRgb = hexToRgb(inputColorHex);
    var inputHsl = rgbToHsl(inputRgb.red, inputRgb.green, inputRgb.blue);
    var inverseHsl = {hue: inputHsl.hue, saturation: inputHsl.saturation, lightness: (1 - inputHsl.lightness)};
-   var inverseHslCss = {hue: (360 * inverseHsl.hue), saturation: (inverseHsl.saturation * 100), lightness: (inverseHsl.lightness * 100)};
-   document.getElementById('inverseColor').style['background-color'] = 'hsl(' + inverseHslCss.hue + ', ' + inverseHslCss.saturation + '%, ' + inverseHslCss.lightness + '%)';
+   var inverseRgb = hslToRgb(inverseHsl.hue, inverseHsl.saturation, inverseHsl.lightness);
+   return rgbToHex(inverseRgb.red, inverseRgb.green, inverseRgb.blue);
 }
 function main()
 {
    var inputColorHex = document.getElementById('inputColor').value.substring(1);  //remove '#'
-   setHslInverse(inputColorHex);
    var hueWeight = document.getElementById('hueWeight').value;
    var saturationWeight = document.getElementById('saturationWeight').value;
    var lightnessWeight = document.getElementById('lightnessWeight').value;
+
+   var inverseHex = inverseLightness(inputColorHex);
+   var inverseDistance = calculateHslDistance(inverseHex, inputColorHex, hueWeight, saturationWeight, lightnessWeight);
    calculateDistanceForAllColors(inputColorHex, hueWeight, saturationWeight, lightnessWeight);
-   document.getElementById('output').innerHTML = generateTable(inputColorHex);
+   document.getElementById('output').innerHTML = generateTable(inputColorHex, inverseHex, inverseDistance);
 }
 </script>
 </head>
 <body>
 <form onchange="main()" action="javascript:void(0)">
-<label>Input color: <input type="color" id="inputColor" /></label>
-<span>Inverse Lightness: </span><div id="inverseColor" style="display:inline-block;width:54px;background-color: white">&nbsp;</div><br />
+<label>Input color: <input type="color" id="inputColor" /></label><br />
 <label>Hue Weight: <input type="number" id="hueWeight" value="1" min="0" /></label><br />
 <label>Saturation Weight: <input type="number" id="saturationWeight" value="1" min="0" /></label><br />
 <label>Lightness Weight: <input type="number" id="lightnessWeight" value="1" min="0" /></label>
