@@ -232,9 +232,18 @@ function generateTable(inputColorHex)
    output += '</tbody></table>';
    return output;
 }
+function setHslInverse(inputColorHex)
+{
+   var inputRgb = hexToRgb(inputColorHex);
+   var inputHsl = rgbToHsl(inputRgb.red, inputRgb.green, inputRgb.blue);
+   var inverseHsl = {hue: inputHsl.hue, saturation: inputHsl.saturation, lightness: (1 - inputHsl.lightness)};
+   var inverseHslCss = {hue: (360 * inverseHsl.hue), saturation: (inverseHsl.saturation * 100), lightness: (inverseHsl.lightness * 100)};
+   document.getElementById('inverseColor').style['background-color'] = 'hsl(' + inverseHslCss.hue + ', ' + inverseHslCss.saturation + '%, ' + inverseHslCss.lightness + '%)';
+}
 function main()
 {
    var inputColorHex = document.getElementById('inputColor').value.substring(1);  //remove '#'
+   setHslInverse(inputColorHex);
    var hueWeight = document.getElementById('hueWeight').value;
    var saturationWeight = document.getElementById('saturationWeight').value;
    var lightnessWeight = document.getElementById('lightnessWeight').value;
@@ -245,7 +254,8 @@ function main()
 </head>
 <body>
 <form onchange="main()" action="javascript:void(0)">
-<label>Input color: <input type="color" id="inputColor" /></label><br />
+<label>Input color: <input type="color" id="inputColor" /></label>
+<span>Inverse Lightness: </span><div id="inverseColor" style="display:inline-block;width:54px;background-color: white">&nbsp;</div><br />
 <label>Hue Weight: <input type="number" id="hueWeight" value="1" min="0" /></label><br />
 <label>Saturation Weight: <input type="number" id="saturationWeight" value="1" min="0" /></label><br />
 <label>Lightness Weight: <input type="number" id="lightnessWeight" value="1" min="0" /></label>
