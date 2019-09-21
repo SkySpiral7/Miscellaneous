@@ -117,6 +117,7 @@ var colorChart = [
 {"name": "plum", "hex": "DDA0DD"},
 {"name": "powderblue", "hex": "B0E0E6"},
 {"name": "purple", "hex": "800080"},
+{"name": "rebeccapurple", "hex": "663399"},
 {"name": "red", "hex": "FF0000"},
 {"name": "rosybrown", "hex": "BC8F8F"},
 {"name": "royalblue", "hex": "4169E1"},
@@ -185,75 +186,12 @@ function rgbToHsl(red, green, blue) {
    return {hue: hue, saturation: saturation, lightness: lightness};
 }
 
-/**
- * HSL seems better than HSV.
- *
- * Converts an RGB color value to HSV. Conversion formula
- * adapted from http://en.wikipedia.org/wiki/HSV_color_space.
- * Assumes red, green, and blue are contained in the set [0, 255] and
- * returns hue, saturation, and value in the set [0, 1].
- *
- * @param   {Number}  red      The red color value
- * @param   {Number}  green    The green color value
- * @param   {Number}  blue     The blue color value
- * @return  {Object}           The HSV representation (keys: hue, saturation, value)
- */
-function rgbToHsv(red, green, blue) {
-   red /= 255;
-   green /= 255;
-   blue /= 255;
-
-   var min = Math.min(red, green, blue);
-   var max = Math.max(red, green, blue);
-   var hue, saturation, value = max;
-
-   var range = max - min;
-   saturation = max === 0 ? 0 : range / max;
-
-   if (max === min) {
-      hue = 0; // achromatic
-   } else {
-      switch (max) {
-         case red: hue = (green - blue) / range + (green < blue ? 6 : 0); break;
-         case green: hue = (blue - red) / range + 2; break;
-         case blue: hue = (red - green) / range + 4; break;
-      }
-
-      hue /= 6;
-   }
-
-   return {hue: hue, saturation: saturation, value: value};
-}
-
-
 function hexToRgb(hex)
 {
    var red = Number.parseInt(hex.substr(0, 2), 16);
    var green = Number.parseInt(hex.substr(2, 2), 16);
    var blue = Number.parseInt(hex.substr(4, 2), 16);
    return {red: red, green: green, blue: blue};
-}
-/**Unused in favor of HSL*/
-function calculateRgbDistance(leftHex, rightHex)
-{
-   var leftRgb = hexToRgb(leftHex);
-   var rightRgb = hexToRgb(rightHex);
-   var redSquaredDistance = Math.pow((leftRgb.red - rightRgb.red), 2);
-   var greenSquaredDistance = Math.pow((leftRgb.green - rightRgb.green), 2);
-   var blueSquaredDistance = Math.pow((leftRgb.blue - rightRgb.blue), 2);
-   return Math.sqrt(redSquaredDistance + greenSquaredDistance + blueSquaredDistance);
-}
-/**Unused in favor of HSL*/
-function calculateHsvDistance(leftHex, rightHex, hueWeight, saturationWeight, valueWeight)
-{
-   var leftRgb = hexToRgb(leftHex);
-   var rightRgb = hexToRgb(rightHex);
-   var leftHsv = rgbToHsv(leftRgb.red, leftRgb.green, leftRgb.blue);
-   var rightHsv = rgbToHsv(rightRgb.red, rightRgb.green, rightRgb.blue);
-   var hueSquareDistance = Math.pow((leftHsv.hue - rightHsv.hue), 2);
-   var saturationSquareDistance = Math.pow((leftHsv.saturation - rightHsv.saturation), 2);
-   var valueSquareDistance = Math.pow((leftHsv.value - rightHsv.value), 2);
-   return Math.sqrt(hueSquareDistance*hueWeight + saturationSquareDistance*saturationWeight + valueSquareDistance*valueWeight);
 }
 function calculateHslDistance(leftHex, rightHex, hueWeight, saturationWeight, lightnessWeight)
 {
