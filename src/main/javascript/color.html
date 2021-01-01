@@ -316,13 +316,25 @@ function main()
 <body>
 <form onchange="main()" action="javascript:void(0)">
 <label>Input color: <input type="color" id="inputColor" /></label><br />
-<label>Hue Weight: <input type="number" id="hueWeight" value="1" min="0" /></label><br />
-<label>Saturation Weight: <input type="number" id="saturationWeight" value="1" min="0" /></label><br />
+<label>Hue Weight: <input type="number" id="hueWeight" value="10" min="0" /></label><br />
+<label>Saturation Weight: <input type="number" id="saturationWeight" value="5" min="0" /></label><br />
 <label>Lightness Weight: <input type="number" id="lightnessWeight" value="1" min="0" /></label>
 </form>
 <br /><br />
 <div id="output"></div>
 <br /><br />
-<script>main();</script>
+<script>
+function getRandomColor()
+{
+   var letters = '0123456789ABCDEF';
+   var color = '#';
+   for (var i = 0; i < 6; i++) {
+     color += letters[Math.floor(Math.random() * 16)];
+   }
+   return color;
+}
+document.getElementById('inputColor').value = getRandomColor();
+main();
+</script>
 </body>
 </html>
