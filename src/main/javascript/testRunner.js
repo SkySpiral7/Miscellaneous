@@ -315,6 +315,19 @@ TestRunner._formatTestTime=function(millisecondsTaken)
    return '' + minutes + ' minutes and ' + seconds.toFixed(3) +' seconds';
    //yes I know that it would display "1 minutes" etc. so change it if you care so much
 };
+/**@returns {string} to display the value given*/
+TestRunner._formatValueToString=function(input)
+{
+   //typeof is to catch Infinity/NaN, instanceof is if they are boxed
+   if ('number' === typeof(input) || input instanceof Number) return input.toString();
+
+   //these would be 'undefined' if sent to JSON
+   if ('symbol' === typeof(input)
+      || input instanceof RegExp || input instanceof Function) return input.toString();
+
+   //the ''+ is so that undefined turns into a string
+   return '' + JSON.stringify(input);
+};
 /**This function creates a string table used to display the test results of a suite.
 @param {object} resultJson the output of TestRunner._processResults
 @returns {string} the a formatted string result*/
@@ -346,8 +359,8 @@ TestRunner._generateResultTable=function(resultJson)
             {
                console.log(thisResult.Description, 'expected:', thisResult.Expected,
                   'actual:', thisResult.Actual, 'location:', thisResult.FailPath);
-               tableBody += indentation + indentation + 'Expected: ' + thisResult.Expected + '\n';
-               tableBody += indentation + indentation + 'Actual: ' + thisResult.Actual + '\n';
+               tableBody += indentation + indentation + 'Expected: ' + TestRunner._formatValueToString(thisResult.Expected) + '\n';
+               tableBody += indentation + indentation + 'Actual: ' + TestRunner._formatValueToString(thisResult.Actual) + '\n';
                //failPath isn't useful when looking at the toString so don't include in tableBody
                //TODO: have: Path: a.b Exp: 4 Act: 2
             }
@@ -453,7 +466,7 @@ TestRunner._shallowEquality=function(expected, actual, delta)
 
    if (TestRunner._useValueOf(expected))
    {
-      //unboxing is intentionally after the type check (in case of box and primitive)
+      //unboxing is intentionally after the type check (in case of box vs primitive)
       expected = expected.valueOf();
       actual = actual.valueOf();
    }

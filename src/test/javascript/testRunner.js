@@ -319,7 +319,7 @@ TestSuite.TestRunner.testAll=async function(testState={})
       ]}}};
       expected  = '0/1: my equal\n';
       expected += '   Fail: should be even\n';
-      expected += '      Expected: [object Object]\n';
+      expected += '      Expected: {}\n';
       expected += '      Actual: 15\n';
       expected += '\nGrand total: 0/1\nTime taken: ?\n';
 
@@ -492,6 +492,91 @@ TestSuite.TestRunner._formatTestTime=async function(testState={})
 
    return TestRunner.displayResults('meta: TestRunner._formatTestTime', assertions, testState);
 };
+TestSuite.TestRunner._formatValueToString=async function(testState={})
+{
+   TestRunner.clearResults(testState);
+
+   var assertions = [], actual, expected;
+
+   try
+   {
+      expected = '/f/';
+      actual = TestRunner._formatValueToString(/f/);
+      assertions.push({Expected: expected, Actual: actual, Description: 'regex'});
+   }
+   catch (e)
+   {assertions.push({Error: e, Description: 'regex'});}
+
+   try
+   {
+      expected = '{"a":1}';
+      actual = TestRunner._formatValueToString({a: 1});
+      assertions.push({Expected: expected, Actual: actual, Description: 'json object'});
+   }
+   catch (e)
+   {assertions.push({Error: e, Description: 'json object'});}
+
+   try
+   {
+      expected = 'null';
+      actual = TestRunner._formatValueToString(null);
+      assertions.push({Expected: expected, Actual: actual, Description: 'null'});
+
+      expected = 'undefined';
+      actual = TestRunner._formatValueToString(undefined);
+      assertions.push({Expected: expected, Actual: actual, Description: 'undefined'});
+   }
+   catch (e)
+   {assertions.push({Error: e, Description: 'no value'});}
+
+   try
+   {
+      expected = '54';
+      actual = TestRunner._formatValueToString(54);
+      assertions.push({Expected: expected, Actual: actual, Description: '54'});
+
+      expected = 'NaN';
+      actual = TestRunner._formatValueToString(NaN);
+      assertions.push({Expected: expected, Actual: actual, Description: 'NaN'});
+
+      expected = '-Infinity';
+      actual = TestRunner._formatValueToString(-Infinity);
+      assertions.push({Expected: expected, Actual: actual, Description: '-Infinity'});
+
+      expected = 'Infinity';
+      actual = TestRunner._formatValueToString(new Number(Infinity));
+      assertions.push({Expected: expected, Actual: actual, Description: 'new Number(Infinity)'});
+   }
+   catch (e)
+   {assertions.push({Error: e, Description: 'numbers'});}
+
+   try
+   {
+      expected = '"2021-01-01T16:24:18.933Z"';
+      actual = TestRunner._formatValueToString(new Date(1609518258933));
+      assertions.push({Expected: expected, Actual: actual, Description: 'Date'});
+
+      expected = 'true';
+      actual = TestRunner._formatValueToString(true);
+      assertions.push({Expected: expected, Actual: actual, Description: 'true'});
+
+      expected = '"blah"';
+      actual = TestRunner._formatValueToString('blah');
+      assertions.push({Expected: expected, Actual: actual, Description: 'string'});
+
+      expected = 'function now() { [native code] }';
+      actual = TestRunner._formatValueToString(Date.now);
+      assertions.push({Expected: expected, Actual: actual, Description: 'function'});
+
+      expected = 'Symbol(g)';
+      actual = TestRunner._formatValueToString(Symbol.for('g'));
+      assertions.push({Expected: expected, Actual: actual, Description: 'Symbol'});
+   }
+   catch (e)
+   {assertions.push({Error: e, Description: 'basic values'});}
+
+   return TestRunner.displayResults('meta: TestRunner._formatValueToString', assertions, testState);
+};
 TestSuite.TestRunner._generateResultTable=async function(testState={})
 {
    TestRunner.clearResults(testState);
@@ -574,8 +659,8 @@ TestSuite.TestRunner._generateResultTable=async function(testState={})
       };
       expected  = '0/2: test name\n';
       expected += '   Fail: assertion description 1\n';
-      expected += '      Expected: [object Object]\n';
-      expected += '      Actual: [object Object]\n';
+      expected += '      Expected: {"a":1}\n';
+      expected += '      Actual: {"a":2}\n';
       expected += '   Fail: assertion description 2\n';
       expected += '      Expected: /d/\n';
       expected += '      Actual: /f/\n';
@@ -621,8 +706,8 @@ TestSuite.TestRunner._generateResultTable=async function(testState={})
       expected += '      Actual: /2.1/\n';
       expected += '1/2: test 2\n';
       expected += '   Fail: assertion description 3\n';
-      expected += '      Expected: [object Object]\n';
-      expected += '      Actual: [object Object]\n';
+      expected += '      Expected: {"a":1}\n';
+      expected += '      Actual: {"a":2}\n';
       expected += '   Pass: assertion description 4\n';
       expected += '\n';
       expected += 'Grand total: 2/4\n';
