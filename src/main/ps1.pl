@@ -13,15 +13,14 @@
 
 use strict;        # will make you declare variables with the my keyword
 use warnings;      # show warning messages
-#use diagnostics;   # augments diagnostics with more explicit descriptions
-#diagnostics doesn't exist in my perl
+use diagnostics;   # augments diagnostics with more explicit descriptions
 use English;      #for $EFFECTIVE_USER_ID instead of $<
 use Cwd;
 use Term::ANSIColor ':constants';
 require 5.010;
 
 use constant ROOT_USER_ID => 0;
-use constant DELIMITER => '=';  #$_[0];
+use constant DELIMITER => ': ';  #$_[0];
 
 #Color explanations
 #RED means very important: address immediately
