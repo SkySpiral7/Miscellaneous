@@ -360,7 +360,7 @@ TestRunner._generateResultTable=function(resultJson)
                console.log(thisResult.Description, 'expected:', thisResult.Expected,
                   'actual:', thisResult.Actual, 'location:', thisResult.FailPath);
                tableBody += indentation + indentation + 'Expected: ' + TestRunner._formatValueToString(thisResult.Expected) + '\n';
-               tableBody += indentation + indentation + 'Actual: ' + TestRunner._formatValueToString(thisResult.Actual) + '\n';
+               tableBody += indentation + indentation + '  Actual: ' + TestRunner._formatValueToString(thisResult.Actual) + '\n';
                //failPath isn't useful when looking at the toString so don't include in tableBody
                //TODO: have: Path: a.b Exp: 4 Act: 2
             }
