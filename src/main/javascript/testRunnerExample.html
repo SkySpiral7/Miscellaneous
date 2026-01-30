@@ -1,4 +1,8 @@
-<html>
+<!DOCTYPE html>
+<html lang="en" style="height: 100%">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Test Runner Example Usage</title>
 <script>
 function main()
@@ -15,6 +19,8 @@ output.value = eval('(function(){' + document.getElementById('inputCode').value 
 <script src="testRunner.js"></script><!--this runs the tests-->
 <script src="../../test/javascript/advancedRounding.js"></script><!--these are the tests (must come after the test runner)-->
 <!--/Test section-->
+</head>
+<body>
 <a>Code:</a><br />
 <textarea id="inputCode" rows="10" cols="80">
 TestRunner.testAll();
@@ -34,4 +40,5 @@ Hide tests that pass?
 <textarea id="testResults" rows="20" cols="100"></textarea>
 <br /><br />
 <script>document.getElementById('inputCode').focus();</script>
+</body>
 </html>

@@ -61,7 +61,7 @@ TestRunner.clearResults=function(testState)
    if(undefined === testState) testState = {runningSingleTest: true};
    if (false !== testState.runningSingleTest)
    {
-      testState._startTime = Date.now();
+      testState._startTime = performance.now();
       if (_hasDom)
       {
          var testResults = document.getElementById('testResults');
@@ -132,7 +132,7 @@ if(DOM exists) everything is written to #testResults then it updates location.ha
 */
 TestRunner.testAll=function(testSuite, testConfig)
 {
-   var testState = {_startTime: Date.now(), runningSingleTest: false}, testResults;
+   var testState = {_startTime: performance.now(), runningSingleTest: false}, testResults;
    if (_hasDom)
    {
       testResults = document.getElementById('testResults');
@@ -305,11 +305,11 @@ TestRunner._findFirstFailurePath=function(testResult, defaultDelta)
 TestRunner._formatTestTime=function(millisecondsTaken)
 {
    //I could use new Date(diff).getUTCMilliseconds etc but that wouldn't give me everything above minutes as minutes
-   var seconds = (millisecondsTaken / 1000);
-   var minutes = Math.floor(seconds / 60);
+   let seconds = (millisecondsTaken / 1000);
+   const minutes = Math.floor(seconds / 60);
    seconds -= (minutes * 60);
    //Chrome kills js after 30 seconds so minutes are likely not possible in a browser
-   //tests shouldn't take minutes so the units stop at minutes
+   //tests shouldn't take 60+ minutes so the units stop at minutes
 
    if(0 === minutes) return '' + seconds.toFixed(3) +' seconds';
    return '' + minutes + ' minutes and ' + seconds.toFixed(3) +' seconds';
@@ -437,7 +437,7 @@ TestRunner._processResults=function(suiteResults, testState)
       output.passCount += passCount;
       output.total += thisTest.assertions.length;
    }
-   testState._endTime = Date.now();
+   testState._endTime = performance.now();
    output.startTime = testState._startTime;
    output.endTime = testState._endTime;
    output.duration = (testState._endTime - testState._startTime);
