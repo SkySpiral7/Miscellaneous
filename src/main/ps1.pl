@@ -13,7 +13,9 @@
 
 use strict;        # will make you declare variables with the my keyword
 use warnings;      # show warning messages
-use diagnostics;   # augments diagnostics with more explicit descriptions
+#use diagnostics;   # augments diagnostics with more explicit descriptions
+#diagnostics doesn't exist in my work perl
+#work: perl 5, version 38, subversion 2 (v5.38.2) built for x86_64-msys-thread-multi
 use English;      #for $EFFECTIVE_USER_ID instead of $<
 use Cwd;
 use Term::ANSIColor ':constants';
